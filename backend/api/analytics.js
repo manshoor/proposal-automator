@@ -5,7 +5,7 @@ const router = Router();
 
 router.get('/', async (_req, res) => {
   try {
-    const [summaryResult, weeklyResult, topSkillsResult, statusBreakdownResult] =
+    const [summaryResult, weeklyResult, topSkillsResult, statusBreakdownResult, connectsResult, connectWeeklyResult] =
       await Promise.all([
         // Summary aggregates
         pool.query(`
@@ -55,6 +55,32 @@ router.get('/', async (_req, res) => {
           GROUP BY status
           ORDER BY count DESC
         `),
+
+        // Connect tracking
+        pool.query(`
+          SELECT
+            COALESCE(SUM(connect_cost), 0) AS total_connects,
+            COALESCE(SUM(connect_cost) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days'), 0) AS weekly_connects,
+            COALESCE(SUM(connect_cost) FILTER (WHERE status = 'hired'), 0) AS connects_for_hires,
+            COUNT(*) FILTER (WHERE status = 'hired') AS total_hired_count,
+            COALESCE(SUM(earnings), 0) AS total_earnings,
+            ROUND(COALESCE(SUM(connect_cost), 0) * 0.30, 2) AS total_connect_cost_usd,
+            CASE WHEN SUM(connect_cost) FILTER (WHERE status = 'hired' AND earnings IS NOT NULL) > 0
+              THEN ROUND(SUM(earnings) FILTER (WHERE status = 'hired') / (SUM(connect_cost) FILTER (WHERE status = 'hired') * 0.30), 1)
+              ELSE 0 END AS roi_multiplier
+          FROM proposals
+        `),
+
+        // Weekly connect spending
+        pool.query(`
+          SELECT
+            TO_CHAR(DATE_TRUNC('week', created_at), 'YYYY-MM-DD') AS week,
+            COALESCE(SUM(connect_cost), 0) AS connects
+          FROM proposals
+          WHERE created_at >= NOW() - INTERVAL '12 weeks'
+          GROUP BY DATE_TRUNC('week', created_at)
+          ORDER BY week ASC
+        `),
       ]);
 
     const raw = summaryResult.rows[0];
@@ -84,7 +110,25 @@ router.get('/', async (_req, res) => {
       count: parseInt(r.count, 10),
     }));
 
-    return res.json({ summary, weeklyProposals, topSkills, statusBreakdown });
+    const cr = connectsResult.rows[0] || {};
+    const connects = {
+      totalConnects: parseInt(cr.total_connects, 10) || 0,
+      weeklyConnects: parseInt(cr.weekly_connects, 10) || 0,
+      connectsForHires: parseInt(cr.connects_for_hires, 10) || 0,
+      totalEarnings: parseFloat(cr.total_earnings) || 0,
+      totalConnectCostUsd: parseFloat(cr.total_connect_cost_usd) || 0,
+      roiMultiplier: parseFloat(cr.roi_multiplier) || 0,
+      connectsPerHire: cr.total_hired_count > 0
+        ? Math.round(parseInt(cr.connects_for_hires, 10) / parseInt(cr.total_hired_count, 10))
+        : 0,
+    };
+
+    const weeklyConnects = connectWeeklyResult.rows.map((r) => ({
+      week: r.week,
+      connects: parseInt(r.connects, 10),
+    }));
+
+    return res.json({ summary, weeklyProposals, topSkills, statusBreakdown, connects, weeklyConnects });
   } catch (err) {
     console.error('GET /api/analytics error:', err.message);
     return res.status(500).json({ error: 'Failed to fetch analytics' });

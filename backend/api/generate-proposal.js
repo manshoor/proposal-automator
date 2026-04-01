@@ -135,9 +135,9 @@ router.post('/', async (req, res) => {
         job_budget_type, job_budget_min, job_budget_max, job_budget_amount,
         job_skills, client_location, client_total_spent, client_hire_rate,
         client_review_count, proposal_text, hourly_rate,
-        hidden_instructions, vetting_result, proposal_count
+        hidden_instructions, vetting_result, proposal_count, connect_cost
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
       ) RETURNING id`,
       [
         jobData.url || '',
@@ -157,6 +157,7 @@ router.post('/', async (req, res) => {
         hiddenInstructions?.text || null,
         jobData.vettingResult ? JSON.stringify(jobData.vettingResult) : null,
         jobData.proposalCount || null,
+        jobData.connectCost || null,
       ]
     );
     proposalId = insertResult.rows[0].id;

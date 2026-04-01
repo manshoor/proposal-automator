@@ -96,6 +96,11 @@ export default function ProposalsPage() {
                   expanded={expandedId === p.id}
                   onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)}
                   onStatusChange={(s) => updateStatus(p.id, s)}
+                  onEarningsUpdate={(earnings) => {
+                    api.put(`/proposals/${p.id}`, { earnings }).then((updated) => {
+                      setProposals(proposals.map(x => x.id === p.id ? updated : x));
+                    }).catch(() => alert('Failed to save earnings'));
+                  }}
                   formatDate={formatDate}
                   formatBudget={formatBudget}
                 />
@@ -108,13 +113,16 @@ export default function ProposalsPage() {
   );
 }
 
-function Row({ proposal, expanded, onToggle, onStatusChange, formatDate, formatBudget }) {
+function Row({ proposal, expanded, onToggle, onStatusChange, onEarningsUpdate, formatDate, formatBudget }) {
   const p = proposal;
   return (
     <>
       <tr onClick={onToggle} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
         <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(p.created_at)}</td>
-        <td className="px-4 py-3 font-medium text-gray-900 max-w-xs truncate">{p.job_title || '—'}</td>
+        <td className="px-4 py-3 font-medium text-gray-900 max-w-xs truncate">
+          {p.job_title || '—'}
+          {p.connect_cost && <span className="text-xs text-gray-400 ml-2">{p.connect_cost}C</span>}
+        </td>
         <td className="px-4 py-3 text-gray-500">{p.client_location || '—'}</td>
         <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatBudget(p)}</td>
         <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
@@ -153,6 +161,37 @@ function Row({ proposal, expanded, onToggle, onStatusChange, formatDate, formatB
                     <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                   ))}
                 </select>
+
+                {p.connect_cost > 0 && (
+                  <div className="mt-3 text-sm text-gray-500">
+                    Connects: <span className="font-medium text-gray-700">{p.connect_cost}</span> (${(p.connect_cost * 0.3).toFixed(2)})
+                  </div>
+                )}
+
+                {p.status === 'hired' && (
+                  <div className="mt-4">
+                    <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Earnings from this job</h4>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500">$</span>
+                      <input
+                        type="number"
+                        defaultValue={p.earnings || ''}
+                        placeholder="0.00"
+                        onClick={(e) => e.stopPropagation()}
+                        onBlur={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (val > 0 && val !== parseFloat(p.earnings)) onEarningsUpdate(val);
+                        }}
+                        className="w-32 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      />
+                      {p.earnings > 0 && p.connect_cost > 0 && (
+                        <span className="text-xs text-green-600 font-medium">
+                          ROI: {(p.earnings / (p.connect_cost * 0.3)).toFixed(1)}x
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             {p.job_url && (
