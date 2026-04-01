@@ -18,7 +18,7 @@ const DEFAULT_PROFILE = {
 };
 
 router.post('/', async (req, res) => {
-  const { jobData, hiddenInstructions, provider, apiKey, templateContent, extraInstruction, existingProposal } = req.body;
+  const { jobData, hiddenInstructions, provider, apiKey, templateContent, extraInstruction, existingProposal, selectedProjects } = req.body;
 
   // Validate top-level required fields
   const topLevel = validateRequired(['provider', 'apiKey'], req.body);
@@ -62,6 +62,18 @@ router.post('/', async (req, res) => {
     userPrompt += `\n\nIMPORTANT: Here is the existing proposal. Rewrite it following this instruction: "${extraInstruction}"\n\nEXISTING PROPOSAL:\n${existingProposal}`;
   } else if (extraInstruction) {
     userPrompt += `\n\nADDITIONAL INSTRUCTION: ${extraInstruction}`;
+  }
+
+  // Include selected portfolio projects as proof/references
+  if (selectedProjects && Array.isArray(selectedProjects) && selectedProjects.length > 0) {
+    let projectsText = '\n\nRELEVANT PORTFOLIO PROJECTS to reference in the proposal (mention the most relevant ones as proof of experience):';
+    selectedProjects.forEach((p, i) => {
+      projectsText += `\n${i + 1}. "${p.name}"`;
+      if (p.technologies) projectsText += ` — Technologies: ${p.technologies}`;
+      if (p.description) projectsText += `\n   ${p.description.substring(0, 200)}`;
+      if (p.outcome) projectsText += `\n   Result: ${p.outcome}`;
+    });
+    userPrompt += projectsText;
   }
 
   // Call LLM

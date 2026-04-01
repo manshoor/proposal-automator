@@ -11,6 +11,7 @@ import templatesRouter from './api/templates.js';
 import analyticsRouter from './api/analytics.js';
 import parseResumeRouter from './api/parse-resume.js';
 import settingsRouter from './api/settings.js';
+import projectsRouter from './api/projects.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,6 +34,7 @@ app.use('/api/templates', templatesRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/parse-resume', parseResumeRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/projects', projectsRouter);
 
 // Start server after running migrations
 async function start() {
