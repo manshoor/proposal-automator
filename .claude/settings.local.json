@@ -46,7 +46,9 @@
       "Bash(node -c extension/content/message-ui.js)",
       "Bash(node -c extension/content/feed-scraper.js)",
       "Bash(node -c extension/content/job-filter.js)",
-      "Bash(node -c extension/content/feed-ui.js)"
+      "Bash(node -c extension/content/feed-ui.js)",
+      "Bash(node -c backend/api/settings.js)",
+      "Bash(node -c backend/server.js)"
     ]
   }
 }
