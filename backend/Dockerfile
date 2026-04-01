@@ -9,4 +9,4 @@ COPY . .
 
 EXPOSE 3000
 
-CMD sh -c "if [ ! -f /app/node_modules/.package-lock.json ]; then cp -r /deps/node_modules /app/; fi && npx nodemon server.js"
+CMD sh -c "rm -rf /app/node_modules && cp -r /deps/node_modules /app/node_modules && npx nodemon server.js"
