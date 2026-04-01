@@ -466,10 +466,12 @@
       // Build + inject toolbar
       _buildAndInjectToolbar();
 
-      // Apply filters to existing cards
+      // Apply filters to existing cards (with delays to catch late-loading cards)
       _applyFiltersToAll();
+      setTimeout(_applyFiltersToAll, 2000);
+      setTimeout(_applyFiltersToAll, 5000);
 
-      // Watch for new cards (infinite scroll)
+      // Watch for new cards (infinite scroll + late loading)
       _state.cardObserver = observeNewCards(function (newCards) {
         _applyFiltersToCards(newCards);
       });

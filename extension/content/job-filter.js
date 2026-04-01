@@ -121,9 +121,8 @@ function matchesFilters(jobCard, filters) {
   if (filters.minClientSpent !== null && filters.minClientSpent !== undefined && filters.minClientSpent !== '') {
     var minSpentVal = parseFloat(filters.minClientSpent);
     if (!isNaN(minSpentVal) && minSpentVal > 0) {
-      // If card has client spent data and it's below minimum, filter out
-      // If no data on card, give benefit of the doubt (feed cards may not show this)
-      if (clientSpent > 0 && clientSpent < minSpentVal) return false;
+      // Filter out clients who spent less than minimum (including $0)
+      if (clientSpent < minSpentVal) return false;
     }
   }
 
