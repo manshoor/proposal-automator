@@ -48,10 +48,15 @@ var _feedParseProposals = function (str) {
  * Verified: cards are <section> with data-ev-sublocation="job_feed_tile"
  */
 var _findFeedCards = function () {
+  // Feed page (My Feed / Best Matches)
   var cards = document.querySelectorAll('section[data-ev-sublocation="job_feed_tile"]');
   if (cards.length > 0) return Array.prototype.slice.call(cards);
 
-  // Fallback selectors
+  // Search results page (/nx/search/jobs/)
+  cards = document.querySelectorAll('article[data-test="JobTile"]');
+  if (cards.length > 0) return Array.prototype.slice.call(cards);
+
+  // Older feed format
   cards = document.querySelectorAll('section[data-test="job-tile"]');
   if (cards.length > 0) return Array.prototype.slice.call(cards);
 
@@ -66,62 +71,77 @@ var _findFeedCards = function () {
  */
 var _scrapeOneCard = function (card) {
   try {
-    // Title + URL
-    var titleEl = card.querySelector('h3.job-tile-title a') ||
+    // Title + URL — works on both feed and search pages
+    var titleEl = card.querySelector('a[data-test="job-tile-title-link"]') ||
+                  card.querySelector('h3.job-tile-title a') ||
                   card.querySelector('a[data-ev-label="link"]') ||
                   card.querySelector('a[href*="/jobs/"]');
     var title = titleEl ? _feedGetText(titleEl) : '';
     var relUrl = titleEl ? (titleEl.getAttribute('href') || '') : '';
     var url = relUrl ? (relUrl.startsWith('http') ? relUrl : 'https://www.upwork.com' + relUrl) : '';
 
-    // Job ID from data-ev-opening_uid
-    var id = card.getAttribute('data-ev-opening_uid') || '';
+    // Job ID
+    var id = card.getAttribute('data-ev-opening_uid') || card.getAttribute('data-ev-job-uid') || '';
     if (!id && relUrl) {
       var idMatch = relUrl.match(/~(\d+)/);
       if (idMatch) id = idMatch[1];
     }
 
-    // Description
+    // Description — feed uses [data-test="job-description-text"], search uses p inside [data-test="JobDescription"]
     var descEl = card.querySelector('[data-test="job-description-text"]') ||
-                 card.querySelector('.air3-line-clamp span');
+                 card.querySelector('[data-test="JobDescription"] p') ||
+                 card.querySelector('.air3-line-clamp span') ||
+                 card.querySelector('.air3-line-clamp p');
     var description = descEl ? _feedGetText(descEl) : '';
 
-    // Budget
+    // Budget — try multiple selectors for feed vs search
     var budgetType = 'unknown';
     var budgetAmount = null;
-    var jobTypeEl = card.querySelector('[data-test="job-type"]');
+
+    var jobTypeEl = card.querySelector('[data-test="job-type-label"]') ||
+                    card.querySelector('[data-test="job-type"]');
     if (jobTypeEl) {
       var jt = _feedGetText(jobTypeEl).toLowerCase();
       if (jt.includes('fixed')) budgetType = 'fixed';
       else if (jt.includes('hourly')) budgetType = 'hourly';
     }
-    var budgetEl = card.querySelector('[data-test="budget"]');
+
+    var budgetEl = card.querySelector('[data-test="is-fixed-price"] strong.rr-mask') ||
+                   card.querySelector('[data-test="is-fixed-price"] strong') ||
+                   card.querySelector('[data-test="budget"]');
     if (budgetEl) budgetAmount = _feedParseDollar(_feedGetText(budgetEl));
 
-    // Skills
-    var skillEls = card.querySelectorAll('a[data-test="attr-item"]');
+    // Skills — feed uses a[data-test="attr-item"], search uses button[data-test="token"] span
+    var skillEls = card.querySelectorAll('a[data-test="attr-item"], button[data-test="token"] span');
     var skills = [];
     for (var i = 0; i < skillEls.length; i++) {
       var st = _feedGetText(skillEls[i]);
-      if (st) skills.push(st);
+      if (st && !st.match(/^\+\d+$/)) skills.push(st);
     }
 
-    // Client spent
+    // Client spent — feed uses [data-test="client-spendings"], search uses [data-test="total-spent"]
     var spentEl = card.querySelector('[data-test="client-spendings"] [data-test="formatted-amount"]') ||
+                  card.querySelector('[data-test="total-spent"] strong.rr-mask') ||
+                  card.querySelector('[data-test="total-spent"] strong') ||
                   card.querySelector('[data-test="formatted-amount"]');
     var clientSpent = spentEl ? (_feedParseDollar(_feedGetText(spentEl)) || 0) : 0;
 
-    // Client country
-    var countryEl = card.querySelector('[data-test="client-country"]');
+    // Client country — feed uses [data-test="client-country"], search uses [data-test="location"]
+    var countryEl = card.querySelector('[data-test="client-country"]') ||
+                    card.querySelector('[data-test="location"] span.rr-mask') ||
+                    card.querySelector('[data-test="location"]');
     var clientLocation = countryEl ? _feedGetText(countryEl) : '';
 
-    // Proposals
-    var proposalsEl = card.querySelector('[data-test="proposals"]');
+    // Proposals — feed uses [data-test="proposals"], search uses [data-test="proposals-tier"]
+    var proposalsEl = card.querySelector('[data-test="proposals"]') ||
+                      card.querySelector('[data-test="proposals-tier"] strong') ||
+                      card.querySelector('[data-test="proposals-tier"]');
     var proposalCount = proposalsEl ? _feedParseProposals(_feedGetText(proposalsEl)) : 0;
     var proposalText = proposalsEl ? _feedGetText(proposalsEl) : '';
 
-    // Posted time
-    var postedEl = card.querySelector('[data-test="posted-on"]');
+    // Posted time — feed uses [data-test="posted-on"], search uses [data-test="job-pubilshed-date"]
+    var postedEl = card.querySelector('[data-test="posted-on"]') ||
+                   card.querySelector('[data-test="job-pubilshed-date"]');
     var postedText = postedEl ? _feedGetText(postedEl) : '';
 
     // Payment verified
