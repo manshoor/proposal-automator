@@ -1,33 +1,23 @@
 /**
  * feed-scraper.js
  * Scrapes job cards from Upwork search/feed pages.
- *
- * Verified DOM selectors (Upwork, March 2026):
- *   - Job cards:  section[data-test="job-tile"]
- *   - Job title:  a[data-test="job-title"]
- *   - Skills:     .air3-badge.air3-badge-highlight inside the card
+ * Verified against live Upwork feed DOM (April 2026).
  *
  * Exposes globally:
  *   scrapeJobCards()       → array of job card objects
  *   observeNewCards(cb)    → starts a MutationObserver, calls cb(newCards[])
  */
 
-// ---- Internal helpers ----
-
-var _feedScraperGetText = function (el) {
+var _feedGetText = function (el) {
   if (!el) return '';
   return (el.textContent || '').trim();
 };
 
-var _feedParseDollarAmount = function (str) {
+var _feedParseDollar = function (str) {
   if (!str) return null;
   var text = str.replace(/,/g, '').trim();
-  // Range: $10 – $50  or  $10-$50
   var rangeMatch = text.match(/\$?([\d.]+)\s*[-–]\s*\$?([\d.]+)/);
-  if (rangeMatch) {
-    return (parseFloat(rangeMatch[1]) + parseFloat(rangeMatch[2])) / 2;
-  }
-  // K/M suffix: $5K, $1.5M
+  if (rangeMatch) return (parseFloat(rangeMatch[1]) + parseFloat(rangeMatch[2])) / 2;
   var singleMatch = text.match(/\$?([\d.]+)\s*([KkMm]?)\+?/);
   if (singleMatch) {
     var amt = parseFloat(singleMatch[1]);
@@ -39,152 +29,107 @@ var _feedParseDollarAmount = function (str) {
   return null;
 };
 
-var _feedParseProposalCount = function (str) {
+var _feedParseProposals = function (str) {
   if (!str) return 0;
   var s = str.toLowerCase();
-  var lessMatch = s.match(/less\s+than\s+(\d+)/);
-  if (lessMatch) return parseInt(lessMatch[1], 10) - 1;
-  var rangeMatch = s.match(/(\d+)\s*(to|-)\s*(\d+)/);
-  if (rangeMatch) return parseInt(rangeMatch[3], 10);
-  var plusMatch = s.match(/(\d+)\+/);
-  if (plusMatch) return parseInt(plusMatch[1], 10);
-  var numMatch = s.match(/(\d+)/);
-  if (numMatch) return parseInt(numMatch[1], 10);
+  var m = s.match(/less\s+than\s+(\d+)/);
+  if (m) return parseInt(m[1], 10) - 1;
+  var rm = s.match(/(\d+)\s*(to|-)\s*(\d+)/);
+  if (rm) return parseInt(rm[3], 10);
+  var pm = s.match(/(\d+)\+/);
+  if (pm) return parseInt(pm[1], 10);
+  var nm = s.match(/(\d+)/);
+  if (nm) return parseInt(nm[1], 10);
   return 0;
 };
 
 /**
- * Extract job ID from data-ev-job-uid attribute or from the job URL.
+ * Find all job card elements in the feed.
+ * Verified: cards are <section> with data-ev-sublocation="job_feed_tile"
  */
-var _extractJobId = function (card, titleAnchor) {
-  // Prefer data-ev-job-uid on the card or any ancestor
-  var uid = card.getAttribute('data-ev-job-uid') || card.getAttribute('data-ev-section');
-  if (uid) return uid;
+var _findFeedCards = function () {
+  var cards = document.querySelectorAll('section[data-ev-sublocation="job_feed_tile"]');
+  if (cards.length > 0) return Array.prototype.slice.call(cards);
 
-  // Try on title link
-  if (titleAnchor) {
-    var uidOnLink = titleAnchor.getAttribute('data-ev-job-uid');
-    if (uidOnLink) return uidOnLink;
+  // Fallback selectors
+  cards = document.querySelectorAll('section[data-test="job-tile"]');
+  if (cards.length > 0) return Array.prototype.slice.call(cards);
 
-    // Extract from the href: /jobs/~012abc  or  /jobs/012abc
-    var href = titleAnchor.getAttribute('href') || '';
-    var idMatch = href.match(/\/jobs\/~?([a-zA-Z0-9]+)/);
-    if (idMatch) return idMatch[1];
-  }
+  cards = document.querySelectorAll('section.air3-card-section.air3-card-hover');
+  if (cards.length > 0) return Array.prototype.slice.call(cards);
 
-  // Walk up the DOM looking for data-ev-job-uid
-  var ancestor = card.parentElement;
-  var maxLevels = 5;
-  while (ancestor && maxLevels-- > 0) {
-    var ancestorUid = ancestor.getAttribute('data-ev-job-uid');
-    if (ancestorUid) return ancestorUid;
-    ancestor = ancestor.parentElement;
-  }
-
-  return '';
+  return [];
 };
 
 /**
- * Scrape a single job card element into a plain data object.
- * Never throws — returns null on fatal error.
+ * Scrape a single job card element.
  */
-var _scrapeCard = function (card) {
+var _scrapeOneCard = function (card) {
   try {
     // Title + URL
-    var titleAnchor = card.querySelector('a[data-test="job-title"]');
-    if (!titleAnchor) {
-      // Fallback: any prominent anchor that looks like a job link
-      titleAnchor = card.querySelector('a.job-title, a[href*="/jobs/"]');
+    var titleEl = card.querySelector('h3.job-tile-title a') ||
+                  card.querySelector('a[data-ev-label="link"]') ||
+                  card.querySelector('a[href*="/jobs/"]');
+    var title = titleEl ? _feedGetText(titleEl) : '';
+    var relUrl = titleEl ? (titleEl.getAttribute('href') || '') : '';
+    var url = relUrl ? (relUrl.startsWith('http') ? relUrl : 'https://www.upwork.com' + relUrl) : '';
+
+    // Job ID from data-ev-opening_uid
+    var id = card.getAttribute('data-ev-opening_uid') || '';
+    if (!id && relUrl) {
+      var idMatch = relUrl.match(/~(\d+)/);
+      if (idMatch) id = idMatch[1];
     }
-    var title = titleAnchor ? _feedScraperGetText(titleAnchor) : '';
-    var relativeUrl = titleAnchor ? (titleAnchor.getAttribute('href') || '') : '';
-    var url = relativeUrl ? (relativeUrl.startsWith('http') ? relativeUrl : 'https://www.upwork.com' + relativeUrl) : '';
 
-    // Job ID
-    var id = _extractJobId(card, titleAnchor);
+    // Description
+    var descEl = card.querySelector('[data-test="job-description-text"]') ||
+                 card.querySelector('.air3-line-clamp span');
+    var description = descEl ? _feedGetText(descEl) : '';
 
-    // Description — multiple selectors in priority order
-    var descEl = card.querySelector('.air3-line-clamp-wrapper p') ||
-                 card.querySelector('.job-tile-description p') ||
-                 card.querySelector('[data-test="job-description"] p') ||
-                 card.querySelector('.job-tile-body p') ||
-                 card.querySelector('p.mb-0');
-    var description = descEl ? _feedScraperGetText(descEl) : '';
-
-    // Budget — check fixed-price first, then hourly
+    // Budget
     var budgetType = 'unknown';
     var budgetAmount = null;
-
-    var fixedEl = card.querySelector('[data-test="is-fixed-price"] strong') ||
-                  card.querySelector('[data-test="budget"] strong') ||
-                  card.querySelector('[data-cy="fixed-price"] ~ strong');
-
-    var hourlyEl = card.querySelector('[data-test="is-hourly"] strong') ||
-                   card.querySelector('[data-cy="clock-hourly"] ~ strong');
-
-    if (fixedEl) {
-      budgetType = 'fixed';
-      budgetAmount = _feedParseDollarAmount(_feedScraperGetText(fixedEl));
-    } else if (hourlyEl) {
-      budgetType = 'hourly';
-      budgetAmount = _feedParseDollarAmount(_feedScraperGetText(hourlyEl));
-    } else {
-      // Fallback: look for budget text in card metadata area
-      var cardText = card.textContent || '';
-      if (/fixed.?price/i.test(cardText)) budgetType = 'fixed';
-      else if (/hourly/i.test(cardText)) budgetType = 'hourly';
-
-      var dollarMatch = cardText.match(/\$[\d,]+(?:\.\d+)?(?:\s*[-–]\s*\$[\d,]+(?:\.\d+)?)?/);
-      if (dollarMatch) budgetAmount = _feedParseDollarAmount(dollarMatch[0]);
+    var jobTypeEl = card.querySelector('[data-test="job-type"]');
+    if (jobTypeEl) {
+      var jt = _feedGetText(jobTypeEl).toLowerCase();
+      if (jt.includes('fixed')) budgetType = 'fixed';
+      else if (jt.includes('hourly')) budgetType = 'hourly';
     }
+    var budgetEl = card.querySelector('[data-test="budget"]');
+    if (budgetEl) budgetAmount = _feedParseDollar(_feedGetText(budgetEl));
 
-    // Skills — span.air3-badge inside the card
-    var skillEls = card.querySelectorAll('span.air3-badge.air3-badge-highlight, [data-test="token"] span');
+    // Skills
+    var skillEls = card.querySelectorAll('a[data-test="attr-item"]');
     var skills = [];
     for (var i = 0; i < skillEls.length; i++) {
-      var skillText = _feedScraperGetText(skillEls[i]);
-      // Exclude "+N more" badges and empty strings
-      if (skillText && !/^\+\s*\d+\s*more$/i.test(skillText)) {
-        skills.push(skillText);
-      }
+      var st = _feedGetText(skillEls[i]);
+      if (st) skills.push(st);
     }
 
-    // Client total spent
-    var spentEl = card.querySelector('[data-test="total-spent"] strong') ||
-                  card.querySelector('[data-qa="client-spend"]');
-    var clientSpentRaw = spentEl ? _feedScraperGetText(spentEl) : '';
-    var clientSpent = _feedParseDollarAmount(clientSpentRaw) || 0;
+    // Client spent
+    var spentEl = card.querySelector('[data-test="client-spendings"] [data-test="formatted-amount"]') ||
+                  card.querySelector('[data-test="formatted-amount"]');
+    var clientSpent = spentEl ? (_feedParseDollar(_feedGetText(spentEl)) || 0) : 0;
 
-    // Proposal count
-    // Upwork uses "pubilshed" (typo) in some attributes, so check both spellings
-    var proposalsEl = card.querySelector('[data-test="proposals-tier"] strong') ||
-                      card.querySelector('[data-test="proposals-tier"]') ||
-                      card.querySelector('[data-test="proposal-tier"] strong');
-    var proposalCount = proposalsEl ? _feedParseProposalCount(_feedScraperGetText(proposalsEl)) : 0;
+    // Client country
+    var countryEl = card.querySelector('[data-test="client-country"]');
+    var clientLocation = countryEl ? _feedGetText(countryEl) : '';
 
-    // Posted time text — Upwork uses typo "pubilshed" in data-test
-    var postedEl = card.querySelector('[data-test="job-pubilshed-date"] span') ||
-                   card.querySelector('[data-test="job-published-date"] span') ||
-                   card.querySelector('.job-tile-header span[class*="posted"]') ||
-                   card.querySelector('span[class*="posted"]');
-    var postedText = postedEl ? _feedScraperGetText(postedEl) : '';
+    // Proposals
+    var proposalsEl = card.querySelector('[data-test="proposals"]');
+    var proposalCount = proposalsEl ? _feedParseProposals(_feedGetText(proposalsEl)) : 0;
+    var proposalText = proposalsEl ? _feedGetText(proposalsEl) : '';
 
-    // Fallback posted text: scan for "Posted X ago" in card text
-    if (!postedText) {
-      var postedMatch = (card.textContent || '').match(/Posted\s+[\w\s]+ago/i);
-      if (postedMatch) postedText = postedMatch[0].trim();
-    }
+    // Posted time
+    var postedEl = card.querySelector('[data-test="posted-on"]');
+    var postedText = postedEl ? _feedGetText(postedEl) : '';
 
-    // Connect cost — some feed pages show "X Connects" per card
+    // Payment verified
+    var payVerEl = card.querySelector('[data-test="payment-verification-status"]');
+    var paymentVerified = payVerEl ? _feedGetText(payVerEl).toLowerCase().includes('verified') && !_feedGetText(payVerEl).toLowerCase().includes('unverified') : false;
+
+    // Connect cost (not shown on feed cards, only on proposal page)
     var connectCost = 0;
-    var cardTextFull = card.textContent || '';
-    var connectMatch = cardTextFull.match(/(\d+)\s+Connects?/i);
-    if (connectMatch) connectCost = parseInt(connectMatch[1], 10);
-
-    // Client location — may be available on some feed layouts
-    var clientLocationEl = card.querySelector('[data-test="client-country"]') ||
-                           card.querySelector('[data-test="location"]');
-    var clientLocation = clientLocationEl ? _feedScraperGetText(clientLocationEl) : '';
 
     return {
       id: id,
@@ -196,9 +141,11 @@ var _scrapeCard = function (card) {
       skills: skills,
       clientSpent: clientSpent,
       clientLocation: clientLocation,
-      connectCost: connectCost,
       proposalCount: proposalCount,
+      proposalText: proposalText,
       postedText: postedText,
+      paymentVerified: paymentVerified,
+      connectCost: connectCost,
       element: card
     };
   } catch (err) {
@@ -208,75 +155,48 @@ var _scrapeCard = function (card) {
 };
 
 /**
- * Find all job card elements currently in the DOM.
- */
-var _findCardElements = function () {
-  // Primary selector — verified against live Upwork DOM (March 2026)
-  var cards = document.querySelectorAll('section[data-test="job-tile"]');
-  if (cards.length > 0) return Array.prototype.slice.call(cards);
-
-  // Fallback: article with job uid (logged-in feed)
-  cards = document.querySelectorAll('article[data-ev-job-uid]');
-  if (cards.length > 0) return Array.prototype.slice.call(cards);
-
-  return [];
-};
-
-// Track which card elements have already been processed to avoid duplicates
-var _seenCardElements = new WeakSet();
-
-/**
- * Scrape all visible job cards from the feed.
- * Returns an array of job card data objects.
+ * Scrape all job cards currently visible on the feed page.
  */
 function scrapeJobCards() {
-  var cardEls = _findCardElements();
+  var cardEls = _findFeedCards();
   var results = [];
-
   for (var i = 0; i < cardEls.length; i++) {
-    var data = _scrapeCard(cardEls[i]);
-    if (data) results.push(data);
+    var data = _scrapeOneCard(cardEls[i]);
+    if (data && data.title) results.push(data);
   }
-
-  console.log('[FeedScraper] Scraped', results.length, 'job cards');
+  console.log('[FeedScraper] Found', results.length, 'job cards');
   return results;
 }
 
 /**
- * Watch for new job cards added to the DOM (infinite scroll / SPA navigation).
- * Calls callback(newCards) whenever new cards are detected.
- * Returns the MutationObserver so the caller can disconnect it if needed.
+ * Watch for new job cards added to the DOM (infinite scroll).
+ * Returns the MutationObserver instance.
  */
 function observeNewCards(callback) {
-  if (typeof callback !== 'function') return null;
+  var seen = new WeakSet();
+  var existing = _findFeedCards();
+  for (var i = 0; i < existing.length; i++) seen.add(existing[i]);
 
-  // Seed the WeakSet with already-present cards so we don't re-report them
-  var existingEls = _findCardElements();
-  for (var j = 0; j < existingEls.length; j++) {
-    _seenCardElements.add(existingEls[j]);
-  }
+  var container = document.querySelector('[data-test="job-tile-list"]') ||
+                  document.querySelector('main') ||
+                  document.body;
 
   var observer = new MutationObserver(function () {
-    var currentEls = _findCardElements();
+    var allCards = _findFeedCards();
     var newCards = [];
-
-    for (var i = 0; i < currentEls.length; i++) {
-      if (!_seenCardElements.has(currentEls[i])) {
-        _seenCardElements.add(currentEls[i]);
-        var data = _scrapeCard(currentEls[i]);
-        if (data) newCards.push(data);
+    for (var i = 0; i < allCards.length; i++) {
+      if (!seen.has(allCards[i])) {
+        seen.add(allCards[i]);
+        var data = _scrapeOneCard(allCards[i]);
+        if (data && data.title) newCards.push(data);
       }
     }
-
     if (newCards.length > 0) {
-      console.log('[FeedScraper] Observed', newCards.length, 'new job card(s)');
+      console.log('[FeedScraper] New cards detected:', newCards.length);
       callback(newCards);
     }
   });
 
-  // Observe the whole body for subtree changes (SPA inserts cards anywhere)
-  observer.observe(document.body, { childList: true, subtree: true });
-
-  console.log('[FeedScraper] MutationObserver started for new cards');
+  observer.observe(container, { childList: true, subtree: true });
   return observer;
 }
