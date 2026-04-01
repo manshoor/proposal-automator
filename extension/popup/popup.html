@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Upwork Proposal Automator</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+
+  <!-- ===== Header ===== -->
+  <header class="header">
+    <div class="header-title">
+      <img src="../icons/icon48.png" alt="Logo" class="header-logo" />
+      <span class="header-name">Proposal Automator</span>
+    </div>
+    <button id="btn-open-options" class="icon-btn" title="Settings" aria-label="Open Settings">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06
+                 a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09
+                 A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83
+                 l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09
+                 A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83
+                 l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09
+                 a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83
+                 l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09
+                 a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+    </button>
+  </header>
+
+  <!-- ===== Status Bar ===== -->
+  <div id="status-bar" class="status-bar status-inactive">
+    <span id="status-dot" class="status-dot"></span>
+    <span id="status-text">Checking page...</span>
+  </div>
+
+  <!-- ===== Main content (shown when on a valid Upwork job page) ===== -->
+  <main id="main-content" class="hidden">
+
+    <!-- Job title summary -->
+    <div class="job-summary card">
+      <div class="job-title-row">
+        <span class="label">Job</span>
+        <span id="job-title-text" class="job-title-text">—</span>
+      </div>
+      <div class="job-meta-row">
+        <span id="job-budget-text" class="meta-chip">—</span>
+        <span id="job-proposals-text" class="meta-chip">—</span>
+      </div>
+    </div>
+
+    <!-- Client Vetting Card -->
+    <div class="card" id="vetting-card">
+      <div class="card-header">
+        <span class="card-title">Client Vetting</span>
+        <span id="vetting-overall-badge" class="badge badge-grey">—</span>
+      </div>
+      <ul class="vetting-list">
+        <li class="vetting-item">
+          <span id="dot-location" class="dot dot-grey"></span>
+          <span id="msg-location" class="vetting-msg">Checking location...</span>
+        </li>
+        <li class="vetting-item">
+          <span id="dot-spending" class="dot dot-grey"></span>
+          <span id="msg-spending" class="vetting-msg">Checking spending...</span>
+        </li>
+        <li class="vetting-item">
+          <span id="dot-hirerate" class="dot dot-grey"></span>
+          <span id="msg-hirerate" class="vetting-msg">Checking hire rate...</span>
+        </li>
+        <li class="vetting-item">
+          <span id="dot-reviews" class="dot dot-grey"></span>
+          <span id="msg-reviews" class="vetting-msg">Checking reviews...</span>
+        </li>
+        <li class="vetting-item">
+          <span id="dot-competition" class="dot dot-grey"></span>
+          <span id="msg-competition" class="vetting-msg">Checking proposals...</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Location Warning Banner -->
+    <div id="location-warning" class="alert alert-warning hidden">
+      <strong>Location Warning:</strong>
+      <span id="location-warning-text"></span>
+    </div>
+
+    <!-- Hidden Instructions Alert -->
+    <div id="hidden-instructions-alert" class="alert alert-info hidden">
+      <strong>Hidden Instructions Detected:</strong>
+      <ul id="hidden-instructions-list" class="instructions-list"></ul>
+    </div>
+
+    <!-- Duplicate Warning -->
+    <div id="duplicate-warning" class="duplicate-warning hidden">
+      You've already submitted a proposal for this job.
+    </div>
+
+    <!-- Template Selection -->
+    <div id="template-selector" class="template-selector hidden">
+      <label class="label" for="template-dropdown">Template (optional)</label>
+      <select id="template-dropdown" class="select-field">
+        <option value="">No template — generate freely</option>
+      </select>
+    </div>
+
+    <!-- Generate Proposal Button -->
+    <button id="btn-generate" class="btn btn-primary" disabled>
+      Generate Proposal
+    </button>
+
+    <!-- Loading Spinner -->
+    <div id="loading-spinner" class="spinner-wrap hidden" aria-live="polite" aria-label="Loading">
+      <div class="spinner"></div>
+      <span class="spinner-text">Generating proposal...</span>
+    </div>
+
+    <!-- Proposal Preview -->
+    <div id="proposal-preview" class="hidden">
+      <div class="card proposal-card">
+        <div class="card-header">
+          <span class="card-title">Generated Proposal</span>
+          <span id="suggested-rate" class="meta-chip rate-chip"></span>
+        </div>
+        <textarea id="cover-letter-text" class="cover-letter-preview" readonly rows="10"></textarea>
+
+        <!-- Milestones Preview -->
+        <div id="milestones-preview" class="milestones-preview hidden"></div>
+
+        <!-- Budget Warning -->
+        <div id="budget-warning" class="alert alert-warning hidden" style="margin-top: 8px;"></div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-row">
+        <button id="btn-autofill" class="btn btn-secondary">
+          Auto-fill Form
+        </button>
+        <button id="btn-copy" class="btn btn-outline">
+          Copy to Clipboard
+        </button>
+      </div>
+      <div class="action-row" style="margin-top: 6px;">
+        <button id="btn-regenerate" class="btn btn-outline btn-sm" style="width: 100%;">
+          Regenerate Proposal
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ===== Not-on-Upwork message ===== -->
+  <div id="not-upwork-msg" class="empty-state hidden">
+    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"
+         fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    </svg>
+    <p>Navigate to an Upwork job page to get started.</p>
+    <a id="link-open-upwork" href="https://www.upwork.com/jobs/" target="_blank" class="btn btn-outline btn-sm">
+      Browse Jobs
+    </a>
+  </div>
+
+  <!-- ===== Footer ===== -->
+  <footer class="footer">
+    <a id="link-dashboard" href="#" class="footer-link" target="_blank">Open Dashboard</a>
+    <a id="link-settings" href="#" class="footer-link">Settings</a>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>
