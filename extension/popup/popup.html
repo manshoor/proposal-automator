@@ -40,11 +40,18 @@
   <!-- ===== Main content (shown when on a valid Upwork job page) ===== -->
   <main id="main-content" class="hidden">
 
+    <!-- Bid Decision Guidance Banner -->
+    <div id="bid-guidance" class="bid-guidance hidden">
+      <span id="bid-guidance-icon"></span>
+      <span id="bid-guidance-text"></span>
+    </div>
+
     <!-- Job title summary -->
     <div class="job-summary card">
       <div class="job-title-row">
         <span class="label">Job</span>
         <span id="job-title-text" class="job-title-text">—</span>
+        <span id="fit-score-badge" class="fit-score-badge hidden"></span>
       </div>
       <div class="job-meta-row">
         <span id="job-budget-text" class="meta-chip">—</span>
@@ -82,6 +89,12 @@
       </ul>
     </div>
 
+    <!-- Red Flags Section -->
+    <div id="red-flags-section" class="red-flags-section hidden">
+      <div class="red-flags-header">Red Flags</div>
+      <ul id="red-flags-list" class="red-flags-list"></ul>
+    </div>
+
     <!-- Location Warning Banner -->
     <div id="location-warning" class="alert alert-warning hidden">
       <strong>Location Warning:</strong>
@@ -107,10 +120,39 @@
       </select>
     </div>
 
-    <!-- Generate Proposal Button -->
-    <button id="btn-generate" class="btn btn-primary" disabled>
-      Generate Proposal
-    </button>
+    <!-- Generate Buttons -->
+    <div class="generate-buttons">
+      <button id="btn-generate" class="btn btn-primary" disabled>
+        Generate Proposal
+      </button>
+      <button id="btn-ab-test" class="btn btn-outline" disabled title="Generate 2 variants with different styles">
+        A/B Test
+      </button>
+    </div>
+
+    <!-- A/B Test Comparison (hidden until A/B generated) -->
+    <div id="ab-comparison" class="hidden">
+      <div class="ab-header">
+        <span class="card-title">Compare Variants</span>
+        <span class="ab-hint">Click the one you prefer</span>
+      </div>
+      <div class="ab-variants">
+        <div id="ab-variant-a" class="ab-card" data-variant="A">
+          <div class="ab-card-header">
+            <span class="ab-label ab-label-a">A</span>
+            <span id="ab-style-a" class="ab-style"></span>
+          </div>
+          <div id="ab-text-a" class="ab-text"></div>
+        </div>
+        <div id="ab-variant-b" class="ab-card" data-variant="B">
+          <div class="ab-card-header">
+            <span class="ab-label ab-label-b">B</span>
+            <span id="ab-style-b" class="ab-style"></span>
+          </div>
+          <div id="ab-text-b" class="ab-text"></div>
+        </div>
+      </div>
+    </div>
 
     <!-- Loading Spinner -->
     <div id="loading-spinner" class="spinner-wrap hidden" aria-live="polite" aria-label="Loading">
@@ -125,7 +167,22 @@
           <span class="card-title">Generated Proposal</span>
           <span id="suggested-rate" class="meta-chip rate-chip"></span>
         </div>
+        <!-- Quality Indicators -->
+        <div id="quality-indicators" class="quality-indicators hidden">
+          <span id="qi-words" class="qi-badge"></span>
+          <span id="qi-paragraphs" class="qi-badge"></span>
+          <span id="qi-hidden" class="qi-badge hidden"></span>
+        </div>
+
         <textarea id="cover-letter-text" class="cover-letter-preview" readonly rows="10"></textarea>
+
+        <!-- Quick-Edit Toolbar -->
+        <div class="quick-edit-toolbar">
+          <button class="qe-btn" data-instruction="Make it 30% shorter and more concise">Shorter</button>
+          <button class="qe-btn" data-instruction="Make it more technical with specific technical details">Technical</button>
+          <button class="qe-btn" data-instruction="Make it more casual and conversational">Casual</button>
+          <button class="qe-btn" data-instruction="Add urgency and emphasize fast delivery">Urgent</button>
+        </div>
 
         <!-- Milestones Preview -->
         <div id="milestones-preview" class="milestones-preview hidden"></div>

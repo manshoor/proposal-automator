@@ -48,6 +48,9 @@ const btnRegenerate   = document.getElementById('btn-regenerate');
 const templateSelector = document.getElementById('template-selector');
 const templateDropdown = document.getElementById('template-dropdown');
 
+const btnAbTest       = document.getElementById('btn-ab-test');
+const abComparison    = document.getElementById('ab-comparison');
+
 const btnOpenOptions  = document.getElementById('btn-open-options');
 const linkSettings    = document.getElementById('link-settings');
 const linkDashboard   = document.getElementById('link-dashboard');
@@ -57,6 +60,7 @@ let _currentJobData  = null;
 let _currentVetting  = null;
 let _activeTabId     = null;
 let _generatedProposal = null;
+let _profileSkills   = [];
 
 // ---- Helpers ----
 
@@ -148,6 +152,78 @@ function flashCopyButton() {
   }, 2000);
 }
 
+// ---- Job Fit Score ----
+
+function calculateFitScore(jobSkills, profileSkills) {
+  if (!jobSkills || jobSkills.length === 0) return -1; // can't calculate
+  if (!profileSkills || profileSkills.length === 0) return 0;
+  const jobLower = jobSkills.map(s => s.toLowerCase().trim());
+  const profileLower = profileSkills.map(s => s.toLowerCase().trim());
+  const matched = jobLower.filter(s => profileLower.some(p => p.includes(s) || s.includes(p)));
+  return Math.round((matched.length / jobLower.length) * 100);
+}
+
+function showFitScore(score) {
+  const badge = document.getElementById('fit-score-badge');
+  if (score < 0) { badge.classList.add('hidden'); return; }
+  badge.classList.remove('hidden');
+  badge.textContent = `${score}% fit`;
+  badge.className = 'fit-score-badge ' + (score >= 70 ? 'fit-high' : score >= 40 ? 'fit-med' : 'fit-low');
+}
+
+function showBidGuidance(fitScore, vettingOverall) {
+  const el = document.getElementById('bid-guidance');
+  const icon = document.getElementById('bid-guidance-icon');
+  const text = document.getElementById('bid-guidance-text');
+  el.classList.remove('hidden', 'bid-strong', 'bid-moderate', 'bid-weak');
+
+  if (fitScore >= 70 && vettingOverall !== 'red') {
+    el.classList.add('bid-strong');
+    icon.textContent = '✅';
+    text.textContent = 'Strong Match — Bid Now';
+  } else if (fitScore >= 40 || vettingOverall === 'green') {
+    el.classList.add('bid-moderate');
+    icon.textContent = '⚠️';
+    text.textContent = 'Worth Reviewing — Check Details';
+  } else if (fitScore >= 0) {
+    el.classList.add('bid-weak');
+    icon.textContent = '❌';
+    text.textContent = 'Weak Match — Consider Skipping';
+  } else {
+    el.classList.add('bid-moderate');
+    icon.textContent = '❓';
+    text.textContent = 'Add skills to your profile for match scoring';
+  }
+}
+
+// ---- Quality Indicators ----
+
+function showQualityIndicators(coverLetter) {
+  const container = document.getElementById('quality-indicators');
+  const wordsEl = document.getElementById('qi-words');
+  const parasEl = document.getElementById('qi-paragraphs');
+  const hiddenEl = document.getElementById('qi-hidden');
+
+  if (!coverLetter) { container.classList.add('hidden'); return; }
+  container.classList.remove('hidden');
+
+  const words = coverLetter.trim().split(/\s+/).length;
+  const paragraphs = coverLetter.trim().split(/\n\s*\n/).length;
+
+  wordsEl.textContent = `${words} words`;
+  wordsEl.className = 'qi-badge ' + (words >= 80 && words <= 200 ? 'qi-good' : 'qi-warn');
+
+  parasEl.textContent = `${paragraphs} paragraphs`;
+  parasEl.className = 'qi-badge ' + (paragraphs >= 2 && paragraphs <= 5 ? 'qi-good' : 'qi-warn');
+
+  // Check if hidden instruction was detected and included
+  if (_currentJobData && _currentJobData._hiddenInstructions && _currentJobData._hiddenInstructions.found) {
+    hiddenEl.classList.remove('hidden');
+    hiddenEl.textContent = 'Hidden instruction included';
+    hiddenEl.className = 'qi-badge qi-good';
+  }
+}
+
 // ---- UI state transitions ----
 
 function showNotUpwork() {
@@ -217,6 +293,23 @@ function populateVetting(vetting) {
   } else {
     locationWarning.classList.add('hidden');
   }
+
+  // Red Flags
+  const redFlagsSection = document.getElementById('red-flags-section');
+  const redFlagsList = document.getElementById('red-flags-list');
+  const flags = vetting.redFlags || [];
+
+  if (flags.length > 0) {
+    redFlagsSection.classList.remove('hidden');
+    redFlagsList.innerHTML = '';
+    for (const flag of flags) {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="rf-severity rf-${flag.severity}"></span><span class="rf-text"><span class="rf-flag-name">${flag.flag}</span> — <span class="rf-detail">${flag.detail}</span></span>`;
+      redFlagsList.appendChild(li);
+    }
+  } else {
+    redFlagsSection.classList.add('hidden');
+  }
 }
 
 /**
@@ -280,6 +373,8 @@ function showProposalPreview(proposal) {
       warningContainer.classList.add('hidden');
     }
   }
+
+  showQualityIndicators(proposal.coverLetter);
 
   proposalPreview.classList.remove('hidden');
   proposalPreview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -369,9 +464,26 @@ async function init() {
     populateVetting(vetting);
     populateHiddenInstructions(hiddenInstructions);
 
+    // Fetch profile skills for fit score
+    try {
+      const settingsForProfile = await sendToBackground({ type: 'GET_SETTINGS' });
+      const bUrl = (settingsForProfile && settingsForProfile.data && settingsForProfile.data.backendUrl) || 'http://localhost:3002';
+      const profileRes = await fetch(`${bUrl}/api/profile`);
+      if (profileRes.ok) {
+        const profile = await profileRes.json();
+        _profileSkills = Array.isArray(profile.skills) ? profile.skills : [];
+      }
+    } catch (e) { /* ignore */ }
+
+    // Calculate and show Job Fit Score + Bid Guidance
+    const fitScore = calculateFitScore(jobData.skills || [], _profileSkills);
+    showFitScore(fitScore);
+    showBidGuidance(fitScore, vetting.overall);
+
     // Enable generate button — even with partial data, the LLM can work with what we have
     if (jobData.title || jobData.description) {
       btnGenerate.disabled = false;
+      btnAbTest.disabled = false;
     } else {
       statusText.textContent = 'Page loaded but no job data found. The selectors may need updating.';
     }
@@ -569,6 +681,114 @@ linkDashboard.addEventListener('click', async (e) => {
   } catch {
     chrome.tabs.create({ url: 'http://localhost:3002/dashboard' });
   }
+});
+
+// ---- Boot ----
+// A/B Test
+btnAbTest.addEventListener('click', async () => {
+  if (!_currentJobData) return;
+
+  btnAbTest.disabled = true;
+  btnGenerate.disabled = true;
+  loadingSpinner.classList.remove('hidden');
+  proposalPreview.classList.add('hidden');
+  abComparison.classList.add('hidden');
+
+  try {
+    const settings = await sendToBackground({ type: 'GET_SETTINGS' });
+    const backendUrl = (settings && settings.data && settings.data.backendUrl) || 'http://localhost:3002';
+
+    const selectedOpt = templateDropdown.options[templateDropdown.selectedIndex];
+    const templateContent = selectedOpt && selectedOpt.dataset.content ? selectedOpt.dataset.content : null;
+
+    const res = await fetch(`${backendUrl}/api/generate-proposal/ab`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jobData: _currentJobData,
+        provider: settings.data.provider,
+        apiKey: settings.data.apiKey,
+        templateContent: templateContent
+      })
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      alert('A/B Test Error: ' + errText);
+      return;
+    }
+
+    const data = await res.json();
+
+    // Show comparison UI
+    document.getElementById('ab-style-a').textContent = data.variantA.style;
+    document.getElementById('ab-text-a').textContent = data.variantA.coverLetter;
+    document.getElementById('ab-style-b').textContent = data.variantB.style;
+    document.getElementById('ab-text-b').textContent = data.variantB.coverLetter;
+
+    abComparison.classList.remove('hidden');
+
+    // Click handlers for variant selection
+    const cardA = document.getElementById('ab-variant-a');
+    const cardB = document.getElementById('ab-variant-b');
+
+    function selectVariant(variant) {
+      const chosen = variant === 'A' ? data.variantA : data.variantB;
+      cardA.classList.toggle('ab-selected', variant === 'A');
+      cardB.classList.toggle('ab-selected', variant === 'B');
+
+      // Show the selected variant in the proposal preview
+      showProposalPreview(chosen);
+      const toCache = Object.assign({}, chosen, { jobUrl: _currentJobData.url, abVariant: variant });
+      chrome.storage.local.set({ lastProposal: toCache });
+    }
+
+    // Remove old listeners by cloning
+    const newCardA = cardA.cloneNode(true);
+    const newCardB = cardB.cloneNode(true);
+    cardA.parentNode.replaceChild(newCardA, cardA);
+    cardB.parentNode.replaceChild(newCardB, cardB);
+    newCardA.addEventListener('click', () => selectVariant('A'));
+    newCardB.addEventListener('click', () => selectVariant('B'));
+
+  } catch (err) {
+    alert('A/B Test failed: ' + err.message);
+  } finally {
+    loadingSpinner.classList.add('hidden');
+    btnAbTest.disabled = false;
+    btnGenerate.disabled = false;
+  }
+});
+
+// Quick-Edit Toolbar
+document.querySelectorAll('.qe-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    if (!_currentJobData || !_generatedProposal) return;
+
+    const instruction = btn.dataset.instruction;
+    btn.disabled = true;
+    loadingSpinner.classList.remove('hidden');
+
+    try {
+      const response = await sendToBackground({
+        type: 'GENERATE_PROPOSAL',
+        jobData: _currentJobData,
+        extraInstruction: instruction,
+        existingProposal: _generatedProposal.coverLetter
+      });
+
+      if (response && response.success) {
+        showProposalPreview(response.data);
+        const toCache = Object.assign({}, response.data, { jobUrl: _currentJobData.url });
+        chrome.storage.local.set({ lastProposal: toCache });
+      }
+    } catch (err) {
+      console.error('[Popup] Quick-edit error:', err);
+    } finally {
+      btn.disabled = false;
+      loadingSpinner.classList.add('hidden');
+    }
+  });
 });
 
 // ---- Boot ----

@@ -51,8 +51,11 @@
               hireCount: jobData.client.hireCount || 0,
               reviewCount: jobData.client.reviewCount,
               recentReviews: jobData.client.recentReviews,
-              proposalCount: jobData.proposalCount
-            });
+              proposalCount: jobData.proposalCount,
+              paymentVerified: jobData.client.paymentVerified,
+              memberSince: jobData.client.memberSince,
+              avgHourlyRate: jobData.client.avgHourlyRate
+            }, jobData);
 
             var hiddenInstructions = detectHiddenInstructions(jobData.description);
 
