@@ -542,6 +542,25 @@ async function init() {
           const container = document.getElementById('project-selector');
           const checkboxes = document.getElementById('project-checkboxes');
           container.classList.remove('hidden');
+
+          // "Select All" toggle
+          const selectAllDiv = document.createElement('div');
+          selectAllDiv.className = 'project-check-item';
+          selectAllDiv.style.borderBottom = '1px solid #e5e7eb';
+          selectAllDiv.style.paddingBottom = '6px';
+          selectAllDiv.style.marginBottom = '4px';
+          const selectAllCb = document.createElement('input');
+          selectAllCb.type = 'checkbox';
+          selectAllCb.id = 'project-select-all';
+          const selectAllLabel = document.createElement('div');
+          selectAllLabel.innerHTML = '<span class="project-check-name" style="color:#2563eb;">Select All Projects</span>';
+          selectAllCb.addEventListener('change', function () {
+            checkboxes.querySelectorAll('input[type="checkbox"]:not(#project-select-all)').forEach(function (cb) { cb.checked = selectAllCb.checked; });
+          });
+          selectAllDiv.appendChild(selectAllCb);
+          selectAllDiv.appendChild(selectAllLabel);
+          checkboxes.appendChild(selectAllDiv);
+
           projects.forEach(p => {
             const div = document.createElement('div');
             div.className = 'project-check-item';
