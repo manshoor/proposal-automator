@@ -1,0 +1,335 @@
+/* =========================================================
+   AI Message Copilot — message-ui.css
+   Injected on Upwork message / interview pages.
+   ========================================================= */
+
+/* ---- Trigger button ---- */
+.upa-copilot-btn {
+  position: fixed;
+  bottom: 80px;
+  right: 24px;
+  z-index: 2147483646;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: #14a800;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(20, 168, 0, 0.35);
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+  user-select: none;
+  -webkit-user-select: none;
+  white-space: nowrap;
+}
+
+.upa-copilot-btn:hover {
+  background: #0f8400;
+  box-shadow: 0 6px 20px rgba(20, 168, 0, 0.45);
+  transform: translateY(-1px);
+}
+
+.upa-copilot-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(20, 168, 0, 0.3);
+}
+
+.upa-copilot-btn svg {
+  flex-shrink: 0;
+}
+
+/* ---- Copilot panel ---- */
+.upa-copilot-panel {
+  position: fixed;
+  bottom: 140px;
+  right: 24px;
+  z-index: 2147483647;
+  width: 320px;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  color: #1d1d1d;
+  overflow: hidden;
+  animation: upaPanelIn 0.18s ease-out;
+}
+
+@keyframes upaPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ---- Panel header ---- */
+.upa-copilot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: #f7f7f7;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.upa-copilot-header-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1d1d1d;
+  letter-spacing: -0.01em;
+}
+
+.upa-copilot-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #8a8a8a;
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.1s, background 0.1s;
+}
+
+.upa-copilot-close:hover {
+  color: #1d1d1d;
+  background: #ebebeb;
+}
+
+/* ---- Panel body ---- */
+.upa-copilot-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---- Tone selector ---- */
+.upa-tone-group {
+  display: flex;
+  gap: 6px;
+}
+
+.upa-tone-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6e6e6e;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 5px;
+}
+
+.upa-tone-btn {
+  flex: 1;
+  padding: 5px 4px;
+  border: 1.5px solid #d0d0d0;
+  border-radius: 20px;
+  background: #fff;
+  color: #444;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.upa-tone-btn:hover {
+  border-color: #14a800;
+  color: #14a800;
+}
+
+.upa-tone-btn.upa-tone-active {
+  background: #14a800;
+  border-color: #14a800;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ---- Generate button ---- */
+.upa-generate-btn {
+  width: 100%;
+  padding: 9px 14px;
+  background: #14a800;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.upa-generate-btn:hover:not(:disabled) {
+  background: #0f8400;
+}
+
+.upa-generate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---- Spinner ---- */
+.upa-spinner {
+  display: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(20, 168, 0, 0.2);
+  border-top-color: #14a800;
+  border-radius: 50%;
+  animation: upaSpinAnim 0.65s linear infinite;
+  margin: 0 auto;
+}
+
+.upa-spinner.upa-visible {
+  display: block;
+}
+
+@keyframes upaSpinAnim {
+  to { transform: rotate(360deg); }
+}
+
+/* ---- Preview area ---- */
+.upa-copilot-preview-wrap {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.upa-copilot-preview-wrap.upa-visible {
+  display: flex;
+}
+
+.upa-copilot-preview {
+  width: 100%;
+  min-height: 100px;
+  max-height: 200px;
+  padding: 8px 10px;
+  border: 1.5px solid #d0d0d0;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #1d1d1d;
+  resize: vertical;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.12s;
+}
+
+.upa-copilot-preview:focus {
+  border-color: #14a800;
+}
+
+/* ---- Action row ---- */
+.upa-action-row {
+  display: flex;
+  gap: 6px;
+}
+
+.upa-insert-btn {
+  flex: 2;
+  padding: 8px 10px;
+  background: #14a800;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.upa-insert-btn:hover {
+  background: #0f8400;
+}
+
+.upa-regen-btn {
+  flex: 1;
+  padding: 8px 10px;
+  background: #fff;
+  color: #14a800;
+  border: 1.5px solid #14a800;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.upa-regen-btn:hover {
+  background: #f0fff0;
+}
+
+/* ---- Error message ---- */
+.upa-copilot-error {
+  font-size: 12px;
+  color: #c7341a;
+  background: #fff5f4;
+  border: 1px solid #f5c2b8;
+  border-radius: 6px;
+  padding: 7px 10px;
+  display: none;
+}
+
+.upa-copilot-error.upa-visible {
+  display: block;
+}
+
+/* ---- Q&A answer buttons ---- */
+.upa-qa-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 5px 11px;
+  background: #fff;
+  color: #14a800;
+  border: 1.5px solid #14a800;
+  border-radius: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+  vertical-align: middle;
+  z-index: 9999;
+}
+
+.upa-qa-btn:hover {
+  background: #14a800;
+  color: #fff;
+}
+
+.upa-qa-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+/* ---- Status dot on trigger button (while loading) ---- */
+.upa-copilot-btn.upa-loading {
+  background: #888;
+  pointer-events: none;
+}
