@@ -1,12 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Upwork Proposal Automator",
-  "version": "1.0.0",
-  "description": "Automates Upwork proposal generation with AI assistance",
+  "version": "1.1.0",
+  "description": "AI-powered Upwork proposals, job feed filters, client vetting, and message copilot",
   "permissions": [
     "storage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "notifications",
+    "alarms"
   ],
   "host_permissions": [
     "https://www.upwork.com/*"
@@ -29,6 +31,41 @@
         "content/autofill.js",
         "content/content.js"
       ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.upwork.com/nx/find-work/*",
+        "https://www.upwork.com/nx/search/*",
+        "https://www.upwork.com/ab/find-work/*",
+        "https://www.upwork.com/search/jobs/*"
+      ],
+      "js": [
+        "lib/constants.js",
+        "lib/storage.js",
+        "content/vetting.js",
+        "content/feed-scraper.js",
+        "content/job-filter.js",
+        "content/feed-ui.js"
+      ],
+      "css": ["content/feed-ui.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.upwork.com/ab/messages/*",
+        "https://www.upwork.com/nx/messages/*",
+        "https://www.upwork.com/messages/*",
+        "https://www.upwork.com/nx/interviews/*",
+        "https://www.upwork.com/ab/interviews/*"
+      ],
+      "js": [
+        "lib/constants.js",
+        "lib/storage.js",
+        "content/message-scraper.js",
+        "content/message-ui.js"
+      ],
+      "css": ["content/message-ui.css"],
       "run_at": "document_idle"
     }
   ],

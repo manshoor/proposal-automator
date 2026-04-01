@@ -1,0 +1,324 @@
+/* =========================================================
+   feed-ui.css
+   Styles for the Upwork Proposal Automator — Job Feed Filter
+   ========================================================= */
+
+/* ---- Filter bar (fixed sticky banner) ---- */
+
+#upa-filter-bar,
+.upa-filter-bar {
+  position: sticky;
+  top: 0;
+  z-index: 9999;
+  background: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  color: #1d2c3c;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* ---- Bar header row ---- */
+
+.upa-bar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  gap: 12px;
+  min-height: 44px;
+}
+
+.upa-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.upa-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Brand badge */
+.upa-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #14a800;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+  padding: 2px 6px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+/* "Filters: ON/OFF" label */
+.upa-toggle-label {
+  font-size: 13px;
+  color: #5e6d7e;
+  white-space: nowrap;
+}
+
+.upa-toggle-status {
+  font-weight: 700;
+  color: #14a800;
+}
+
+/* ---- Toggle switch ---- */
+
+.upa-toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.upa-toggle-switch input[type="checkbox"] {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.upa-toggle-slider {
+  position: absolute;
+  inset: 0;
+  background-color: #ccd0d7;
+  border-radius: 20px;
+  transition: background-color 0.2s;
+}
+
+.upa-toggle-slider::before {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  left: 3px;
+  top: 3px;
+  background: #ffffff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.upa-toggle-switch input[type="checkbox"]:checked + .upa-toggle-slider {
+  background-color: #14a800;
+}
+
+.upa-toggle-switch input[type="checkbox"]:checked + .upa-toggle-slider::before {
+  transform: translateX(16px);
+}
+
+.upa-toggle-switch input[type="checkbox"]:focus-visible + .upa-toggle-slider {
+  outline: 2px solid #14a800;
+  outline-offset: 2px;
+}
+
+/* ---- Expand / collapse button ---- */
+
+.upa-expand-btn {
+  background: transparent;
+  border: 1px solid #d5d9de;
+  border-radius: 6px;
+  color: #1d2c3c;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 10px;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+
+.upa-expand-btn:hover {
+  background: #f5f7fa;
+  border-color: #adb5bd;
+}
+
+/* ---- Filter panel ---- */
+
+.upa-filter-panel {
+  display: none;
+  padding: 12px 16px 16px;
+  border-top: 1px solid #f0f2f5;
+  background: #fafbfc;
+}
+
+.upa-filter-panel--open {
+  display: block;
+}
+
+/* ---- Form layout ---- */
+
+.upa-form-row {
+  margin-bottom: 10px;
+}
+
+.upa-form-row--checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upa-form-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5e6d7e;
+  cursor: default;
+}
+
+.upa-checkbox-label {
+  font-size: 13px;
+  color: #1d2c3c;
+  cursor: pointer;
+}
+
+/* ---- Inputs ---- */
+
+.upa-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #d5d9de;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1d2c3c;
+  background: #ffffff;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.upa-input:focus {
+  outline: none;
+  border-color: #14a800;
+  box-shadow: 0 0 0 2px rgba(20, 168, 0, 0.15);
+}
+
+.upa-input--number {
+  width: 90px;
+}
+
+/* Budget range row */
+.upa-budget-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.upa-budget-sep {
+  color: #8a9bac;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ---- Buttons ---- */
+
+.upa-btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.upa-btn {
+  padding: 7px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s, transform 0.1s;
+  line-height: 1.5;
+  font-family: inherit;
+}
+
+.upa-btn:active {
+  transform: scale(0.97);
+}
+
+.upa-btn--primary {
+  background: #14a800;
+  color: #ffffff;
+}
+
+.upa-btn--primary:hover {
+  background: #108500;
+}
+
+.upa-btn--secondary {
+  background: #ffffff;
+  color: #1d2c3c;
+  border: 1px solid #d5d9de;
+}
+
+.upa-btn--secondary:hover {
+  background: #f5f7fa;
+  border-color: #adb5bd;
+}
+
+/* ---- Filtered-out job card ---- */
+
+.upa-filtered-out {
+  opacity: 0.3 !important;
+  pointer-events: none !important;
+  user-select: none;
+  transition: opacity 0.25s;
+}
+
+/* ---- Match dot ---- */
+
+.upa-match-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.upa-match-dot--green {
+  background-color: #14a800;
+  box-shadow: 0 0 0 2px rgba(20, 168, 0, 0.2);
+}
+
+.upa-match-dot--red {
+  background-color: #e3453c;
+  box-shadow: 0 0 0 2px rgba(227, 69, 60, 0.15);
+}
+
+/* ---- Responsive tweaks ---- */
+
+@media (max-width: 640px) {
+  .upa-bar-header {
+    padding: 6px 12px;
+  }
+
+  .upa-filter-panel {
+    padding: 10px 12px 14px;
+  }
+
+  .upa-input--number {
+    width: 70px;
+  }
+
+  .upa-btn {
+    padding: 6px 14px;
+    font-size: 12px;
+  }
+}

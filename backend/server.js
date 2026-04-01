@@ -4,6 +4,7 @@ import cors from 'cors';
 
 import { runMigrations } from './db/migrate.js';
 import generateProposalRouter from './api/generate-proposal.js';
+import generateMessageRouter from './api/generate-message.js';
 import profileRouter from './api/profile.js';
 import proposalsRouter from './api/proposals.js';
 import templatesRouter from './api/templates.js';
@@ -23,6 +24,7 @@ app.get('/health', (_req, res) => {
 
 // Routes
 app.use('/api/generate-proposal', generateProposalRouter);
+app.use('/api/generate-message', generateMessageRouter);
 app.use('/api/profile', profileRouter);
 app.use('/api/proposals', proposalsRouter);
 app.use('/api/templates', templatesRouter);
