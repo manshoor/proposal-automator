@@ -6,7 +6,7 @@ import Toast from '../../components/Toast';
 
 const EMPTY_PROJECT = {
   name: '', description: '', url: '', technologies: '',
-  category: '', client_name: '', budget_range: '', duration: '', outcome: '', is_featured: false,
+  category: '', client_name: '', budget_range: '', duration: '', outcome: '', is_featured: false, screenshots: [],
 };
 
 const CATEGORIES = ['Web Development', 'Mobile App', 'E-commerce', 'UI/UX Design', 'API/Backend', 'WordPress/CMS', 'Data/Automation', 'Other'];
@@ -90,6 +90,7 @@ export default function ProjectsPage() {
       duration: p.duration || '',
       outcome: p.outcome || '',
       is_featured: p.is_featured || false,
+      screenshots: Array.isArray(p.screenshots) ? p.screenshots : [],
     });
     setEditing(p);
   };
@@ -100,6 +101,7 @@ export default function ProjectsPage() {
     const payload = {
       ...form,
       technologies: form.technologies.split(',').map(s => s.trim()).filter(Boolean),
+      screenshots: form.screenshots || [],
     };
     try {
       if (editing === 'new') {
@@ -236,6 +238,53 @@ export default function ProjectsPage() {
                 className="rounded border-gray-300" />
               <label className="text-sm text-gray-700">Featured project (shown first)</label>
             </div>
+
+            {/* Screenshots */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Screenshots</label>
+
+              {/* Existing screenshots */}
+              {form.screenshots && form.screenshots.length > 0 && (
+                <div className="flex flex-wrap gap-3 mb-3">
+                  {form.screenshots.map((src, i) => (
+                    <div key={i} className="relative group">
+                      <img src={src} alt={`Screenshot ${i+1}`} className="w-24 h-24 object-cover rounded-lg border border-gray-200" />
+                      <button onClick={() => setForm({...form, screenshots: form.screenshots.filter((_, j) => j !== i)})}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        &times;
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload new */}
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={async (e) => {
+                  const files = e.target.files;
+                  if (!files || files.length === 0) return;
+                  const fd = new FormData();
+                  for (let i = 0; i < files.length && i < 5; i++) fd.append('screenshots', files[i]);
+                  try {
+                    const res = await fetch('/api/upload/screenshot', { method: 'POST', body: fd });
+                    if (res.ok) {
+                      const data = await res.json();
+                      setForm({...form, screenshots: [...(form.screenshots || []), ...data.urls]});
+                    } else {
+                      setToast({ message: 'Failed to upload screenshots', type: 'error' });
+                    }
+                  } catch (err) {
+                    setToast({ message: 'Upload error', type: 'error' });
+                  }
+                  e.target.value = '';
+                }}
+                className="text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 file:cursor-pointer"
+              />
+              <p className="text-xs text-gray-400 mt-1">Up to 5 images (JPG, PNG, GIF, WebP). Max 5MB each.</p>
+            </div>
           </div>
           <div className="flex gap-3 mt-4">
             <button onClick={handleSave} disabled={saving}
@@ -268,6 +317,19 @@ export default function ProjectsPage() {
                   <button onClick={() => handleDelete(p.id)} className="text-xs text-red-500 hover:underline">Delete</button>
                 </div>
               </div>
+              {/* Screenshot thumbnails */}
+              {p.screenshots && p.screenshots.length > 0 && (
+                <div className="flex gap-2 mb-2 overflow-x-auto">
+                  {p.screenshots.slice(0, 4).map((src, i) => (
+                    <img key={i} src={src} alt="" className="w-16 h-16 object-cover rounded border border-gray-200 flex-shrink-0" />
+                  ))}
+                  {p.screenshots.length > 4 && (
+                    <div className="w-16 h-16 bg-gray-100 rounded border border-gray-200 flex items-center justify-center text-xs text-gray-500 flex-shrink-0">
+                      +{p.screenshots.length - 4}
+                    </div>
+                  )}
+                </div>
+              )}
               {p.description && <p className="text-sm text-gray-600 mb-2 line-clamp-3">{p.description}</p>}
               {p.technologies && p.technologies.length > 0 && (
                 <div className="flex flex-wrap gap-1 mb-2">

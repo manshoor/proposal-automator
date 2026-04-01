@@ -13,6 +13,8 @@ import parseResumeRouter from './api/parse-resume.js';
 import settingsRouter from './api/settings.js';
 import projectsRouter from './api/projects.js';
 import parseProjectsRouter from './api/parse-projects.js';
+import uploadRouter from './api/upload.js';
+import { join } from 'path';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -37,6 +39,8 @@ app.use('/api/parse-resume', parseResumeRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/parse-projects', parseProjectsRouter);
+app.use('/api/upload', uploadRouter);
+app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
 // Start server after running migrations
 async function start() {
