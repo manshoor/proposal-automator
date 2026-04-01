@@ -80,6 +80,29 @@ export default function AnalyticsCharts({ data }) {
           </div>
         )}
       </div>
+
+      {/* Connect Spending Trend */}
+      {(() => {
+        const connectWeekly = (data.weeklyConnects || []).map(w => ({
+          week: new Date(w.week).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          connects: parseInt(w.connects, 10),
+        }));
+        if (connectWeekly.length === 0) return null;
+        return (
+          <div className="bg-white rounded-lg shadow-sm p-6 mt-6">
+            <h3 className="text-sm font-medium text-gray-500 uppercase mb-4">Connect Spending per Week</h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={connectWeekly}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                <XAxis dataKey="week" tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="connects" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      })()}
     </div>
   );
 }

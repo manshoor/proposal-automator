@@ -130,18 +130,41 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, earnings } = req.body;
 
-  if (!status || !ALLOWED_STATUSES.has(status)) {
-    return res.status(400).json({
-      error: `status must be one of: ${[...ALLOWED_STATUSES].join(', ')}`,
-    });
+  // Build dynamic SET clause
+  const sets = [];
+  const values = [];
+  let idx = 1;
+
+  if (status) {
+    if (!ALLOWED_STATUSES.has(status)) {
+      return res.status(400).json({ error: `status must be one of: ${[...ALLOWED_STATUSES].join(', ')}` });
+    }
+    sets.push(`status = $${idx++}`);
+    values.push(status);
   }
+
+  if (earnings !== undefined && earnings !== null) {
+    const amt = parseFloat(earnings);
+    if (isNaN(amt) || amt < 0) {
+      return res.status(400).json({ error: 'earnings must be a positive number' });
+    }
+    sets.push(`earnings = $${idx++}`);
+    values.push(amt);
+  }
+
+  if (sets.length === 0) {
+    return res.status(400).json({ error: 'Nothing to update. Send status or earnings.' });
+  }
+
+  sets.push('updated_at = NOW()');
+  values.push(id);
 
   try {
     const { rows } = await pool.query(
-      `UPDATE proposals SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
-      [status, id]
+      `UPDATE proposals SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
     );
 
     if (rows.length === 0) {

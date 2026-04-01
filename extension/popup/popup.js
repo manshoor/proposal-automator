@@ -252,6 +252,14 @@ function populateJobSummary(jobData) {
     : jobData.proposalCount
       ? `${jobData.proposalCount} proposals`
       : 'Proposals: unknown';
+
+  // Show Connect cost if available
+  const connectsEl = document.getElementById('job-connects-text');
+  if (jobData.connectCost) {
+    const usd = (jobData.connectCost * 0.30).toFixed(2);
+    connectsEl.textContent = `${jobData.connectCost} Connects ($${usd})`;
+    connectsEl.classList.remove('hidden');
+  }
 }
 
 /**

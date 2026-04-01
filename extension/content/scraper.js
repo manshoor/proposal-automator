@@ -402,6 +402,16 @@ async function scrapeJobPage() {
     var proposalCount = scrapeProposalCount();
     var proposalCountText = scrapeProposalCountText();
 
+    // ---- Connect cost (proposal pages show "Send a proposal for: X Connects") ----
+    var connectCost = null;
+    var availableConnects = null;
+    var pageText = document.body.innerText || '';
+    var connectMatch = pageText.match(/(?:proposal\s+(?:for|requires?)[:\s]*|Send\s+for\s+)(\d+)\s+Connects/i);
+    if (connectMatch) connectCost = parseInt(connectMatch[1], 10);
+    var availMatch = pageText.match(/(?:Available|Remaining)\s+(?:balance[:\s]*)?(\d+)\s+Connects/i);
+    if (!availMatch) availMatch = pageText.match(/Available\s+Connects[:\s]*(\d+)/i);
+    if (availMatch) availableConnects = parseInt(availMatch[1], 10);
+
     var jobData = {
       title: title,
       description: description,
@@ -410,6 +420,8 @@ async function scrapeJobPage() {
       client: client,
       proposalCount: proposalCount,
       proposalCountText: proposalCountText,
+      connectCost: connectCost,
+      availableConnects: availableConnects,
       url: currentUrl,
       isProposalPage: onProposalPage
     };
