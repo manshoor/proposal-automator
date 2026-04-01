@@ -61,7 +61,7 @@ router.post('/', async (req, res) => {
 
 // PUT /api/projects/:id — update
 router.put('/:id', async (req, res) => {
-  const { name, description, url, technologies, category, client_name, budget_range, duration, outcome, is_featured } = req.body;
+  const { name, description, url, technologies, category, client_name, budget_range, duration, outcome, is_featured, screenshots } = req.body;
 
   try {
     const { rows } = await pool.query(
@@ -71,9 +71,10 @@ router.put('/:id', async (req, res) => {
         category = COALESCE($5, category), client_name = COALESCE($6, client_name),
         budget_range = COALESCE($7, budget_range), duration = COALESCE($8, duration),
         outcome = COALESCE($9, outcome), is_featured = COALESCE($10, is_featured),
+        screenshots = COALESCE($12, screenshots),
         updated_at = NOW()
        WHERE id = $11 RETURNING *`,
-      [name, description, url || null, technologies, category, client_name, budget_range, duration, outcome, is_featured, req.params.id]
+      [name, description, url || null, technologies, category, client_name, budget_range, duration, outcome, is_featured, req.params.id, screenshots || null]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Project not found' });
     res.json(rows[0]);
