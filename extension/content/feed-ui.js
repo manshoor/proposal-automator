@@ -446,7 +446,7 @@
   var _init = function () {
     // Only run on feed/search pages
     var href = window.location.href;
-    var isFeedPage = /upwork\.com\/(nx\/find-work|nx\/search|ab\/find-work|search\/jobs)/i.test(href);
+    var isFeedPage = /upwork\.com\/(nx\/find-work|nx\/search|ab\/find-work|search\/jobs|nx\/jobs\/search)/i.test(href);
     if (!isFeedPage) return;
 
     // Disconnect previous card observer if any
