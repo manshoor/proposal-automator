@@ -185,7 +185,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             apiKey: settings.apiKey,
             templateContent: message.templateContent || null,
             extraInstruction: message.extraInstruction || null,
-            existingProposal: message.existingProposal || null
+            existingProposal: message.existingProposal || null,
+            selectedProjects: message.selectedProjects || null
           };
           const response = await fetch(`${backendUrl}/api/generate-proposal`, {
             method: 'POST',

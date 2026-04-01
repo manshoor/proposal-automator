@@ -764,3 +764,35 @@ main {
   white-space: pre-wrap;
   line-height: 1.5;
 }
+
+/* ----- Project Checkboxes ----- */
+
+.project-checkboxes {
+  max-height: 120px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 6px;
+}
+
+.project-check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.project-check-item input {
+  margin-top: 2px;
+}
+
+.project-check-name {
+  font-weight: 600;
+  color: #374151;
+}
+
+.project-check-tech {
+  font-size: 10px;
+  color: #9ca3af;
+}

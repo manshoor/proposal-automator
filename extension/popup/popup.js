@@ -531,6 +531,39 @@ async function init() {
       // ignore — templates are optional
     }
 
+    // Load projects for selection
+    try {
+      const settingsP = await sendToBackground({ type: 'GET_SETTINGS' });
+      const bUrlP = (settingsP && settingsP.data && settingsP.data.backendUrl) || 'http://localhost:3002';
+      const pRes = await fetch(`${bUrlP}/api/projects`);
+      if (pRes.ok) {
+        const projects = await pRes.json();
+        if (Array.isArray(projects) && projects.length > 0) {
+          const container = document.getElementById('project-selector');
+          const checkboxes = document.getElementById('project-checkboxes');
+          container.classList.remove('hidden');
+          projects.forEach(p => {
+            const div = document.createElement('div');
+            div.className = 'project-check-item';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.dataset.projectId = p.id;
+            cb.dataset.projectName = p.name;
+            cb.dataset.projectDesc = p.description || '';
+            cb.dataset.projectTech = Array.isArray(p.technologies) ? p.technologies.join(', ') : '';
+            cb.dataset.projectOutcome = p.outcome || '';
+            if (p.is_featured) cb.checked = true; // auto-select featured
+            const label = document.createElement('div');
+            label.innerHTML = '<span class="project-check-name">' + p.name + '</span>' +
+              (p.technologies && p.technologies.length ? '<br><span class="project-check-tech">' + p.technologies.join(', ') + '</span>' : '');
+            div.appendChild(cb);
+            div.appendChild(label);
+            checkboxes.appendChild(div);
+          });
+        }
+      }
+    } catch (e) { /* ignore */ }
+
     // Check for duplicate proposals (already submitted to this job)
     try {
       const settings2 = await sendToBackground({ type: 'GET_SETTINGS' });
@@ -570,10 +603,22 @@ btnGenerate.addEventListener('click', async () => {
     const selectedOpt = templateDropdown.options[templateDropdown.selectedIndex];
     const templateContent = selectedOpt && selectedOpt.dataset.content ? selectedOpt.dataset.content : null;
 
+    // Get selected projects
+    const selectedProjects = [];
+    document.querySelectorAll('#project-checkboxes input:checked').forEach(cb => {
+      selectedProjects.push({
+        name: cb.dataset.projectName,
+        description: cb.dataset.projectDesc,
+        technologies: cb.dataset.projectTech,
+        outcome: cb.dataset.projectOutcome
+      });
+    });
+
     const response = await sendToBackground({
       type: 'GENERATE_PROPOSAL',
       jobData: _currentJobData,
-      templateContent: templateContent
+      templateContent: templateContent,
+      selectedProjects: selectedProjects.length > 0 ? selectedProjects : null
     });
 
     if (!response || !response.success) {
