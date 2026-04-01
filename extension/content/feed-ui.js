@@ -278,8 +278,16 @@
     ]);
 
     // Min client spent
-    var minSpentInput = _buildNumberInput('e.g. 1000', filters.minClientSpent);
+    var minSpentInput = _buildNumberInput('e.g. 10000', filters.minClientSpent);
     var minSpentRow = _buildFormRow('Min client spent ($):', minSpentInput);
+
+    // Max connects
+    var maxConnectsInput = _buildNumberInput('e.g. 6', filters.maxConnects);
+    var maxConnectsRow = _buildFormRow('Max Connects per job:', maxConnectsInput);
+
+    // Max proposals already submitted
+    var maxProposalsInput = _buildNumberInput('e.g. 10', filters.maxProposals);
+    var maxProposalsRow = _buildFormRow('Max proposals submitted:', maxProposalsInput);
 
     // Notifications toggle
     var notifToggle = _el('label', { class: 'upa-toggle-switch', title: 'Notify on new matching jobs' });
@@ -309,6 +317,8 @@
       keywordsExcRow,
       locationRow,
       minSpentRow,
+      maxConnectsRow,
+      maxProposalsRow,
       notifRow,
       btnRow
     ]);
@@ -347,6 +357,8 @@
       _state.filters.keywordsExclude = splitTrim(keywordsExcInput.value);
       _state.filters.locationAllowed = locationCheckbox.checked;
       _state.filters.minClientSpent = minSpentInput.value ? parseFloat(minSpentInput.value) : 0;
+      _state.filters.maxConnects = maxConnectsInput.value ? parseInt(maxConnectsInput.value, 10) : null;
+      _state.filters.maxProposals = maxProposalsInput.value ? parseInt(maxProposalsInput.value, 10) : null;
       _state.filters.enabled = enabledCheckbox.checked;
 
       saveFilters(_state.filters).then(function () {

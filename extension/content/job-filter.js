@@ -22,6 +22,8 @@ var DEFAULT_JOB_FILTERS = {
   keywordsExclude: [],
   locationAllowed: false,
   minClientSpent: 0,
+  maxConnects: null,
+  maxProposals: null,
   enabled: false
 };
 
@@ -119,7 +121,27 @@ function matchesFilters(jobCard, filters) {
   if (filters.minClientSpent !== null && filters.minClientSpent !== undefined && filters.minClientSpent !== '') {
     var minSpentVal = parseFloat(filters.minClientSpent);
     if (!isNaN(minSpentVal) && minSpentVal > 0) {
-      if (clientSpent < minSpentVal) return false;
+      // If card has client spent data and it's below minimum, filter out
+      // If no data on card, give benefit of the doubt (feed cards may not show this)
+      if (clientSpent > 0 && clientSpent < minSpentVal) return false;
+    }
+  }
+
+  // ---- Max connects cost ----
+  if (filters.maxConnects !== null && filters.maxConnects !== undefined && filters.maxConnects !== '') {
+    var maxConn = parseInt(filters.maxConnects, 10);
+    if (!isNaN(maxConn) && maxConn > 0) {
+      var cardConnects = typeof card.connectCost === 'number' ? card.connectCost : 0;
+      if (cardConnects > 0 && cardConnects > maxConn) return false;
+    }
+  }
+
+  // ---- Max proposals already submitted ----
+  if (filters.maxProposals !== null && filters.maxProposals !== undefined && filters.maxProposals !== '') {
+    var maxProp = parseInt(filters.maxProposals, 10);
+    if (!isNaN(maxProp) && maxProp > 0) {
+      var cardProposals = typeof card.proposalCount === 'number' ? card.proposalCount : 0;
+      if (cardProposals > 0 && cardProposals > maxProp) return false;
     }
   }
 

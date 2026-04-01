@@ -175,6 +175,17 @@ var _scrapeCard = function (card) {
       if (postedMatch) postedText = postedMatch[0].trim();
     }
 
+    // Connect cost — some feed pages show "X Connects" per card
+    var connectCost = 0;
+    var cardTextFull = card.textContent || '';
+    var connectMatch = cardTextFull.match(/(\d+)\s+Connects?/i);
+    if (connectMatch) connectCost = parseInt(connectMatch[1], 10);
+
+    // Client location — may be available on some feed layouts
+    var clientLocationEl = card.querySelector('[data-test="client-country"]') ||
+                           card.querySelector('[data-test="location"]');
+    var clientLocation = clientLocationEl ? _feedScraperGetText(clientLocationEl) : '';
+
     return {
       id: id,
       title: title,
@@ -184,6 +195,8 @@ var _scrapeCard = function (card) {
       budgetAmount: budgetAmount,
       skills: skills,
       clientSpent: clientSpent,
+      clientLocation: clientLocation,
+      connectCost: connectCost,
       proposalCount: proposalCount,
       postedText: postedText,
       element: card
