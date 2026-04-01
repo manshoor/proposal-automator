@@ -512,3 +512,255 @@ main {
   font-size: 12px;
   margin-bottom: 10px;
 }
+
+/* ----- Bid Decision Guidance ----- */
+
+.bid-guidance {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bid-guidance.bid-strong {
+  background: #dcfce7;
+  border: 1px solid #22c55e;
+  color: #166534;
+}
+
+.bid-guidance.bid-moderate {
+  background: #fef9c3;
+  border: 1px solid #eab308;
+  color: #854d0e;
+}
+
+.bid-guidance.bid-weak {
+  background: #fee2e2;
+  border: 1px solid #ef4444;
+  color: #991b1b;
+}
+
+/* ----- Fit Score Badge ----- */
+
+.fit-score-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.fit-score-badge.fit-high { background: #dcfce7; color: #166534; }
+.fit-score-badge.fit-med  { background: #fef9c3; color: #854d0e; }
+.fit-score-badge.fit-low  { background: #fee2e2; color: #991b1b; }
+
+/* ----- Quality Indicators ----- */
+
+.quality-indicators {
+  display: flex;
+  gap: 6px;
+  padding: 6px 0;
+  flex-wrap: wrap;
+}
+
+.qi-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.qi-badge.qi-good { background: #dcfce7; color: #166534; }
+.qi-badge.qi-warn { background: #fef9c3; color: #854d0e; }
+
+/* ----- Quick-Edit Toolbar ----- */
+
+.quick-edit-toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 8px 0 4px;
+  flex-wrap: wrap;
+}
+
+.qe-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  border: 1px solid #d1d5db;
+  border-radius: 14px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.qe-btn:hover {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+/* ----- Red Flags ----- */
+
+.red-flags-section {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.red-flags-header {
+  font-size: 12px;
+  font-weight: 700;
+  color: #991b1b;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.red-flags-header::before {
+  content: '\26A0';
+}
+
+.red-flags-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.red-flags-list li {
+  font-size: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid #fecaca;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.red-flags-list li:last-child {
+  border-bottom: none;
+}
+
+.rf-severity {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.rf-severity.rf-high   { background: #ef4444; }
+.rf-severity.rf-medium { background: #f59e0b; }
+.rf-severity.rf-low    { background: #6b7280; }
+
+.rf-text {
+  flex: 1;
+}
+
+.rf-flag-name {
+  font-weight: 600;
+  color: #991b1b;
+}
+
+.rf-detail {
+  color: #7f1d1d;
+  font-size: 11px;
+}
+
+/* ----- Generate Buttons Row ----- */
+
+.generate-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.generate-buttons .btn-primary { flex: 1; }
+.generate-buttons .btn-outline { flex: 0 0 auto; font-size: 12px; padding: 8px 14px; }
+
+/* ----- A/B Testing ----- */
+
+.ab-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.ab-hint {
+  font-size: 11px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.ab-variants {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ab-card {
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ab-card:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.ab-card.ab-selected {
+  border-color: #2563eb;
+  background: #dbeafe;
+}
+
+.ab-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.ab-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.ab-label-a { background: #2563eb; }
+.ab-label-b { background: #7c3aed; }
+
+.ab-style {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.ab-text {
+  font-size: 12px;
+  color: #374151;
+  max-height: 120px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}

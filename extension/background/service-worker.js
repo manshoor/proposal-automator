@@ -79,7 +79,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             jobData: message.jobData || {},
             provider: settings.provider,
             apiKey: settings.apiKey,
-            templateContent: message.templateContent || null
+            templateContent: message.templateContent || null,
+            extraInstruction: message.extraInstruction || null,
+            existingProposal: message.existingProposal || null
           };
 
           const response = await fetch(endpoint, {

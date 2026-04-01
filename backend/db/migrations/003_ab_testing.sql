@@ -1,0 +1,5 @@
+-- Add A/B testing columns to proposals table
+ALTER TABLE proposals ADD COLUMN IF NOT EXISTS variant CHAR(1) DEFAULT NULL;
+ALTER TABLE proposals ADD COLUMN IF NOT EXISTS variant_a_text TEXT DEFAULT NULL;
+ALTER TABLE proposals ADD COLUMN IF NOT EXISTS variant_b_text TEXT DEFAULT NULL;
+ALTER TABLE proposals ADD COLUMN IF NOT EXISTS variant_chosen CHAR(1) DEFAULT NULL;
