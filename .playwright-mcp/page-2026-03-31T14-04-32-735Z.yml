@@ -1,0 +1,452 @@
+- generic [ref=e1]:
+  - link [ref=e2] [cursor=pointer]:
+    - /url: "#"
+    - text: ___
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e11]:
+        - banner [ref=e12]:
+          - link "Skip to content" [ref=e13] [cursor=pointer]
+          - generic [ref=e14]:
+            - link "Upwork home" [ref=e17] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e18]: Upwork home
+              - img [ref=e20]
+            - generic [ref=e26]:
+              - navigation "Primary" [ref=e27]:
+                - list [ref=e28]:
+                  - listitem [ref=e29]:
+                    - button "Hire freelancers" [ref=e30] [cursor=pointer]:
+                      - generic [ref=e31]: Hire freelancers
+                      - img [ref=e33]
+                  - listitem [ref=e35]:
+                    - button "Find work" [ref=e36] [cursor=pointer]:
+                      - generic [ref=e37]: Find work
+                      - img [ref=e39]
+                  - listitem [ref=e41]:
+                    - button "Why Upwork" [ref=e42] [cursor=pointer]:
+                      - generic [ref=e43]: Why Upwork
+                      - img [ref=e45]
+                  - listitem [ref=e47]:
+                    - button "What’s new" [ref=e48] [cursor=pointer]:
+                      - generic [ref=e49]: What’s new
+                      - img [ref=e51]
+                  - listitem [ref=e53]:
+                    - link "Pricing" [ref=e54] [cursor=pointer]:
+                      - /url: /pricing/client
+                      - generic [ref=e55]: Pricing
+                  - listitem [ref=e56]:
+                    - 'link "For enterprise : L i f t e d" [ref=e58] [cursor=pointer]':
+                      - /url: https://go-lifted.com/
+                      - generic [ref=e60]:
+                        - text: For enterprise
+                        - generic [ref=e61]:
+                          - generic [ref=e62]: ":"
+                          - generic [ref=e64]: L
+                          - generic [ref=e65]: i
+                          - generic [ref=e66]: f
+                          - generic [ref=e67]: t
+                          - generic [ref=e68]: e
+                          - generic [ref=e69]: d
+                          - img [ref=e71]
+                  - listitem
+              - generic [ref=e73]:
+                - button "Search" [ref=e76] [cursor=pointer]:
+                  - img [ref=e78]
+                - link "Log in" [ref=e80] [cursor=pointer]:
+                  - /url: /ab/account-security/login
+                - link "Sign up" [ref=e81] [cursor=pointer]:
+                  - /url: /nx/signup/
+        - generic "Secondary" [ref=e82]:
+          - generic [ref=e83]: Secondary
+          - list [ref=e84]:
+            - listitem [ref=e85]:
+              - menuitem "Development & IT" [ref=e86] [cursor=pointer]
+            - listitem [ref=e87]:
+              - menuitem "AI Services" [ref=e88] [cursor=pointer]
+            - listitem [ref=e89]:
+              - menuitem "Design & Creative" [ref=e90] [cursor=pointer]
+            - listitem [ref=e91]:
+              - menuitem "Sales & Marketing" [ref=e92] [cursor=pointer]
+            - listitem [ref=e93]:
+              - menuitem "Admin & Customer Support" [ref=e94] [cursor=pointer]
+            - listitem [ref=e95]:
+              - button "More secondary nav" [ref=e96] [cursor=pointer]:
+                - text: More
+                - img [ref=e98]
+      - main [active] [ref=e100]:
+        - generic [ref=e104]:
+          - generic [ref=e105]:
+            - generic [ref=e106]:
+              - heading "Website Chatbot Developer on Webflow" [level=1] [ref=e107]
+              - generic [ref=e108]:
+                - generic [ref=e109]: Posted 2 hours ago
+                - generic [ref=e110]:
+                  - img [ref=e112]
+                  - paragraph [ref=e115]: Worldwide
+            - generic [ref=e117]:
+              - strong [ref=e118]: Summary
+              - paragraph [ref=e119]: "I’m looking for a developer to create a chatbot for my website (built on Webflow). The chatbot should: - Answer frequently asked questions from users - Provide quick, helpful responses automatically - Include a feature where users can leave their email address - Collect and store leads (user inquiries + emails) Please let me know: 1) What tools/technology you would use 2) Examples of similar chatbots you’ve built 3) Estimated timeline and cost"
+            - list [ref=e121]:
+              - listitem [ref=e122]:
+                - img [ref=e124]
+                - strong [ref=e127]: Less than 30 hrs/week
+                - generic [ref=e128]: Hourly
+              - listitem [ref=e129]:
+                - img [ref=e131]
+                - strong [ref=e133]: < 1 month
+                - generic [ref=e134]: Duration
+              - listitem [ref=e135]:
+                - img [ref=e137]
+                - strong [ref=e141]: Intermediate
+                - generic [ref=e142]: Experience Level
+              - listitem [ref=e143]:
+                - img [ref=e145]
+                - strong [ref=e148]: Remote Job
+              - listitem [ref=e149]:
+                - img [ref=e151]
+                - strong [ref=e154]: One-time project
+                - generic [ref=e155]: Project Type
+            - generic [ref=e156]:
+              - heading "Skills and Expertise" [level=5] [ref=e157]
+              - generic [ref=e159]:
+                - strong [ref=e160]: Mandatory skills
+                - generic [ref=e161]:
+                  - generic [ref=e166]: Web Development
+                  - generic [ref=e171]: Web Design
+                  - button "+ 8 more" [ref=e174] [cursor=pointer]
+            - generic [ref=e175]:
+              - heading "Activity on this job" [level=5] [ref=e176]
+              - list [ref=e177]:
+                - listitem [ref=e178]:
+                  - generic [ref=e179]: "Proposals:"
+                  - button "More info about proposals" [ref=e182] [cursor=pointer]:
+                    - img [ref=e183]
+                  - generic [ref=e185]: Less than 5
+                - listitem [ref=e186]:
+                  - generic [ref=e187]: "Last viewed by client:"
+                  - button "More info about Last Viewed" [ref=e190] [cursor=pointer]:
+                    - img [ref=e191]
+                  - generic [ref=e193]: 50 minutes ago
+                - listitem [ref=e194]:
+                  - generic [ref=e195]: "Interviewing:"
+                  - generic [ref=e196]: "1"
+                - listitem [ref=e197]:
+                  - generic [ref=e198]: "Invites sent:"
+                  - generic [ref=e199]: "0"
+                - listitem [ref=e200]:
+                  - generic [ref=e201]: "Unanswered invites:"
+                  - generic [ref=e202]: "0"
+            - generic [ref=e203]:
+              - heading "About the client" [level=5] [ref=e204]
+              - generic [ref=e205]: Member since Oct 19, 2025
+              - list [ref=e206]:
+                - listitem [ref=e207]:
+                  - strong [ref=e208]: Ukraine
+                  - generic [ref=e209]: Dnipro5:04 PM
+                - listitem [ref=e210]:
+                  - strong [ref=e211]: $65 total spent
+                  - generic [ref=e212]: 2 hires, 0 active
+            - generic [ref=e213]:
+              - heading "Explore similar jobs on Upwork" [level=4] [ref=e214]
+              - generic [ref=e215]:
+                - generic [ref=e216]:
+                  - generic [ref=e218]:
+                    - link "Menu responsive" [ref=e219] [cursor=pointer]:
+                      - /url: /freelance-jobs/apply/Menu-responsive_~021967518512183193245/
+                    - generic [ref=e220]: Hourly
+                    - text: ‐ Posted 7 months ago
+                  - generic [ref=e221]:
+                    - generic [ref=e226]: JavaScript
+                    - generic [ref=e231]: HTML
+                    - generic [ref=e236]: CSS
+                    - generic [ref=e241]: TypeScript
+                    - generic [ref=e246]: React
+                    - generic [ref=e251]: Vue.js
+                    - generic [ref=e256]: Next.js
+                    - generic [ref=e261]: Nuxt.js
+                    - generic [ref=e266]: Web Development
+                    - generic [ref=e271]: Tailwind CSS
+                    - generic [ref=e276]: SQL
+                    - generic [ref=e281]: Supabase
+                    - generic [ref=e286]: Git
+                    - generic [ref=e291]: Front-End Development
+                    - generic [ref=e296]: Full-Stack Development
+                - generic [ref=e297]:
+                  - generic [ref=e299]:
+                    - link "Experienced Oxygen Builder - AJAX \"Load More\" Implementation" [ref=e300] [cursor=pointer]:
+                      - /url: /freelance-jobs/apply/Experienced-Oxygen-Builder-AJAX-Load-More-Implementation_~022026521597225936383/
+                    - generic [ref=e301]: Fixed-price
+                    - text: ‐ Posted 1 month ago
+                  - generic [ref=e302]:
+                    - generic [ref=e307]: WordPress
+                    - generic [ref=e312]: PHP
+                    - generic [ref=e317]: JavaScript
+                    - generic [ref=e322]: HTML
+                    - generic [ref=e327]: CSS
+                    - generic [ref=e332]: Web Development
+              - generic [ref=e333]:
+                - heading "How it works" [level=3] [ref=e334]
+                - list [ref=e335]:
+                  - listitem [ref=e336]:
+                    - img "Post a job icon" [ref=e338]
+                    - generic [ref=e339]:
+                      - generic [ref=e340]: Create your free profile
+                      - generic [ref=e341]: Highlight your skills and experience, show your portfolio, and set your ideal pay rate.
+                  - listitem [ref=e342]:
+                    - img "Talent comes to you icon" [ref=e344]
+                    - generic [ref=e345]:
+                      - generic [ref=e346]: Work the way you want
+                      - generic [ref=e347]: Apply for jobs, create easy-to-by projects, or access exclusive opportunities that come to you.
+                  - listitem [ref=e348]:
+                    - img "Payment simplified icon" [ref=e350]
+                    - generic [ref=e351]:
+                      - generic [ref=e352]: Get paid securely
+                      - generic [ref=e353]: From contract to payment, we help you work safely and get paid securely.
+                - generic [ref=e354]:
+                  - text: Want to get started?
+                  - link "Create a profile" [ref=e355] [cursor=pointer]:
+                    - /url: /nx/signup/
+                    - text: Create a profile
+                    - img [ref=e357]
+                - separator [ref=e359]
+                - heading "About Upwork" [level=3] [ref=e360]
+                - list [ref=e361]:
+                  - listitem [ref=e362]:
+                    - generic [ref=e363]:
+                      - generic [ref=e364]:
+                        - generic [ref=e365]:
+                          - img [ref=e366]
+                          - img [ref=e368]
+                          - img [ref=e370]
+                          - img [ref=e372]
+                          - img [ref=e374]
+                        - generic [ref=e376]:
+                          - img [ref=e377]
+                          - img [ref=e379]
+                          - img [ref=e381]
+                          - img [ref=e383]
+                          - img [ref=e385]
+                          - generic [ref=e387]: Rating is 4.9 out of 5.
+                      - strong [ref=e388]: 4.9/5
+                    - generic [ref=e389]: (Average rating of clients by professionals)
+                  - listitem [ref=e390]:
+                    - strong [ref=e392]: G2 2021
+                    - generic [ref=e393]: "#1 freelance platform"
+                  - listitem [ref=e394]:
+                    - strong [ref=e396]: 49,000+
+                    - generic [ref=e397]: Signed contract every week
+                  - listitem [ref=e398]:
+                    - strong [ref=e400]: $2.3B
+                    - generic [ref=e401]: Freelancers earned on Upwork in 2020
+                - separator [ref=e402]
+                - heading "Find the best freelance jobs" [level=3] [ref=e403]
+                - paragraph [ref=e404]: Growing your career is as easy as creating a free profile and finding work like this that fits your skills.
+                - group [ref=e405]:
+                  - link "Find Work" [ref=e406] [cursor=pointer]:
+                    - /url: /nx/signup/
+                  - link "Watch a demo" [ref=e407] [cursor=pointer]:
+                    - /url: "javascript:"
+                    - img [ref=e409]
+                    - text: Watch a demo
+                - paragraph [ref=e411]: Trusted by
+                - list [ref=e412]:
+                  - listitem [ref=e413]:
+                    - img "Microsoft Logo" [ref=e414]
+                  - listitem [ref=e415]:
+                    - img "Airbnb Logo" [ref=e416]
+                  - listitem [ref=e417]:
+                    - img "Bissell Logo" [ref=e418]
+                  - listitem [ref=e419]:
+                    - img "GoDaddy Logo" [ref=e420]
+            - generic [ref=e421]:
+              - heading "Other open jobs by this Client (1)" [level=5] [ref=e423]
+              - list [ref=e425]:
+                - listitem [ref=e426]:
+                  - strong [ref=e427]:
+                    - link "Website Chatbot Developer on Webflow" [ref=e428] [cursor=pointer]:
+                      - /url: /freelance-jobs/apply/Website-Chatbot-Developer-Webflow_~022038936861410058139/?referrer_url_path=/freelance-jobs/apply/Website-Chatbot-Developer-Webflow_~022038936861410058139/
+                  - text: Hourly
+          - generic [ref=e434]:
+            - heading "Explore Upwork opportunities for free" [level=4] [ref=e435]
+            - link "Sign up" [ref=e437] [cursor=pointer]:
+              - /url: /nx/signup/
+            - paragraph [ref=e438]:
+              - text: Already have an account?
+              - link "Log in" [ref=e439] [cursor=pointer]:
+                - /url: /ab/account-security/login
+    - contentinfo [ref=e440]:
+      - heading "Footer navigation" [level=2] [ref=e441]
+      - generic [ref=e442]:
+        - generic [ref=e443]:
+          - generic [ref=e444]:
+            - heading "For Clients" [level=3] [ref=e445]
+            - list [ref=e447]:
+              - listitem [ref=e448]:
+                - link "How to hire" [ref=e449] [cursor=pointer]:
+                  - /url: /i/how-it-works/client/
+              - listitem [ref=e450]:
+                - link "Talent Marketplace" [ref=e451] [cursor=pointer]:
+                  - /url: /talent-marketplace/
+              - listitem [ref=e452]:
+                - link "Project Catalog" [ref=e453] [cursor=pointer]:
+                  - /url: /services/
+              - listitem [ref=e454]:
+                - link "Hire an agency" [ref=e455] [cursor=pointer]:
+                  - /url: /agencies
+              - listitem [ref=e456]:
+                - link "Enterprise" [ref=e457] [cursor=pointer]:
+                  - /url: /enterprise/
+              - listitem [ref=e458]:
+                - link "Any Hire" [ref=e459] [cursor=pointer]:
+                  - /url: /anyhire/
+              - listitem [ref=e460]:
+                - link "Contract-to-hire" [ref=e461] [cursor=pointer]:
+                  - /url: /contract-to-hire/client
+              - listitem [ref=e462]:
+                - link "Direct Contracts" [ref=e463] [cursor=pointer]:
+                  - /url: /direct-contracts/cl
+              - listitem [ref=e464]:
+                - link "Hire worldwide" [ref=e465] [cursor=pointer]:
+                  - /url: /hire/
+              - listitem [ref=e466]:
+                - link "Hire in the USA" [ref=e467] [cursor=pointer]:
+                  - /url: /hire/us/
+          - generic [ref=e468]:
+            - heading "For Talent" [level=3] [ref=e469]
+            - list [ref=e471]:
+              - listitem [ref=e472]:
+                - link "How to find work" [ref=e473] [cursor=pointer]:
+                  - /url: /i/how-it-works/freelancer/
+              - listitem [ref=e474]:
+                - link "Direct Contracts" [ref=e475] [cursor=pointer]:
+                  - /url: /direct-contracts
+              - listitem [ref=e476]:
+                - link "Find freelance jobs worldwide" [ref=e477] [cursor=pointer]:
+                  - /url: /freelance-jobs/
+              - listitem [ref=e478]:
+                - link "Find freelance jobs in the USA" [ref=e479] [cursor=pointer]:
+                  - /url: /freelance-jobs/united-states/
+              - listitem [ref=e480]:
+                - link "Win work with ads" [ref=e481] [cursor=pointer]:
+                  - /url: /work/ads
+              - listitem [ref=e482]:
+                - link "Exclusive resources with Freelancer Plus" [ref=e483] [cursor=pointer]:
+                  - /url: /work/freelancerplus
+          - generic [ref=e484]:
+            - heading "Resources" [level=3] [ref=e485]
+            - list [ref=e487]:
+              - listitem [ref=e488]:
+                - link "Help & support" [ref=e489] [cursor=pointer]:
+                  - /url: https://support.upwork.com/hc/en-us
+              - listitem [ref=e490]:
+                - link "Success stories" [ref=e491] [cursor=pointer]:
+                  - /url: /success-stories
+              - listitem [ref=e492]:
+                - link "Upwork reviews" [ref=e493] [cursor=pointer]:
+                  - /url: /reviews
+              - listitem [ref=e494]:
+                - link "Resources" [ref=e495] [cursor=pointer]:
+                  - /url: /resources
+              - listitem [ref=e496]:
+                - link "Blog" [ref=e497] [cursor=pointer]:
+                  - /url: /blog
+              - listitem [ref=e498]:
+                - link "Affiliate programme" [ref=e499] [cursor=pointer]:
+                  - /url: /affiliates
+              - listitem [ref=e500]:
+                - link "Free Business Tools" [ref=e501] [cursor=pointer]:
+                  - /url: /tools
+          - generic [ref=e502]:
+            - heading "Company" [level=3] [ref=e503]
+            - list [ref=e505]:
+              - listitem [ref=e506]:
+                - link "About us" [ref=e507] [cursor=pointer]:
+                  - /url: /about
+              - listitem [ref=e508]:
+                - link "Leadership" [ref=e509] [cursor=pointer]:
+                  - /url: /about/team
+              - listitem [ref=e510]:
+                - link "Investor relations" [ref=e511] [cursor=pointer]:
+                  - /url: https://investors.upwork.com/
+              - listitem [ref=e512]:
+                - link "Careers" [ref=e513] [cursor=pointer]:
+                  - /url: /careers
+              - listitem [ref=e514]:
+                - link "Our impact" [ref=e515] [cursor=pointer]:
+                  - /url: /about/our-impact
+              - listitem [ref=e516]:
+                - link "Press" [ref=e517] [cursor=pointer]:
+                  - /url: /press
+              - listitem [ref=e518]:
+                - link "Contact us" [ref=e519] [cursor=pointer]:
+                  - /url: /about/contact
+              - listitem [ref=e520]:
+                - link "Partners" [ref=e521] [cursor=pointer]:
+                  - /url: /partners/
+              - listitem [ref=e522]:
+                - link "Trust, safety & security" [ref=e523] [cursor=pointer]:
+                  - /url: /trust-and-safety/security/
+              - listitem [ref=e524]:
+                - link "Modern slavery statement" [ref=e525] [cursor=pointer]:
+                  - /url: /documents/modern-slavery-statement
+        - generic [ref=e526]:
+          - generic [ref=e527]:
+            - heading "Follow Us" [level=3] [ref=e528]
+            - list [ref=e529]:
+              - listitem [ref=e530]:
+                - link "Visit Upwork on Facebook" [ref=e531] [cursor=pointer]:
+                  - /url: https://www.facebook.com/upwork
+                  - generic [ref=e532]: Visit Upwork on Facebook
+                  - img [ref=e534]
+              - listitem [ref=e536]:
+                - link "Read Upwork company news on LinkedIn" [ref=e537] [cursor=pointer]:
+                  - /url: https://www.linkedin.com/company/upwork
+                  - generic [ref=e538]: Read Upwork company news on LinkedIn
+                  - img [ref=e540]
+              - listitem [ref=e542]:
+                - link "Follow @Upwork on Twitter" [ref=e543] [cursor=pointer]:
+                  - /url: https://twitter.com/Upwork
+                  - generic [ref=e544]: Follow @Upwork on Twitter
+                  - img [ref=e546]
+              - listitem [ref=e548]:
+                - link "Watch Upwork videos on YouTube" [ref=e549] [cursor=pointer]:
+                  - /url: https://www.youtube.com/channel/UCvxGFOnwUBDHHcxuPqhe4CQ
+                  - generic [ref=e550]: Watch Upwork videos on YouTube
+                  - img [ref=e552]
+              - listitem [ref=e554]:
+                - link "Follow Upwork on Instagram" [ref=e555] [cursor=pointer]:
+                  - /url: https://www.instagram.com/upwork/
+                  - generic [ref=e556]: Follow Upwork on Instagram
+                  - img [ref=e558]
+          - generic [ref=e562]:
+            - heading "Mobile app" [level=3] [ref=e563]
+            - list [ref=e564]:
+              - listitem [ref=e565]:
+                - link "Download Upwork app from iTunes" [ref=e566] [cursor=pointer]:
+                  - /url: https://apps.apple.com/us/developer/upwork-global-inc/id329377609
+                  - generic [ref=e567]: Download Upwork app from iTunes
+                  - img [ref=e569]
+              - listitem [ref=e572]:
+                - link "Download Upwork app from Google Play" [ref=e573] [cursor=pointer]:
+                  - /url: https://play.google.com/store/apps/dev?id=8802639270489632480
+                  - generic [ref=e574]: Download Upwork app from Google Play
+                  - img [ref=e576]
+        - generic [ref=e578]:
+          - paragraph [ref=e579]: © 2015 - 2026 Upwork® Global LLC
+          - list [ref=e580]:
+            - listitem [ref=e581]:
+              - link "Terms of Service" [ref=e582] [cursor=pointer]:
+                - /url: /legal
+            - listitem [ref=e583]:
+              - link "Privacy Policy" [ref=e584] [cursor=pointer]:
+                - /url: /legal#privacy
+            - listitem [ref=e585]:
+              - link "CA Notice at Collection" [ref=e586] [cursor=pointer]:
+                - /url: /legal#SupplementalPrivacyNoticeforCaliforniaResidents
+            - listitem [ref=e587]:
+              - link "Your Privacy Choices" [ref=e588] [cursor=pointer]:
+                - /url: "javascript:"
+            - listitem [ref=e589]:
+              - link "Accessibility" [ref=e590] [cursor=pointer]:
+                - /url: /legal#accessibility

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proposal Automator — Settings</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+
+  <div class="page-wrap">
+
+    <header class="page-header">
+      <div class="header-inner">
+        <img src="../icons/icon48.png" alt="Logo" class="header-logo" />
+        <div>
+          <h1 class="page-title">Settings</h1>
+          <p class="page-subtitle">Upwork Proposal Automator</p>
+        </div>
+      </div>
+    </header>
+
+    <main class="form-card">
+
+      <!-- Provider -->
+      <div class="field-group">
+        <label for="provider" class="field-label">AI Provider</label>
+        <select id="provider" class="field-input field-select">
+          <option value="anthropic">Anthropic (Claude)</option>
+          <option value="openai">OpenAI (GPT)</option>
+        </select>
+        <p class="field-hint">The AI provider used by the backend to generate proposals.</p>
+      </div>
+
+      <!-- API Key -->
+      <div class="field-group">
+        <label for="api-key" class="field-label">API Key</label>
+        <div class="input-with-toggle">
+          <input
+            type="password"
+            id="api-key"
+            class="field-input"
+            placeholder="sk-..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button type="button" id="btn-toggle-key" class="toggle-btn" aria-label="Show/hide API key">
+            <!-- Eye icon (show) -->
+            <svg id="icon-eye-open" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <!-- Eye-off icon (hide) — starts hidden -->
+            <svg id="icon-eye-off" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" class="hidden">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+              <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+          </button>
+        </div>
+        <p class="field-hint">Your API key is stored locally in your browser and never sent anywhere except your backend.</p>
+      </div>
+
+      <!-- Backend URL -->
+      <div class="field-group">
+        <label for="backend-url" class="field-label">Backend URL</label>
+        <input
+          type="url"
+          id="backend-url"
+          class="field-input"
+          placeholder="http://localhost:3002"
+        />
+        <p class="field-hint">The URL of your proposal generation backend server.</p>
+      </div>
+
+      <!-- Default Hourly Rate -->
+      <div class="field-group">
+        <label for="default-rate" class="field-label">Default Hourly Rate ($)</label>
+        <input
+          type="number"
+          id="default-rate"
+          class="field-input field-narrow"
+          min="1"
+          max="9999"
+          step="1"
+          placeholder="50"
+        />
+        <p class="field-hint">Used as a starting point when suggesting your bid rate.</p>
+      </div>
+
+      <!-- Save Button + Feedback -->
+      <div class="save-row">
+        <button id="btn-save" class="btn btn-primary">Save Settings</button>
+        <span id="save-feedback" class="save-feedback hidden">Settings saved!</span>
+      </div>
+
+    </main>
+
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "Upwork Proposal Automator",
+  "version": "1.0.0",
+  "description": "Automates Upwork proposal generation with AI assistance",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://www.upwork.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.upwork.com/jobs/*",
+        "https://www.upwork.com/ab/proposals/job/*",
+        "https://www.upwork.com/nx/proposals/job/*",
+        "https://www.upwork.com/freelance-jobs/apply/*",
+        "https://www.upwork.com/nx/find-work/*"
+      ],
+      "js": [
+        "lib/constants.js",
+        "lib/storage.js",
+        "content/hidden-instructions.js",
+        "content/vetting.js",
+        "content/scraper.js",
+        "content/autofill.js",
+        "content/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "options/options.html",
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
