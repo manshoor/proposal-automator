@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../../lib/api';
 import Toast from '../../components/Toast';
 
@@ -11,7 +11,9 @@ export default function ProfilePage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [parsing, setParsing] = useState(false);
   const [toast, setToast] = useState(null);
+  const fileRef = useRef(null);
 
   useEffect(() => {
     api.get('/profile').then((data) => {
@@ -47,6 +49,77 @@ export default function ProfilePage() {
     setSaving(false);
   };
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const ext = file.name.toLowerCase();
+    if (!ext.endsWith('.pdf') && !ext.endsWith('.docx') && !ext.endsWith('.doc') && !ext.endsWith('.txt')) {
+      setToast({ message: 'Please upload a PDF, DOCX, or TXT file', type: 'error' });
+      return;
+    }
+
+    setParsing(true);
+    setToast({ message: 'Parsing your resume with AI...', type: 'success' });
+
+    try {
+      // Get LLM settings from the extension's storage endpoint
+      // Since dashboard can't access chrome.storage, we'll use localStorage or prompt
+      let provider = localStorage.getItem('llm_provider') || 'anthropic';
+      let apiKey = localStorage.getItem('llm_api_key') || '';
+
+      // If no key stored, prompt the user
+      if (!apiKey) {
+        apiKey = prompt('Enter your LLM API key (Anthropic or OpenAI) to parse the resume:');
+        if (!apiKey) {
+          setParsing(false);
+          return;
+        }
+        const providerChoice = prompt('Which provider? Type "anthropic" or "openai":', 'anthropic');
+        provider = providerChoice === 'openai' ? 'openai' : 'anthropic';
+        localStorage.setItem('llm_provider', provider);
+        localStorage.setItem('llm_api_key', apiKey);
+      }
+
+      const formData = new FormData();
+      formData.append('resume', file);
+      formData.append('provider', provider);
+      formData.append('apiKey', apiKey);
+      formData.append('autoSave', 'true');
+
+      const res = await fetch('/api/parse-resume', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Upload failed' }));
+        throw new Error(err.error || 'Upload failed');
+      }
+
+      const data = await res.json();
+      const p = data.profile;
+
+      setForm({
+        full_name: p.full_name || form.full_name,
+        title: p.title || form.title,
+        summary: p.summary || form.summary,
+        skills: Array.isArray(p.skills) ? p.skills.join(', ') : form.skills,
+        experience: p.experience || form.experience,
+        portfolio: p.portfolio || form.portfolio,
+        default_hourly_rate: p.default_hourly_rate || form.default_hourly_rate,
+      });
+
+      setToast({ message: 'Resume parsed and profile updated!', type: 'success' });
+    } catch (err) {
+      setToast({ message: err.message || 'Failed to parse resume', type: 'error' });
+    } finally {
+      setParsing(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
   if (loading) {
     return <div className="animate-pulse text-gray-400">Loading profile...</div>;
   }
@@ -55,6 +128,43 @@ export default function ProfilePage() {
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Profile</h1>
 
+      {/* Resume Upload Card */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-5 mb-6 max-w-3xl">
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+            <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">Import from Resume</h3>
+            <p className="text-xs text-gray-600 mb-3">
+              Upload your CV/resume (PDF, DOCX, or TXT) and AI will automatically extract your profile information.
+            </p>
+            <div className="flex items-center gap-3">
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".pdf,.docx,.doc,.txt"
+                onChange={handleFileUpload}
+                disabled={parsing}
+                className="text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer disabled:opacity-50"
+              />
+              {parsing && (
+                <div className="flex items-center gap-2 text-sm text-blue-600">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Parsing with AI...
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Profile Form */}
       <div className="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
         <div className="space-y-5">
           <Field label="Full Name" name="full_name" value={form.full_name} onChange={handleChange} />
