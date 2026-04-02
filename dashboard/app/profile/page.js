@@ -174,6 +174,13 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* Hook Generator */}
+      <HookGenerator profileTitle={form.title} onApply={(hook) => {
+        const current = form.summary || '';
+        setForm({...form, summary: hook + (current ? '\n\n' + current : '')});
+        setToast({ message: 'Hook applied as the opening of your summary!', type: 'success' });
+      }} />
+
       {/* Profile Form */}
       <div className="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
         <div className="space-y-5">
@@ -449,6 +456,101 @@ export default function ProfilePage() {
       )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+    </div>
+  );
+}
+
+function HookGenerator({ profileTitle, onApply }) {
+  const [hooks, setHooks] = useState(null);
+  const [generating, setGenerating] = useState(false);
+  const [niche, setNiche] = useState('');
+
+  const generate = async () => {
+    const title = profileTitle || niche;
+    if (!title) return;
+    setGenerating(true);
+    setHooks(null);
+    try {
+      let provider = localStorage.getItem('llm_provider') || 'anthropic';
+      let apiKey = localStorage.getItem('llm_api_key') || '';
+      if (!apiKey) {
+        apiKey = prompt('Enter your LLM API key:');
+        if (!apiKey) { setGenerating(false); return; }
+        const choice = prompt('Provider? "anthropic" or "openai":', 'anthropic');
+        provider = choice === 'openai' ? 'openai' : 'anthropic';
+        localStorage.setItem('llm_provider', provider);
+        localStorage.setItem('llm_api_key', apiKey);
+      }
+      const res = await fetch('/api/generate-hooks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, apiKey, profileTitle: title, niche: niche || title }),
+      });
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Failed'); }
+      setHooks(await res.json());
+    } catch (err) {
+      alert(err.message);
+    }
+    setGenerating(false);
+  };
+
+  const styleIcons = { 'metric-driven': '📊', 'question-based': '❓', 'bold-claim': '🎯' };
+  const styleColors = {
+    'metric-driven': 'bg-blue-50 border-blue-200',
+    'question-based': 'bg-amber-50 border-amber-200',
+    'bold-claim': 'bg-purple-50 border-purple-200',
+  };
+
+  return (
+    <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-5 mb-6 max-w-3xl">
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center text-lg">🪝</div>
+        <div className="flex-1">
+          <h3 className="text-sm font-semibold text-gray-900 mb-1">Profile Hook Generator</h3>
+          <p className="text-xs text-gray-600 mb-3">
+            Generate catchy opening hooks with quantifiable benefits. The first 1-2 sentences determine if clients click your profile.
+          </p>
+          <div className="flex gap-2 mb-3">
+            <input type="text" value={niche} onChange={e => setNiche(e.target.value)}
+              placeholder={profileTitle || 'Enter your niche or title...'}
+              className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+              onKeyDown={e => e.key === 'Enter' && generate()} />
+            <button onClick={generate} disabled={generating}
+              className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-purple-700 disabled:opacity-50 whitespace-nowrap">
+              {generating ? 'Generating...' : 'Generate Hooks'}
+            </button>
+          </div>
+
+          {hooks && hooks.hooks && (
+            <div className="space-y-2">
+              {hooks.hooks.map((h, i) => (
+                <div key={i} className={`rounded-lg border p-3 ${styleColors[h.style] || 'bg-gray-50 border-gray-200'}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm">{styleIcons[h.style] || '✨'}</span>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase">{(h.style || '').replace('-', ' ')}</span>
+                      </div>
+                      <p className="text-sm font-medium text-gray-900 leading-relaxed">&ldquo;{h.text}&rdquo;</p>
+                      <p className="text-[11px] text-gray-500 mt-1 italic">{h.why_it_works}</p>
+                    </div>
+                    <button onClick={() => onApply(h.text)}
+                      className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded hover:bg-purple-700 flex-shrink-0">
+                      Use This
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {hooks.tips && hooks.tips.length > 0 && (
+                <div className="text-[11px] text-gray-500 mt-2 p-2 bg-white/50 rounded">
+                  <strong>Tips:</strong> {hooks.tips.join(' • ')}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
