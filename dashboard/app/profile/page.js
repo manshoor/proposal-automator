@@ -14,6 +14,8 @@ export default function ProfilePage() {
   const [parsing, setParsing] = useState(false);
   const [detectedProjects, setDetectedProjects] = useState([]);
   const [savingProjects, setSavingProjects] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysis, setAnalysis] = useState(null);
   const [toast, setToast] = useState(null);
   const fileRef = useRef(null);
 
@@ -197,15 +199,179 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="bg-blue-600 text-white px-6 py-2.5 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {saving ? 'Saving...' : 'Save Profile'}
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-blue-600 text-white px-6 py-2.5 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {saving ? 'Saving...' : 'Save Profile'}
+            </button>
+            <button
+              onClick={async () => {
+                if (!form.summary || form.summary.trim().length < 10) {
+                  setToast({ message: 'Add a Summary/Bio first before analyzing', type: 'error' });
+                  return;
+                }
+                setAnalyzing(true);
+                setAnalysis(null);
+                try {
+                  let provider = localStorage.getItem('llm_provider') || 'anthropic';
+                  let apiKey = localStorage.getItem('llm_api_key') || '';
+                  if (!apiKey) {
+                    apiKey = prompt('Enter your LLM API key to analyze profile:');
+                    if (!apiKey) { setAnalyzing(false); return; }
+                    const choice = prompt('Provider? "anthropic" or "openai":', 'anthropic');
+                    provider = choice === 'openai' ? 'openai' : 'anthropic';
+                    localStorage.setItem('llm_provider', provider);
+                    localStorage.setItem('llm_api_key', apiKey);
+                  }
+                  const res = await fetch('/api/analyze-profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ provider, apiKey, profileDescription: form.summary }),
+                  });
+                  if (!res.ok) {
+                    const err = await res.json().catch(() => ({ error: 'Analysis failed' }));
+                    throw new Error(err.error);
+                  }
+                  const data = await res.json();
+                  setAnalysis(data);
+                  setToast({ message: `Profile scored ${data.score}/100`, type: data.score >= 70 ? 'success' : 'error' });
+                } catch (err) {
+                  setToast({ message: err.message || 'Analysis failed', type: 'error' });
+                }
+                setAnalyzing(false);
+              }}
+              disabled={analyzing}
+              className="bg-purple-600 text-white px-6 py-2.5 rounded-md text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors"
+            >
+              {analyzing ? 'Analyzing...' : 'Analyze Profile'}
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Profile Analysis Results */}
+      {analysis && (
+        <div className="bg-white rounded-lg shadow-sm p-6 mt-6 max-w-3xl border-l-4 border-purple-500">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Profile Analysis</h2>
+            <span className={`text-3xl font-bold px-3 py-1 rounded-lg ${
+              analysis.score >= 80 ? 'bg-green-100 text-green-700' :
+              analysis.score >= 60 ? 'bg-yellow-100 text-yellow-700' :
+              'bg-red-100 text-red-700'
+            }`}>{analysis.score}</span>
+          </div>
+
+          {/* Headline */}
+          {analysis.headline && (
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-xs font-bold text-gray-500 uppercase">Headline</span>
+                <span className={`text-sm font-bold px-2 py-0.5 rounded ${
+                  analysis.headline.score >= 80 ? 'bg-green-100 text-green-700' :
+                  analysis.headline.score >= 60 ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-red-100 text-red-700'
+                }`}>{analysis.headline.score}</span>
+              </div>
+              <p className="text-sm text-gray-600">{analysis.headline.feedback}</p>
+              {analysis.headline.suggestion && (
+                <div className="mt-2 p-2 bg-green-50 rounded text-sm text-green-800 border-l-3 border-green-500">
+                  <strong>Suggested:</strong> {analysis.headline.suggestion}
+                  <button onClick={() => setForm({...form, title: analysis.headline.suggestion})}
+                    className="ml-2 text-xs bg-green-600 text-white px-2 py-0.5 rounded hover:bg-green-700">Apply</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* First Impression */}
+          {analysis.first_impression && (
+            <div className="mb-4 p-3 bg-amber-50 rounded-lg border-l-3 border-amber-500">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-xs font-bold text-gray-500 uppercase">First Impression (search preview)</span>
+                <span className={`text-sm font-bold px-2 py-0.5 rounded ${
+                  analysis.first_impression.score >= 80 ? 'bg-green-100 text-green-700' :
+                  analysis.first_impression.score >= 60 ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-red-100 text-red-700'
+                }`}>{analysis.first_impression.score}</span>
+              </div>
+              <p className="text-sm text-gray-600">{analysis.first_impression.feedback}</p>
+            </div>
+          )}
+
+          {/* Overview Strengths & Weaknesses */}
+          {analysis.overview && (
+            <div className="mb-4 grid grid-cols-2 gap-3">
+              <div className="p-3 bg-green-50 rounded-lg">
+                <span className="text-xs font-bold text-green-700 uppercase">Strengths</span>
+                <ul className="text-sm text-green-800 mt-1 list-disc pl-4">
+                  {(analysis.overview.strengths || []).map((s, i) => <li key={i}>{s}</li>)}
+                </ul>
+              </div>
+              <div className="p-3 bg-red-50 rounded-lg">
+                <span className="text-xs font-bold text-red-700 uppercase">Weaknesses</span>
+                <ul className="text-sm text-red-800 mt-1 list-disc pl-4">
+                  {(analysis.overview.weaknesses || []).map((s, i) => <li key={i}>{s}</li>)}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* SEO Keywords */}
+          {analysis.seo && (
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-bold text-gray-500 uppercase">SEO / Search Visibility</span>
+                <span className={`text-sm font-bold px-2 py-0.5 rounded ${
+                  analysis.seo.score >= 80 ? 'bg-green-100 text-green-700' :
+                  analysis.seo.score >= 60 ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-red-100 text-red-700'
+                }`}>{analysis.seo.score}</span>
+              </div>
+              <p className="text-sm text-gray-600 mb-2">{analysis.seo.feedback}</p>
+              <div className="flex flex-wrap gap-1">
+                {(analysis.seo.keywords_found || []).map(k => (
+                  <span key={k} className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{k}</span>
+                ))}
+                {(analysis.seo.keywords_missing || []).map(k => (
+                  <span key={k} className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">+ {k}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Improvements */}
+          {analysis.improvements && analysis.improvements.length > 0 && (
+            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+              <span className="text-xs font-bold text-blue-700 uppercase">Top Improvements</span>
+              <ol className="text-sm text-blue-800 mt-1 list-decimal pl-4 space-y-1">
+                {analysis.improvements.map((imp, i) => <li key={i}>{imp}</li>)}
+              </ol>
+            </div>
+          )}
+
+          {/* Rewritten Profile */}
+          {analysis.rewrite && (
+            <div className="p-3 bg-purple-50 rounded-lg border-l-3 border-purple-500">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-bold text-purple-700 uppercase">AI-Rewritten Profile</span>
+                <button onClick={() => {
+                  setForm({...form, summary: analysis.rewrite});
+                  setToast({ message: 'Rewritten profile applied to Summary field', type: 'success' });
+                }}
+                  className="text-xs bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700">
+                  Apply Rewrite
+                </button>
+              </div>
+              <p className="text-sm text-purple-900 whitespace-pre-wrap">{analysis.rewrite}</p>
+            </div>
+          )}
+
+          <button onClick={() => setAnalysis(null)} className="text-xs text-gray-400 mt-3 hover:text-gray-600">Dismiss</button>
+        </div>
+      )}
 
       {/* Detected Projects from Resume */}
       {detectedProjects.length > 0 && (
