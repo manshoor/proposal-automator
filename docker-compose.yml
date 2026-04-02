@@ -6,7 +6,8 @@ services:
     ports:
       - "3002:3000"
     volumes:
-      - ./backend:/app
+      - ./backend:/app           # Source code mount for hot-reload
+      - /app/node_modules        # Anonymous volume — keeps node_modules inside Docker only
     env_file:
       - .env
     depends_on:
@@ -20,7 +21,9 @@ services:
     ports:
       - "3003:3000"
     volumes:
-      - ./dashboard:/app
+      - ./dashboard:/app         # Source code mount for hot-reload
+      - /app/node_modules        # Anonymous volume — keeps node_modules inside Docker only
+      - /app/.next               # Anonymous volume — keeps .next build cache inside Docker
     environment:
       - API_URL=http://backend:3000
     depends_on:
@@ -35,12 +38,9 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data   # Stored locally in ./data/postgres/
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
-
-volumes:
-  pgdata:
