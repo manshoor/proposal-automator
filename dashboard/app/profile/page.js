@@ -12,6 +12,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [parsing, setParsing] = useState(false);
+  const [detectedProjects, setDetectedProjects] = useState([]);
+  const [savingProjects, setSavingProjects] = useState(false);
   const [toast, setToast] = useState(null);
   const fileRef = useRef(null);
 
@@ -111,7 +113,13 @@ export default function ProfilePage() {
         default_hourly_rate: p.default_hourly_rate || form.default_hourly_rate,
       });
 
-      setToast({ message: 'Resume parsed and profile updated!', type: 'success' });
+      // Show detected projects
+      if (data.projects && data.projects.length > 0) {
+        setDetectedProjects(data.projects);
+        setToast({ message: `Profile updated! Found ${data.projects.length} projects — review below.`, type: 'success' });
+      } else {
+        setToast({ message: 'Resume parsed and profile updated!', type: 'success' });
+      }
     } catch (err) {
       setToast({ message: err.message || 'Failed to parse resume', type: 'error' });
     } finally {
@@ -198,6 +206,81 @@ export default function ProfilePage() {
           </button>
         </div>
       </div>
+
+      {/* Detected Projects from Resume */}
+      {detectedProjects.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mt-6 max-w-3xl">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Projects Found in Resume</h2>
+              <p className="text-sm text-gray-600">We detected {detectedProjects.length} projects. Select the ones you want to add to your portfolio.</p>
+            </div>
+            <button
+              onClick={async () => {
+                const selected = detectedProjects.filter((_, i) => {
+                  const cb = document.getElementById(`proj-check-${i}`);
+                  return cb && cb.checked;
+                });
+                if (selected.length === 0) { setToast({ message: 'No projects selected', type: 'error' }); return; }
+                setSavingProjects(true);
+                try {
+                  let saved = 0;
+                  for (const p of selected) {
+                    await api.post('/projects', {
+                      name: p.name,
+                      description: p.description,
+                      technologies: p.technologies || [],
+                      category: p.category || 'Other',
+                      client_name: p.client_name || '',
+                      outcome: p.outcome || '',
+                      url: p.url || '',
+                    });
+                    saved++;
+                  }
+                  setToast({ message: `${saved} projects added to your portfolio!`, type: 'success' });
+                  setDetectedProjects([]);
+                } catch (err) {
+                  setToast({ message: 'Failed to save projects', type: 'error' });
+                }
+                setSavingProjects(false);
+              }}
+              disabled={savingProjects}
+              className="bg-amber-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-amber-700 disabled:opacity-50 flex-shrink-0"
+            >
+              {savingProjects ? 'Saving...' : 'Add Selected'}
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {detectedProjects.map((p, i) => (
+              <label key={i} className="flex items-start gap-3 bg-white rounded-md p-3 border border-amber-100 cursor-pointer hover:border-amber-300">
+                <input type="checkbox" id={`proj-check-${i}`} defaultChecked className="mt-1 rounded border-gray-300" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-gray-900 text-sm">{p.name}</div>
+                  {p.description && <div className="text-xs text-gray-600 mt-1 line-clamp-2">{p.description}</div>}
+                  {p.technologies && p.technologies.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {p.technologies.map(t => (
+                        <span key={t} className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{t}</span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="text-[10px] text-gray-400 mt-1">
+                    {p.category}{p.client_name ? ` • ${p.client_name}` : ''}{p.outcome ? ` • ${p.outcome}` : ''}
+                  </div>
+                </div>
+              </label>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setDetectedProjects([])}
+            className="text-sm text-gray-500 mt-3 hover:text-gray-700"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
