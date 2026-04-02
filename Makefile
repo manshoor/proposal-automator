@@ -252,6 +252,83 @@ setup-prod:
 	@sleep 30
 	@$(MAKE) health
 
+### Git Flow ###############################################
+
+# Start a new feature branch from develop
+# Usage: make feature NAME=my-feature-name
+feature:
+	@test -n "$(NAME)" || (echo "ERROR: specify NAME=feature-name" && exit 1)
+	git checkout develop
+	git pull origin develop
+	git checkout -b feature/$(NAME)
+	@echo "Created feature/$(NAME) from develop"
+
+# Finish a feature — merge to develop via PR
+# Usage: make feature-done
+feature-done:
+	@BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
+	if echo "$$BRANCH" | grep -q "^feature/"; then \
+		git push -u origin $$BRANCH; \
+		gh pr create --base develop --title "$$BRANCH" --body "Feature branch merge to develop" --fill; \
+	else \
+		echo "ERROR: Not on a feature branch (current: $$BRANCH)"; \
+	fi
+
+# Start a release branch from develop
+# Usage: make release VERSION=1.1.0
+release:
+	@test -n "$(VERSION)" || (echo "ERROR: specify VERSION=x.x.x" && exit 1)
+	git checkout develop
+	git pull origin develop
+	git checkout -b release/$(VERSION)
+	@echo "Created release/$(VERSION) from develop"
+
+# Finish a release — merge to main and develop, tag it
+# Usage: make release-done VERSION=1.1.0
+release-done:
+	@test -n "$(VERSION)" || (echo "ERROR: specify VERSION=x.x.x" && exit 1)
+	git checkout main
+	git pull origin main
+	git merge --no-ff release/$(VERSION) -m "Release $(VERSION)"
+	git tag -a v$(VERSION) -m "Release $(VERSION)"
+	git push origin main --tags
+	git checkout develop
+	git merge --no-ff release/$(VERSION) -m "Merge release $(VERSION) back to develop"
+	git push origin develop
+	git branch -d release/$(VERSION)
+	git push origin --delete release/$(VERSION)
+	@echo "Released v$(VERSION) — merged to main + develop, tagged"
+
+# Start a hotfix branch from main
+# Usage: make hotfix NAME=fix-critical-bug
+hotfix:
+	@test -n "$(NAME)" || (echo "ERROR: specify NAME=hotfix-name" && exit 1)
+	git checkout main
+	git pull origin main
+	git checkout -b hotfix/$(NAME)
+	@echo "Created hotfix/$(NAME) from main"
+
+# Finish a hotfix — merge to both main and develop
+# Usage: make hotfix-done
+hotfix-done:
+	@BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
+	if echo "$$BRANCH" | grep -q "^hotfix/"; then \
+		git checkout main && git merge --no-ff $$BRANCH -m "Hotfix: $$BRANCH" && git push origin main; \
+		git checkout develop && git merge --no-ff $$BRANCH -m "Merge $$BRANCH to develop" && git push origin develop; \
+		git branch -d $$BRANCH && git push origin --delete $$BRANCH; \
+		echo "Hotfix merged to main + develop"; \
+	else \
+		echo "ERROR: Not on a hotfix branch (current: $$BRANCH)"; \
+	fi
+
+# Show current branch and status
+branch:
+	@echo "Current branch: $$(git rev-parse --abbrev-ref HEAD)"
+	@echo ""
+	@git log --oneline -5
+	@echo ""
+	@git status -s
+
 ### Help ###################################################
 
 help:
@@ -293,6 +370,15 @@ help:
 	@echo "CLEANUP:"
 	@echo "  make down-v             Stop and remove volumes"
 	@echo "  make prune-force        Remove all Docker artifacts"
+	@echo ""
+	@echo "GIT FLOW:"
+	@echo "  make feature NAME=x     Start feature branch from develop"
+	@echo "  make feature-done       Push + create PR to develop"
+	@echo "  make release VERSION=x  Start release branch from develop"
+	@echo "  make release-done VERSION=x  Merge to main, tag, merge back"
+	@echo "  make hotfix NAME=x      Start hotfix branch from main"
+	@echo "  make hotfix-done        Merge to main + develop"
+	@echo "  make branch             Show current branch + status"
 
 .PHONY: build up up-d up-d-build up-d-build-backend up-d-build-dashboard \
 	build-prod up-d-prod up-d-prod-build \
@@ -304,4 +390,5 @@ help:
 	shell-backend shell-dashboard shell-db \
 	health status test-api \
 	clean-uploads clean-up-deep prune-force \
-	setup setup-prod help
+	setup setup-prod help \
+	feature feature-done release release-done hotfix hotfix-done branch
