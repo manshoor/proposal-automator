@@ -48,7 +48,9 @@
       "Bash(node -c extension/content/job-filter.js)",
       "Bash(node -c extension/content/feed-ui.js)",
       "Bash(node -c backend/api/settings.js)",
-      "Bash(node -c backend/server.js)"
+      "Bash(node -c backend/server.js)",
+      "Read(//Users/manshoor/development/projects/office/chromePlugin/backend/**)",
+      "Read(//Users/manshoor/development/projects/office/chromePlugin/dashboard/**)"
     ]
   }
 }
