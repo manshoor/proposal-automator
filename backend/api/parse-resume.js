@@ -59,7 +59,7 @@ router.post('/', upload.single('resume'), async (req, res) => {
   const text = rawText.substring(0, 8000);
 
   // Ask LLM to extract structured profile
-  const systemPrompt = `You are a resume parser. Extract structured profile information from the resume text provided. Return ONLY valid JSON with these exact fields:
+  const systemPrompt = `You are a resume parser. Extract structured profile information AND any projects/portfolio items from the resume text. Return ONLY valid JSON with these exact fields:
 
 {
   "full_name": "Person's full name",
@@ -68,7 +68,18 @@ router.post('/', upload.single('resume'), async (req, res) => {
   "skills": ["skill1", "skill2", "skill3"],
   "experience": "Key experience highlights, formatted as a concise paragraph",
   "portfolio": "Notable projects, achievements, or portfolio highlights",
-  "default_hourly_rate": 50
+  "default_hourly_rate": 50,
+  "projects": [
+    {
+      "name": "Project name",
+      "description": "What was built, the challenge, and the result",
+      "technologies": ["React", "Node.js"],
+      "category": "Web Development",
+      "client_name": "Client or company if mentioned",
+      "outcome": "Results or metrics if mentioned",
+      "url": "URL if mentioned"
+    }
+  ]
 }
 
 Rules:
@@ -78,6 +89,9 @@ Rules:
 - Experience should highlight the most impressive and relevant achievements
 - Portfolio should list notable projects with brief descriptions
 - For hourly rate, estimate based on experience level and skills (junior: 25-40, mid: 40-75, senior: 75-150)
+- For projects: extract EVERY project, portfolio item, or notable work mentioned in the resume
+- Project category should be one of: Web Development, Mobile App, E-commerce, UI/UX Design, API/Backend, WordPress/CMS, Data/Automation, Other
+- If no projects are found, set "projects" to an empty array []
 - Return ONLY the JSON object, no markdown fences, no explanation`;
 
   const userPrompt = `Parse this resume and extract the profile data:\n\n${text}`;
@@ -115,6 +129,17 @@ Rules:
     default_hourly_rate: parseFloat(profileData.default_hourly_rate) || 50,
   };
 
+  // Extract projects
+  const projects = Array.isArray(profileData.projects) ? profileData.projects.map(p => ({
+    name: p.name || '',
+    description: p.description || '',
+    technologies: Array.isArray(p.technologies) ? p.technologies : [],
+    category: p.category || 'Other',
+    client_name: p.client_name || '',
+    outcome: p.outcome || '',
+    url: p.url || '',
+  })).filter(p => p.name) : [];
+
   // Optionally auto-save to database
   if (req.body.autoSave === 'true' || req.body.autoSave === true) {
     try {
@@ -141,7 +166,24 @@ Rules:
     }
   }
 
-  res.json({ profile, rawTextLength: text.length });
+  // Optionally save projects to database
+  let savedProjects = [];
+  if ((req.body.saveProjects === 'true' || req.body.saveProjects === true) && projects.length > 0) {
+    for (const p of projects) {
+      try {
+        const { rows } = await pool.query(
+          `INSERT INTO projects (name, description, technologies, category, client_name, outcome, url)
+           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+          [p.name, p.description, p.technologies, p.category, p.client_name, p.outcome, p.url || null]
+        );
+        savedProjects.push(rows[0]);
+      } catch (dbErr) {
+        console.error('Save project failed:', dbErr.message);
+      }
+    }
+  }
+
+  res.json({ profile, projects, savedProjects, rawTextLength: text.length });
 });
 
 export default router;

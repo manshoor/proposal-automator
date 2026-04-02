@@ -53,7 +53,8 @@
       "Read(//Users/manshoor/development/projects/office/chromePlugin/dashboard/**)",
       "Bash(make help:*)",
       "Bash(make health:*)",
-      "Bash(make test-api:*)"
+      "Bash(make test-api:*)",
+      "Bash(node -c backend/api/parse-resume.js)"
     ]
   }
 }
