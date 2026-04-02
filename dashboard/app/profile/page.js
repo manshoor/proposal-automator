@@ -286,7 +286,11 @@ export default function ProfilePage() {
               {analysis.headline.suggestion && (
                 <div className="mt-2 p-2 bg-green-50 rounded text-sm text-green-800 border-l-3 border-green-500">
                   <strong>Suggested:</strong> {analysis.headline.suggestion}
-                  <button onClick={() => setForm({...form, title: analysis.headline.suggestion})}
+                  <button onClick={() => {
+                    setForm(prev => ({...prev, title: analysis.headline.suggestion}));
+                    setToast({ message: 'Headline applied to Professional Title field!', type: 'success' });
+                    setTimeout(() => document.querySelector('input[name="title"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                  }}
                     className="ml-2 text-xs bg-green-600 text-white px-2 py-0.5 rounded hover:bg-green-700">Apply</button>
                 </div>
               )}
@@ -365,8 +369,9 @@ export default function ProfilePage() {
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-bold text-purple-700 uppercase">AI-Rewritten Profile</span>
                 <button onClick={() => {
-                  setForm({...form, summary: analysis.rewrite});
-                  setToast({ message: 'Rewritten profile applied to Summary field', type: 'success' });
+                  setForm(prev => ({...prev, summary: analysis.rewrite}));
+                  setToast({ message: 'Rewritten profile applied to Summary field!', type: 'success' });
+                  setTimeout(() => document.querySelector('textarea[name="summary"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
                 }}
                   className="text-xs bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700">
                   Apply Rewrite

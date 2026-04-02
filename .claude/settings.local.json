@@ -57,7 +57,8 @@
       "Bash(node -c backend/api/parse-resume.js)",
       "Bash(node -c backend/api/prompts.js)",
       "Bash(git commit -m ':*)",
-      "Bash(git-flow feature:*)"
+      "Bash(git-flow feature:*)",
+      "Bash(git-flow bugfix:*)"
     ]
   }
 }
