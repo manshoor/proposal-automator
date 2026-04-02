@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 
 import { runMigrations } from './db/migrate.js';
+import pool from './db/pool.js';
 import generateProposalRouter from './api/generate-proposal.js';
 import generateMessageRouter from './api/generate-message.js';
 import profileRouter from './api/profile.js';
@@ -18,9 +19,13 @@ import { join } from 'path';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const IS_PROD = process.env.NODE_ENV === 'production';
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+}));
 app.use(express.json({ limit: '50kb' }));
 
 // Health check
@@ -42,17 +47,53 @@ app.use('/api/parse-projects', parseProjectsRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
-// Start server after running migrations
+// Start server
 async function start() {
+  // Run database migrations
   try {
     await runMigrations();
   } catch (err) {
-    console.error('Migration error — server will still start:', err.message);
+    console.error('Migration error:', err.message);
+    if (IS_PROD) {
+      console.error('Aborting — migration failure in production.');
+      process.exit(1);
+    }
+    console.warn('Continuing despite migration error (development mode).');
   }
 
-  app.listen(PORT, () => {
-    console.log(`Upwork Proposal backend running on http://localhost:${PORT}`);
+  const server = app.listen(PORT, () => {
+    console.log(JSON.stringify({
+      level: 'info',
+      message: `Server running on port ${PORT}`,
+      env: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString(),
+    }));
   });
+
+  // Graceful shutdown
+  const shutdown = (signal) => {
+    console.log(JSON.stringify({
+      level: 'info',
+      message: `${signal} received — shutting down gracefully`,
+      timestamp: new Date().toISOString(),
+    }));
+
+    server.close(() => {
+      pool.end().then(() => {
+        console.log('Database pool closed.');
+        process.exit(0);
+      }).catch(() => process.exit(0));
+    });
+
+    // Force exit after 10 seconds
+    setTimeout(() => {
+      console.error('Forced shutdown after timeout.');
+      process.exit(1);
+    }, 10000);
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 start();
