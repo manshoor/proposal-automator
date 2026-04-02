@@ -8,8 +8,8 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body className="flex min-h-screen">
+    <html lang="en" suppressHydrationWarning>
+      <body className="flex min-h-screen" suppressHydrationWarning>
         <Sidebar />
         <main className="flex-1 ml-64 p-8 overflow-y-auto">
           {children}
