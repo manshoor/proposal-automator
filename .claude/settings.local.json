@@ -50,7 +50,10 @@
       "Bash(node -c backend/api/settings.js)",
       "Bash(node -c backend/server.js)",
       "Read(//Users/manshoor/development/projects/office/chromePlugin/backend/**)",
-      "Read(//Users/manshoor/development/projects/office/chromePlugin/dashboard/**)"
+      "Read(//Users/manshoor/development/projects/office/chromePlugin/dashboard/**)",
+      "Bash(make help:*)",
+      "Bash(make health:*)",
+      "Bash(make test-api:*)"
     ]
   }
 }
