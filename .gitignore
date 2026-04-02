@@ -5,3 +5,5 @@ node_modules/
 .next/
 backend/node_modules/
 dashboard/node_modules/
+data/
+backend/uploads/
