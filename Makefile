@@ -273,7 +273,7 @@ feature-done:
 		git pull origin develop; \
 		git merge --no-ff $$BRANCH -m "Merge $$BRANCH into develop"; \
 		git push origin develop; \
-		git branch -d $$BRANCH; \
+		git branch -D $$BRANCH; \
 		git push origin --delete $$BRANCH 2>/dev/null || true; \
 		echo "✓ $$BRANCH merged into develop and cleaned up"; \
 	else \
