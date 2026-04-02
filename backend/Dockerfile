@@ -1,16 +1,53 @@
-FROM node:20-alpine
-
-# Install deps in /deps (survives host volume mount on /app)
-WORKDIR /deps
-COPY package*.json ./
-RUN npm install
-
+# ============================================
+# Stage 1: Install ALL dependencies (for dev)
+# ============================================
+FROM node:20-alpine AS deps
 WORKDIR /app
-COPY . .
+COPY package.json package-lock.json* ./
+RUN npm ci || npm install
 
+# ============================================
+# Stage 2: Install PRODUCTION dependencies only
+# ============================================
+FROM node:20-alpine AS production-deps
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev || npm install --omit=dev
+
+# ============================================
+# Stage 3: Development target
+# ============================================
+FROM node:20-alpine AS dev
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN mkdir -p uploads
+ENV NODE_ENV=development
+EXPOSE 3000
+COPY docker-entrypoint.dev.sh /docker-entrypoint.dev.sh
+RUN chmod +x /docker-entrypoint.dev.sh
+ENTRYPOINT ["/docker-entrypoint.dev.sh"]
+CMD ["npx", "nodemon", "server.js"]
+
+# ============================================
+# Stage 4: Production target
+# ============================================
+FROM node:20-alpine AS production
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && adduser -S express -u 1001
+
+# Copy production deps and source
+COPY --from=production-deps /app/node_modules ./node_modules
+COPY . .
+RUN mkdir -p uploads && chown -R express:nodejs uploads
+
+ENV NODE_ENV=production
+USER express
 EXPOSE 3000
 
-# Symlink node_modules from /deps into /app at startup
-# This way node_modules lives inside Docker only (in /deps)
-# The symlink appears in /app but points to /deps/node_modules
-ENTRYPOINT ["sh", "-c", "rm -rf /app/node_modules; ln -sf /deps/node_modules /app/node_modules; exec npx --prefix /deps nodemon --watch /app /app/server.js"]
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=10s \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+CMD ["node", "server.js"]
