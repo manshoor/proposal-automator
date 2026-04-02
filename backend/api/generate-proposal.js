@@ -18,7 +18,7 @@ const DEFAULT_PROFILE = {
 };
 
 router.post('/', async (req, res) => {
-  const { jobData, hiddenInstructions, provider, apiKey, templateContent, extraInstruction, existingProposal, selectedProjects } = req.body;
+  const { jobData, hiddenInstructions, provider, apiKey, templateContent, extraInstruction, existingProposal, selectedProjects, platform } = req.body;
 
   // Validate top-level required fields
   const topLevel = validateRequired(['provider', 'apiKey'], req.body);
@@ -48,8 +48,29 @@ router.post('/', async (req, res) => {
     // Non-fatal — fall through with default profile
   }
 
-  // Build prompts
-  const systemPrompt = buildSystemPrompt(profile);
+  // Build prompts — check for custom prompt from DB
+  let systemPrompt = buildSystemPrompt(profile);
+
+  // Fetch platform-specific or master custom prompt
+  const targetPlatform = platform || 'upwork';
+  try {
+    let { rows: promptRows } = await pool.query(
+      'SELECT * FROM prompts WHERE platform = $1 AND is_active = true ORDER BY is_default DESC LIMIT 1',
+      [targetPlatform]
+    );
+    if (promptRows.length === 0) {
+      ({ rows: promptRows } = await pool.query(
+        "SELECT * FROM prompts WHERE platform = 'all' AND is_active = true ORDER BY is_default DESC LIMIT 1"
+      ));
+    }
+    if (promptRows.length > 0) {
+      // Append custom prompt instructions to system prompt
+      systemPrompt += '\n\n--- CUSTOM INSTRUCTIONS ---\n' + promptRows[0].prompt_text;
+    }
+  } catch (e) {
+    // Non-fatal — use default prompt
+  }
+
   let userPrompt = buildUserPrompt(jobData, hiddenInstructions);
 
   // Append template if provided

@@ -186,7 +186,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             templateContent: message.templateContent || null,
             extraInstruction: message.extraInstruction || null,
             existingProposal: message.existingProposal || null,
-            selectedProjects: message.selectedProjects || null
+            selectedProjects: message.selectedProjects || null,
+            platform: message.platform || 'upwork'
           };
           const response = await fetch(`${backendUrl}/api/generate-proposal`, {
             method: 'POST',

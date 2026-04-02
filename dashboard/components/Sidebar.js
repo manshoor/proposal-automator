@@ -8,6 +8,7 @@ const NAV = [
   { href: '/projects', label: 'Projects', icon: '💼' },
   { href: '/proposals', label: 'Proposals', icon: '📄' },
   { href: '/templates', label: 'Templates', icon: '📝' },
+  { href: '/prompts', label: 'Prompts', icon: '💬' },
   { href: '/analytics', label: 'Analytics', icon: '📊' },
   { href: '/settings', label: 'Settings', icon: '⚙️' },
 ];
