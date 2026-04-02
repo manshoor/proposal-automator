@@ -263,9 +263,26 @@ feature:
 	git checkout -b feature/$(NAME)
 	@echo "Created feature/$(NAME) from develop"
 
-# Finish a feature — merge to develop via PR
+# Finish a feature — merge into develop locally, push, delete branch
 # Usage: make feature-done
 feature-done:
+	@BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
+	if echo "$$BRANCH" | grep -q "^feature/"; then \
+		echo "Finishing $$BRANCH..."; \
+		git checkout develop; \
+		git pull origin develop; \
+		git merge --no-ff $$BRANCH -m "Merge $$BRANCH into develop"; \
+		git push origin develop; \
+		git branch -d $$BRANCH; \
+		git push origin --delete $$BRANCH 2>/dev/null || true; \
+		echo "✓ $$BRANCH merged into develop and cleaned up"; \
+	else \
+		echo "ERROR: Not on a feature branch (current: $$BRANCH)"; \
+	fi
+
+# Finish a feature via PR (alternative — creates GitHub PR instead of local merge)
+# Usage: make feature-pr
+feature-pr:
 	@BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
 	if echo "$$BRANCH" | grep -q "^feature/"; then \
 		git push -u origin $$BRANCH; \
@@ -373,7 +390,8 @@ help:
 	@echo ""
 	@echo "GIT FLOW:"
 	@echo "  make feature NAME=x     Start feature branch from develop"
-	@echo "  make feature-done       Push + create PR to develop"
+	@echo "  make feature-done       Merge into develop locally + push + cleanup"
+	@echo "  make feature-pr         Push + create GitHub PR (alternative)"
 	@echo "  make release VERSION=x  Start release branch from develop"
 	@echo "  make release-done VERSION=x  Merge to main, tag, merge back"
 	@echo "  make hotfix NAME=x      Start hotfix branch from main"
@@ -391,4 +409,4 @@ help:
 	health status test-api \
 	clean-uploads clean-up-deep prune-force \
 	setup setup-prod help \
-	feature feature-done release release-done hotfix hotfix-done branch
+	feature feature-done feature-pr release release-done hotfix hotfix-done branch

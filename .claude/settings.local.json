@@ -54,7 +54,9 @@
       "Bash(make help:*)",
       "Bash(make health:*)",
       "Bash(make test-api:*)",
-      "Bash(node -c backend/api/parse-resume.js)"
+      "Bash(node -c backend/api/parse-resume.js)",
+      "Bash(node -c backend/api/prompts.js)",
+      "Bash(git commit -m ':*)"
     ]
   }
 }
