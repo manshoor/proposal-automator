@@ -15,6 +15,7 @@ import settingsRouter from './api/settings.js';
 import projectsRouter from './api/projects.js';
 import parseProjectsRouter from './api/parse-projects.js';
 import uploadRouter from './api/upload.js';
+import promptsRouter from './api/prompts.js';
 import { join } from 'path';
 
 const app = express();
@@ -45,6 +46,7 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/parse-projects', parseProjectsRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api/prompts', promptsRouter);
 app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
 // Start server
