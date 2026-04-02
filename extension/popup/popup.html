@@ -189,6 +189,50 @@
           <button class="qe-btn" data-instruction="Make it more technical with specific technical details">Technical</button>
           <button class="qe-btn" data-instruction="Make it more casual and conversational">Casual</button>
           <button class="qe-btn" data-instruction="Add urgency and emphasize fast delivery">Urgent</button>
+          <button id="btn-analyze" class="qe-btn qe-btn-analyze">Analyze</button>
+        </div>
+
+        <!-- Proposal Analysis Panel -->
+        <div id="analysis-panel" class="analysis-panel hidden">
+          <div class="analysis-header">
+            <span class="analysis-title">Proposal Analysis</span>
+            <span id="analysis-score" class="analysis-score"></span>
+          </div>
+
+          <div id="analysis-first230" class="analysis-section">
+            <div class="analysis-section-header">
+              <span>First 230 Characters</span>
+              <span id="analysis-first230-score" class="analysis-mini-score"></span>
+            </div>
+            <div id="analysis-first230-text" class="analysis-highlight"></div>
+            <div id="analysis-first230-feedback" class="analysis-feedback"></div>
+            <div id="analysis-first230-suggestion" class="analysis-suggestion hidden">
+              <strong>Suggested rewrite:</strong>
+              <div id="analysis-suggestion-text"></div>
+              <button id="btn-apply-suggestion" class="qe-btn" style="margin-top:6px;">Apply Suggestion</button>
+            </div>
+          </div>
+
+          <div class="analysis-grid">
+            <div class="analysis-metric">
+              <div class="analysis-metric-label">Relevance</div>
+              <div id="analysis-relevance-score" class="analysis-mini-score"></div>
+              <div id="analysis-relevance-feedback" class="analysis-feedback"></div>
+              <div id="analysis-skills" class="analysis-skills"></div>
+            </div>
+            <div class="analysis-metric">
+              <div class="analysis-metric-label">Clarity</div>
+              <div id="analysis-clarity-score" class="analysis-mini-score"></div>
+              <div id="analysis-clarity-feedback" class="analysis-feedback"></div>
+            </div>
+            <div class="analysis-metric">
+              <div class="analysis-metric-label">Tone</div>
+              <div id="analysis-tone-score" class="analysis-mini-score"></div>
+              <div id="analysis-tone-feedback" class="analysis-feedback"></div>
+            </div>
+          </div>
+
+          <div id="analysis-improvements" class="analysis-improvements"></div>
         </div>
 
         <!-- Milestones Preview -->

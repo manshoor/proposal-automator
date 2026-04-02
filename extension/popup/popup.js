@@ -832,6 +832,116 @@ btnAbTest.addEventListener('click', async () => {
   }
 });
 
+// Analyze Proposal
+document.getElementById('btn-analyze').addEventListener('click', async () => {
+  if (!_generatedProposal || !_currentJobData) return;
+
+  const btn = document.getElementById('btn-analyze');
+  btn.disabled = true;
+  btn.textContent = 'Analyzing...';
+
+  try {
+    const response = await sendToBackground({
+      type: 'ANALYZE_PROPOSAL',
+      coverLetter: _generatedProposal.coverLetter,
+      jobTitle: _currentJobData.title,
+      jobDescription: _currentJobData.description,
+      jobSkills: _currentJobData.skills || []
+    });
+
+    if (!response || !response.success) {
+      alert('Analysis failed: ' + ((response && response.error) || 'Unknown error'));
+      return;
+    }
+
+    const a = response.data;
+    const panel = document.getElementById('analysis-panel');
+
+    // Overall score
+    const scoreEl = document.getElementById('analysis-score');
+    scoreEl.textContent = a.score;
+    scoreEl.className = 'analysis-score ' + (a.score >= 80 ? 'score-high' : a.score >= 60 ? 'score-med' : 'score-low');
+
+    // First 230 characters
+    if (a.first230) {
+      document.getElementById('analysis-first230-text').textContent = a.first230.text || _generatedProposal.coverLetter.substring(0, 230);
+      const f230Score = document.getElementById('analysis-first230-score');
+      f230Score.textContent = a.first230.score;
+      f230Score.className = 'analysis-mini-score ' + (a.first230.score >= 80 ? 'score-high' : a.first230.score >= 60 ? 'score-med' : 'score-low');
+      document.getElementById('analysis-first230-feedback').textContent = a.first230.feedback || '';
+
+      if (a.first230.suggestion) {
+        const sugSection = document.getElementById('analysis-first230-suggestion');
+        sugSection.classList.remove('hidden');
+        document.getElementById('analysis-suggestion-text').textContent = a.first230.suggestion;
+
+        // Wire up Apply Suggestion button
+        const applyBtn = document.getElementById('btn-apply-suggestion');
+        const newApplyBtn = applyBtn.cloneNode(true);
+        applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
+        newApplyBtn.addEventListener('click', () => {
+          const current = coverLetterText.value;
+          const newText = a.first230.suggestion + current.substring(230);
+          coverLetterText.value = newText;
+          _generatedProposal.coverLetter = newText;
+          chrome.storage.local.set({ lastProposal: Object.assign({}, _generatedProposal, { jobUrl: _currentJobData.url }) });
+          showQualityIndicators(newText);
+          newApplyBtn.textContent = 'Applied!';
+          newApplyBtn.disabled = true;
+        });
+      }
+    }
+
+    // Relevance
+    if (a.relevance) {
+      const relScore = document.getElementById('analysis-relevance-score');
+      relScore.textContent = a.relevance.score;
+      relScore.className = 'analysis-mini-score ' + (a.relevance.score >= 80 ? 'score-high' : a.relevance.score >= 60 ? 'score-med' : 'score-low');
+      document.getElementById('analysis-relevance-feedback').textContent = a.relevance.feedback || '';
+
+      const skillsEl = document.getElementById('analysis-skills');
+      skillsEl.innerHTML = '';
+      (a.relevance.matchedSkills || []).forEach(s => {
+        skillsEl.innerHTML += '<span class="analysis-skill-matched">' + s + '</span>';
+      });
+      (a.relevance.missedSkills || []).forEach(s => {
+        skillsEl.innerHTML += '<span class="analysis-skill-missed">' + s + '</span>';
+      });
+    }
+
+    // Clarity
+    if (a.clarity) {
+      const clScore = document.getElementById('analysis-clarity-score');
+      clScore.textContent = a.clarity.score;
+      clScore.className = 'analysis-mini-score ' + (a.clarity.score >= 80 ? 'score-high' : a.clarity.score >= 60 ? 'score-med' : 'score-low');
+      document.getElementById('analysis-clarity-feedback').textContent = a.clarity.feedback || '';
+    }
+
+    // Tone
+    if (a.tone) {
+      const toneScore = document.getElementById('analysis-tone-score');
+      toneScore.textContent = a.tone.score;
+      toneScore.className = 'analysis-mini-score ' + (a.tone.score >= 80 ? 'score-high' : a.tone.score >= 60 ? 'score-med' : 'score-low');
+      document.getElementById('analysis-tone-feedback').textContent = a.tone.feedback || '';
+    }
+
+    // Improvements
+    if (a.improvements && a.improvements.length > 0) {
+      const impEl = document.getElementById('analysis-improvements');
+      impEl.innerHTML = '<strong style="font-size:11px;color:#6b7280;">Improvements:</strong><ol>' +
+        a.improvements.map(i => '<li>' + i + '</li>').join('') + '</ol>';
+    }
+
+    panel.classList.remove('hidden');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (err) {
+    alert('Analysis error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Analyze';
+  }
+});
+
 // Quick-Edit Toolbar
 document.querySelectorAll('.qe-btn').forEach(btn => {
   btn.addEventListener('click', async () => {

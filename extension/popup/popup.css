@@ -796,3 +796,156 @@ main {
   font-size: 10px;
   color: #9ca3af;
 }
+
+/* ----- Proposal Analysis Panel ----- */
+
+.qe-btn-analyze {
+  background: #7c3aed !important;
+  color: #fff !important;
+  border-color: #7c3aed !important;
+}
+
+.analysis-panel {
+  margin-top: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fafafa;
+}
+
+.analysis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.analysis-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.analysis-score {
+  font-size: 22px;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: 8px;
+}
+
+.analysis-score.score-high { background: #dcfce7; color: #166534; }
+.analysis-score.score-med  { background: #fef9c3; color: #854d0e; }
+.analysis-score.score-low  { background: #fee2e2; color: #991b1b; }
+
+.analysis-section {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.analysis-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.analysis-mini-score {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+.analysis-highlight {
+  font-size: 12px;
+  color: #1f2937;
+  background: #fef3c7;
+  padding: 6px 8px;
+  border-radius: 4px;
+  border-left: 3px solid #f59e0b;
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+.analysis-feedback {
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.analysis-suggestion {
+  margin-top: 6px;
+  font-size: 11px;
+  background: #ecfdf5;
+  padding: 8px;
+  border-radius: 4px;
+  border-left: 3px solid #22c55e;
+  color: #065f46;
+}
+
+.analysis-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.analysis-metric {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.analysis-metric-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.analysis-skills {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.analysis-skill-matched {
+  font-size: 9px;
+  background: #dcfce7;
+  color: #166534;
+  padding: 1px 5px;
+  border-radius: 8px;
+}
+
+.analysis-skill-missed {
+  font-size: 9px;
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 1px 5px;
+  border-radius: 8px;
+}
+
+.analysis-improvements {
+  font-size: 11px;
+  color: #374151;
+}
+
+.analysis-improvements ol {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.analysis-improvements li {
+  margin-bottom: 3px;
+  line-height: 1.4;
+}

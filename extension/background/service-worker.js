@@ -209,6 +209,43 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     // ------------------------------------------------------------------
+    case 'ANALYZE_PROPOSAL': {
+      (async () => {
+        try {
+          const settings = await loadSettings();
+          if (!settings.apiKey) {
+            sendResponse({ success: false, error: 'No API key configured.' });
+            return;
+          }
+          const backendUrl = (settings.backendUrl || 'http://localhost:3002').replace(/\/$/, '');
+          const payload = {
+            coverLetter: message.coverLetter,
+            jobTitle: message.jobTitle || '',
+            jobDescription: message.jobDescription || '',
+            jobSkills: message.jobSkills || [],
+            provider: settings.provider,
+            apiKey: settings.apiKey
+          };
+          const response = await fetch(`${backendUrl}/api/analyze-proposal`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!response.ok) {
+            const errorText = await response.text().catch(() => 'Unknown error');
+            sendResponse({ success: false, error: `Backend returned ${response.status}: ${errorText}` });
+            return;
+          }
+          const data = await response.json();
+          sendResponse({ success: true, data });
+        } catch (err) {
+          sendResponse({ success: false, error: err.message || 'Failed to analyze proposal.' });
+        }
+      })();
+      return true;
+    }
+
+    // ------------------------------------------------------------------
     case 'GENERATE_MESSAGE': {
       (async () => {
         try {
