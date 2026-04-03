@@ -67,7 +67,7 @@ export default function ProposalsPage() {
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm bg-white"
+          className="input bg-white"
         >
           {STATUSES.map(s => (
             <option key={s} value={s}>{s === 'all' ? 'All Statuses' : s.charAt(0).toUpperCase() + s.slice(1)}</option>
@@ -78,12 +78,12 @@ export default function ProposalsPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by job title..."
-          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="flex-1 input"
         />
       </div>
 
       {filtered.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-sm p-12 text-center text-gray-500">
+        <div className="card p-12 text-center text-gray-500">
           <p className="text-lg mb-2">No proposals yet</p>
           <p className="text-sm">Generate your first proposal from the Chrome extension.</p>
         </div>
@@ -169,7 +169,7 @@ function Row({ proposal, expanded, onToggle, onStatusChange, onEarningsUpdate, f
                 <select
                   value={p.status}
                   onChange={(e) => { e.stopPropagation(); onStatusChange(e.target.value); }}
-                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm bg-white"
+                  className="input py-1.5 bg-white"
                 >
                   {['sent', 'hired', 'rejected', 'pending', 'withdrawn'].map(s => (
                     <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
@@ -196,7 +196,7 @@ function Row({ proposal, expanded, onToggle, onStatusChange, onEarningsUpdate, f
                           const val = parseFloat(e.target.value);
                           if (val > 0 && val !== parseFloat(p.earnings)) onEarningsUpdate(val);
                         }}
-                        className="w-32 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                        className="w-32 input py-1"
                       />
                       {p.earnings > 0 && p.connect_cost > 0 && (
                         <span className="text-xs text-green-600 font-medium">

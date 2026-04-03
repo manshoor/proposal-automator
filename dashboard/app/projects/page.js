@@ -191,57 +191,57 @@ export default function ProjectsPage() {
 
       {/* Editor */}
       {editing !== null && (
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border-2 border-blue-200">
+        <div className="card card-body mb-6">
           <h2 className="text-lg font-semibold mb-4">{editing === 'new' ? 'New Project' : 'Edit Project'}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Project Name *</label>
+              <label className="block label">Project Name *</label>
               <input value={form.name} onChange={e => setForm({...form, name: e.target.value})}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="E-commerce Platform Rebuild" />
+                className="w-full input" placeholder="E-commerce Platform Rebuild" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <label className="block label">Category</label>
               <select value={form.category} onChange={e => setForm({...form, category: e.target.value})}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                className="w-full input">
                 <option value="">Select category</option>
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <label className="block label">Description</label>
               <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})}
-                rows={4} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                rows={4} className="w-full input"
                 placeholder="Describe what you built, the challenges, and the results..." />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Technologies (comma-separated)</label>
+              <label className="block label">Technologies (comma-separated)</label>
               <input value={form.technologies} onChange={e => setForm({...form, technologies: e.target.value})}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="React, Node.js, PostgreSQL" />
+                className="w-full input" placeholder="React, Node.js, PostgreSQL" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Project URL</label>
+              <label className="block label">Project URL</label>
               <input value={form.url} onChange={e => setForm({...form, url: e.target.value})}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="https://example.com" />
+                className="w-full input" placeholder="https://example.com" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
+              <label className="block label">Client Name</label>
               <input value={form.client_name} onChange={e => setForm({...form, client_name: e.target.value})}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Acme Corp" />
+                className="w-full input" placeholder="Acme Corp" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Budget Range</label>
+              <label className="block label">Budget Range</label>
               <input value={form.budget_range} onChange={e => setForm({...form, budget_range: e.target.value})}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="$5,000 - $10,000" />
+                className="w-full input" placeholder="$5,000 - $10,000" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+              <label className="block label">Duration</label>
               <input value={form.duration} onChange={e => setForm({...form, duration: e.target.value})}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="3 months" />
+                className="w-full input" placeholder="3 months" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Outcome/Results</label>
+              <label className="block label">Outcome/Results</label>
               <input value={form.outcome} onChange={e => setForm({...form, outcome: e.target.value})}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Increased conversions by 35%" />
+                className="w-full input" placeholder="Increased conversions by 35%" />
             </div>
             <div className="flex items-center gap-2">
               <input type="checkbox" checked={form.is_featured} onChange={e => setForm({...form, is_featured: e.target.checked})}
@@ -272,7 +272,7 @@ export default function ProjectsPage() {
               {/* Add new URL */}
               <div className="flex gap-2">
                 <input type="url" id="new-screenshot-url" placeholder="https://drive.google.com/... or any image URL"
-                  className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="flex-1 input"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -307,14 +307,14 @@ export default function ProjectsPage() {
 
       {/* Project List */}
       {projects.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-sm p-12 text-center text-gray-500">
+        <div className="card p-12 text-center text-gray-500">
           <p className="text-lg mb-2">No projects yet</p>
           <p className="text-sm">Add your portfolio projects so the AI can reference them in proposals.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map(p => (
-            <div key={p.id} className={`bg-white rounded-lg shadow-sm p-5 ${p.is_featured ? 'ring-2 ring-blue-200' : ''}`}>
+            <div key={p.id} className={`card p-5 ${p.is_featured ? 'ring-2 ring-blue-200' : ''}`}>
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <h3 className="font-semibold text-gray-900">{p.name}</h3>

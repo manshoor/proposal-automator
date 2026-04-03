@@ -601,7 +601,7 @@ function HookGenerator({ profileTitle, onApply }) {
           <div className="flex gap-2 mb-3">
             <input type="text" value={niche} onChange={e => setNiche(e.target.value)}
               placeholder={profileTitle || 'Enter your niche or title...'}
-              className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="flex-1 input"
               onKeyDown={e => e.key === 'Enter' && generate()} />
             <button onClick={generate} disabled={generating}
               className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-purple-700 disabled:opacity-50 whitespace-nowrap">

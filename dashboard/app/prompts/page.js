@@ -129,27 +129,27 @@ export default function PromptsPage() {
 
       {/* Editor */}
       {editing !== null && (
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border-2 border-blue-200">
+        <div className="card card-body mb-6">
           <h2 className="text-lg font-semibold mb-4">{editing === 'new' ? 'New Prompt' : 'Edit Prompt'}</h2>
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Prompt Name</label>
+                <label className="block label">Prompt Name</label>
                 <input value={form.name} onChange={e => setForm({...form, name: e.target.value})}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="e.g., Upwork Technical Proposal" />
+                  className="w-full input" placeholder="e.g., Upwork Technical Proposal" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
+                <label className="block label">Platform</label>
                 <select value={form.platform} onChange={e => setForm({...form, platform: e.target.value})}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                  className="w-full input">
                   {PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                 </select>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Prompt Instructions</label>
+              <label className="block label">Prompt Instructions</label>
               <textarea value={form.prompt_text} onChange={e => setForm({...form, prompt_text: e.target.value})}
-                rows={12} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono"
+                rows={12} className="w-full input font-mono"
                 placeholder="Write the instructions that tell the AI how to write proposals for this platform..." />
               <p className="text-xs text-gray-400 mt-1">These instructions are appended to the system prompt when generating proposals. Be specific about tone, length, format, and style.</p>
             </div>
@@ -171,7 +171,7 @@ export default function PromptsPage() {
 
       {/* Prompts grouped by platform */}
       {Object.entries(grouped).length === 0 ? (
-        <div className="bg-white rounded-lg shadow-sm p-12 text-center text-gray-500">
+        <div className="card p-12 text-center text-gray-500">
           <p className="text-lg mb-2">No prompts yet</p>
           <p className="text-sm">The default prompts will be created when you restart the backend.</p>
         </div>
@@ -184,7 +184,7 @@ export default function PromptsPage() {
               </h3>
               <div className="space-y-2">
                 {platformPrompts.map(p => (
-                  <div key={p.id} className={`bg-white rounded-lg shadow-sm p-4 border-l-4 ${p.is_active ? 'border-green-500' : 'border-gray-300'}`}>
+                  <div key={p.id} className={`card p-4 border-l-4 ${p.is_active ? 'border-green-500' : 'border-gray-300'}`}>
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">

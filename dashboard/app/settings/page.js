@@ -112,7 +112,7 @@ export default function SettingsPage() {
 
       <div className="space-y-6 max-w-3xl">
         {/* Target Locations */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="card card-body">
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Target Client Locations</h2>
           <p className="text-sm text-gray-500 mb-4">Clients outside these locations will trigger a warning in the extension.</p>
 
@@ -128,78 +128,78 @@ export default function SettingsPage() {
           <div className="flex gap-2">
             <input type="text" value={newLocation} onChange={(e) => setNewLocation(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addLocation()} placeholder="Add country..."
-              className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm" />
+              className="flex-1 input" />
             <button onClick={addLocation} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">Add</button>
           </div>
         </div>
 
         {/* Vetting Thresholds */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="card card-body">
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Vetting Thresholds</h2>
           <p className="text-sm text-gray-500 mb-4">Clients below these thresholds will be flagged in the extension.</p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Min Spending ($)</label>
+              <label className="block label">Min Spending ($)</label>
               <input type="number" value={thresholds.minSpent}
                 onChange={(e) => setThresholds({ ...thresholds, minSpent: parseInt(e.target.value) || 0 })}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+                className="w-full input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Min Hire Rate (%)</label>
+              <label className="block label">Min Hire Rate (%)</label>
               <input type="number" value={thresholds.minHireRate}
                 onChange={(e) => setThresholds({ ...thresholds, minHireRate: parseInt(e.target.value) || 0 })}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+                className="w-full input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Min Reviews</label>
+              <label className="block label">Min Reviews</label>
               <input type="number" value={thresholds.minReviews}
                 onChange={(e) => setThresholds({ ...thresholds, minReviews: parseInt(e.target.value) || 0 })}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+                className="w-full input" />
             </div>
           </div>
         </div>
 
         {/* Job Feed Filters */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="card card-body">
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Job Feed Filters</h2>
           <p className="text-sm text-gray-500 mb-4">Configure filters for the Upwork job feed. Matching jobs trigger notifications.</p>
 
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Min Budget ($)</label>
+                <label className="block label">Min Budget ($)</label>
                 <input type="number" value={filters.budgetMin} placeholder="Any"
                   onChange={(e) => setFilters({ ...filters, budgetMin: e.target.value })}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+                  className="w-full input" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Max Budget ($)</label>
+                <label className="block label">Max Budget ($)</label>
                 <input type="number" value={filters.budgetMax} placeholder="Any"
                   onChange={(e) => setFilters({ ...filters, budgetMax: e.target.value })}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+                  className="w-full input" />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Required Skills (comma-separated)</label>
+              <label className="block label">Required Skills (comma-separated)</label>
               <input type="text" value={filters.skillsInclude} placeholder="React, Node.js, Python"
                 onChange={(e) => setFilters({ ...filters, skillsInclude: e.target.value })}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+                className="w-full input" />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Keywords Include (comma-separated)</label>
+              <label className="block label">Keywords Include (comma-separated)</label>
               <input type="text" value={filters.keywordsInclude} placeholder="frontend, API, dashboard"
                 onChange={(e) => setFilters({ ...filters, keywordsInclude: e.target.value })}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+                className="w-full input" />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Keywords Exclude (comma-separated)</label>
+              <label className="block label">Keywords Exclude (comma-separated)</label>
               <input type="text" value={filters.keywordsExclude} placeholder="wordpress, shopify"
                 onChange={(e) => setFilters({ ...filters, keywordsExclude: e.target.value })}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+                className="w-full input" />
             </div>
 
             <div className="flex items-center gap-4 pt-2">
@@ -215,7 +215,7 @@ export default function SettingsPage() {
                   <span className="text-sm text-gray-500">Check every</span>
                   <select value={filters.notificationInterval}
                     onChange={(e) => setFilters({ ...filters, notificationInterval: parseInt(e.target.value) })}
-                    className="rounded-md border border-gray-300 px-2 py-1 text-sm">
+                    className="input text-sm">
                     <option value={5}>5 min</option>
                     <option value={10}>10 min</option>
                     <option value={15}>15 min</option>
@@ -228,28 +228,28 @@ export default function SettingsPage() {
         </div>
 
         {/* LLM Configuration */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="card card-body">
           <h2 className="text-lg font-semibold text-gray-900 mb-2">LLM Configuration</h2>
           <p className="text-sm text-gray-500 mb-4">Configure your AI provider and API key. The key is stored encrypted on the server.</p>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Provider</label>
+              <label className="block label">Provider</label>
               <select value={llm.provider}
                 onChange={(e) => setLlm({ ...llm, provider: e.target.value })}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                className="w-full input">
                 <option value="anthropic">Anthropic (Claude)</option>
                 <option value="openai">OpenAI (GPT-4o)</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+              <label className="block label">API Key</label>
               <div className="relative">
                 <input type="password" value={llm.apiKey}
                   onChange={(e) => setLlm({ ...llm, apiKey: e.target.value })}
                   placeholder={llm.apiKeySet ? `Current key: ${llm.apiKeyMasked}` : 'Enter your API key'}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm pr-20" />
+                  className="w-full input pr-20" />
                 {llm.apiKeySet && (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-green-600 font-medium">
                     Key set
@@ -267,7 +267,7 @@ export default function SettingsPage() {
         </div>
 
         <button onClick={handleSave} disabled={saving}
-          className="bg-blue-600 text-white px-6 py-2.5 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+          className="btn-primary">
           {saving ? 'Saving...' : 'Save Settings'}
         </button>
       </div>
