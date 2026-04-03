@@ -388,6 +388,64 @@ export default function ProfilePage() {
             </div>
           )}
 
+          {/* Improved Skills */}
+          {analysis.improved_skills && analysis.improved_skills.length > 0 && (
+            <div className="mt-4 p-3 bg-indigo-50 rounded-lg border-l-3 border-indigo-500">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-bold text-indigo-700 uppercase">Improved Skills</span>
+                <button onClick={() => {
+                  setForm(prev => ({...prev, skills: analysis.improved_skills.join(', ')}));
+                  setToast({ message: 'Improved skills applied!', type: 'success' });
+                  setTimeout(() => document.querySelector('input[name="skills"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                }}
+                  className="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700">
+                  Apply Skills
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {analysis.improved_skills.map(s => (
+                  <span key={s} className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{s}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Improved Experience */}
+          {analysis.improved_experience && (
+            <div className="mt-4 p-3 bg-teal-50 rounded-lg border-l-3 border-teal-500">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-bold text-teal-700 uppercase">Improved Experience</span>
+                <button onClick={() => {
+                  setForm(prev => ({...prev, experience: analysis.improved_experience}));
+                  setToast({ message: 'Improved experience applied!', type: 'success' });
+                  setTimeout(() => document.querySelector('textarea[name="experience"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                }}
+                  className="text-xs bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700">
+                  Apply Experience
+                </button>
+              </div>
+              <p className="text-sm text-teal-900 whitespace-pre-wrap">{analysis.improved_experience}</p>
+            </div>
+          )}
+
+          {/* Improved Portfolio */}
+          {analysis.improved_portfolio && (
+            <div className="mt-4 p-3 bg-orange-50 rounded-lg border-l-3 border-orange-500">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-bold text-orange-700 uppercase">Improved Portfolio Highlights</span>
+                <button onClick={() => {
+                  setForm(prev => ({...prev, portfolio: analysis.improved_portfolio}));
+                  setToast({ message: 'Improved portfolio applied!', type: 'success' });
+                  setTimeout(() => document.querySelector('textarea[name="portfolio"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                }}
+                  className="text-xs bg-orange-600 text-white px-3 py-1 rounded hover:bg-orange-700">
+                  Apply Portfolio
+                </button>
+              </div>
+              <p className="text-sm text-orange-900 whitespace-pre-wrap">{analysis.improved_portfolio}</p>
+            </div>
+          )}
+
           <button onClick={() => setAnalysis(null)} className="text-xs text-gray-400 mt-3 hover:text-gray-600">Dismiss</button>
         </div>
       )}

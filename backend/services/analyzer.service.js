@@ -116,7 +116,10 @@ Return ONLY a valid JSON object (no markdown fences) with this structure:
     "<specific actionable improvement 4>",
     "<specific actionable improvement 5>"
   ],
-  "rewrite": "<a complete rewritten profile description that addresses all issues>"
+  "rewrite": "<a complete rewritten profile description that addresses all issues>",
+  "improved_skills": ["skill1", "skill2", "...optimized skill list — reorder by relevance, add missing high-value skills, remove generic ones"],
+  "improved_experience": "<rewritten experience section — more concise, metric-driven, focused on client outcomes>",
+  "improved_portfolio": "<rewritten portfolio highlights — emphasize results, technologies, and business impact>"
 }
 
 Scoring guide:
@@ -137,12 +140,18 @@ ${description}
 
 SKILLS: ${Array.isArray(profile.skills) ? profile.skills.join(', ') : 'Not set'}
 
+EXPERIENCE:
+${profile.experience || 'Not set'}
+
+PORTFOLIO HIGHLIGHTS:
+${profile.portfolio || 'Not set'}
+
 HOURLY RATE: $${profile.default_hourly_rate || 'Not set'}/hr
 
-Provide detailed analysis with scores, feedback, and a complete rewritten profile description.`;
+Provide detailed analysis with scores, feedback, a complete rewritten profile description, and improved versions of skills, experience, and portfolio.`;
 
   // 4. Call LLM
-  const rawResponse = await callLLM({ provider, apiKey, systemPrompt, userPrompt, maxTokens: 3000 });
+  const rawResponse = await callLLM({ provider, apiKey, systemPrompt, userPrompt, maxTokens: 4000 });
 
   // 5. Parse JSON response
   let analysis;
