@@ -151,10 +151,11 @@ export default function ProfilePage() {
       </div>
 
       {/* Resume Upload Card */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-5 mb-6 max-w-3xl">
-        <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <div className="card overflow-hidden mb-6 max-w-3xl">
+        <div className="h-1 bg-gradient-to-r from-blue-500 to-indigo-500" />
+        <div className="p-5 flex items-start gap-4">
+          <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-lg">
+            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
@@ -194,7 +195,7 @@ export default function ProfilePage() {
       }} />
 
       {/* Profile Form */}
-      <div className="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
+      <div className="card card-body max-w-3xl">
         <div className="space-y-5">
           <Field label="Full Name" name="full_name" value={form.full_name} onChange={handleChange} />
           <Field label="Professional Title" name="title" value={form.title} onChange={handleChange} placeholder="e.g. Full-Stack Developer" />
@@ -204,7 +205,7 @@ export default function ProfilePage() {
           <Field label="Portfolio Highlights" name="portfolio" value={form.portfolio} onChange={handleChange} textarea rows={4} placeholder="Links or descriptions of past work..." />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Default Hourly Rate</label>
+            <label className="label">Default Hourly Rate</label>
             <div className="flex items-center gap-2">
               <span className="text-gray-500">$</span>
               <input
@@ -212,7 +213,7 @@ export default function ProfilePage() {
                 name="default_hourly_rate"
                 value={form.default_hourly_rate}
                 onChange={handleChange}
-                className="w-32 rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="input w-32"
               />
               <span className="text-gray-500 text-sm">/hr</span>
             </div>
@@ -222,7 +223,7 @@ export default function ProfilePage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="bg-blue-600 text-white px-6 py-2.5 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="btn-primary"
             >
               {saving ? 'Saving...' : 'Save Profile'}
             </button>
@@ -263,7 +264,8 @@ export default function ProfilePage() {
                 setAnalyzing(false);
               }}
               disabled={analyzing}
-              className="bg-purple-600 text-white px-6 py-2.5 rounded-md text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors"
+              className="text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)', boxShadow: '0 2px 8px rgba(124, 58, 237, 0.3)' }}
             >
               {analyzing ? 'Analyzing...' : 'Analyze Profile'}
             </button>
@@ -273,10 +275,11 @@ export default function ProfilePage() {
 
       {/* Profile Analysis Results */}
       {analysis && (
-        <div className="bg-white rounded-lg shadow-sm p-6 mt-6 max-w-3xl border-l-4 border-purple-500">
+        <div className="card card-body mt-6 max-w-3xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-pink-500" />
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Profile Analysis</h2>
-            <span className={`text-3xl font-bold px-3 py-1 rounded-lg ${
+            <span className={`text-3xl font-extrabold px-4 py-1.5 rounded-xl shadow-sm ${
               analysis.score >= 80 ? 'bg-green-100 text-green-700' :
               analysis.score >= 60 ? 'bg-yellow-100 text-yellow-700' :
               'bg-red-100 text-red-700'
@@ -285,7 +288,7 @@ export default function ProfilePage() {
 
           {/* Headline */}
           {analysis.headline && (
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <div className="mb-4 p-3 bg-gray-50 rounded-xl">
               <div className="flex justify-between items-center mb-1">
                 <span className="text-xs font-bold text-gray-500 uppercase">Headline</span>
                 <span className={`text-sm font-bold px-2 py-0.5 rounded ${
@@ -303,7 +306,7 @@ export default function ProfilePage() {
                     setToast({ message: 'Headline applied to Professional Title field!', type: 'success' });
                     setTimeout(() => document.querySelector('input[name="title"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
                   }}
-                    className="ml-2 text-xs bg-green-600 text-white px-2 py-0.5 rounded hover:bg-green-700">Apply</button>
+                    className="ml-2 text-xs bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-1 rounded-lg shadow-sm hover:shadow-md transition-all">Apply</button>
                 </div>
               )}
             </div>
@@ -311,7 +314,7 @@ export default function ProfilePage() {
 
           {/* First Impression */}
           {analysis.first_impression && (
-            <div className="mb-4 p-3 bg-amber-50 rounded-lg border-l-3 border-amber-500">
+            <div className="mb-4 p-3 bg-amber-50 rounded-xl border-l-3 border-amber-500">
               <div className="flex justify-between items-center mb-1">
                 <span className="text-xs font-bold text-gray-500 uppercase">First Impression (search preview)</span>
                 <span className={`text-sm font-bold px-2 py-0.5 rounded ${
@@ -327,13 +330,13 @@ export default function ProfilePage() {
           {/* Overview Strengths & Weaknesses */}
           {analysis.overview && (
             <div className="mb-4 grid grid-cols-2 gap-3">
-              <div className="p-3 bg-green-50 rounded-lg">
+              <div className="p-3 bg-green-50 rounded-xl">
                 <span className="text-xs font-bold text-green-700 uppercase">Strengths</span>
                 <ul className="text-sm text-green-800 mt-1 list-disc pl-4">
                   {(analysis.overview.strengths || []).map((s, i) => <li key={i}>{s}</li>)}
                 </ul>
               </div>
-              <div className="p-3 bg-red-50 rounded-lg">
+              <div className="p-3 bg-red-50 rounded-xl">
                 <span className="text-xs font-bold text-red-700 uppercase">Weaknesses</span>
                 <ul className="text-sm text-red-800 mt-1 list-disc pl-4">
                   {(analysis.overview.weaknesses || []).map((s, i) => <li key={i}>{s}</li>)}
@@ -344,7 +347,7 @@ export default function ProfilePage() {
 
           {/* SEO Keywords */}
           {analysis.seo && (
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <div className="mb-4 p-3 bg-gray-50 rounded-xl">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-bold text-gray-500 uppercase">SEO / Search Visibility</span>
                 <span className={`text-sm font-bold px-2 py-0.5 rounded ${
@@ -356,7 +359,7 @@ export default function ProfilePage() {
               <p className="text-sm text-gray-600 mb-2">{analysis.seo.feedback}</p>
               <div className="flex flex-wrap gap-1">
                 {(analysis.seo.keywords_found || []).map(k => (
-                  <span key={k} className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{k}</span>
+                  <span key={k} className="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-xs font-medium ring-1 ring-emerald-200/50">{k}</span>
                 ))}
                 {(analysis.seo.keywords_missing || []).map(k => (
                   <span key={k} onClick={() => {
@@ -366,7 +369,7 @@ export default function ProfilePage() {
                       return { ...prev, skills: [...current, k].join(', ') };
                     });
                     setToast({ message: `Added "${k}" to skills`, type: 'success' });
-                  }} className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full cursor-pointer hover:bg-red-200 transition-colors">+ {k}</span>
+                  }} className="bg-red-50 text-red-700 px-2.5 py-1 rounded-lg text-xs font-medium ring-1 ring-red-200/50 cursor-pointer hover:bg-red-100 transition-colors">+ {k}</span>
                 ))}
               </div>
             </div>
@@ -374,7 +377,7 @@ export default function ProfilePage() {
 
           {/* Improvements */}
           {analysis.improvements && analysis.improvements.length > 0 && (
-            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+            <div className="mb-4 p-3 bg-blue-50/80 rounded-xl">
               <span className="text-xs font-bold text-blue-700 uppercase">Top Improvements</span>
               <ol className="text-sm text-blue-800 mt-1 list-decimal pl-4 space-y-1">
                 {analysis.improvements.map((imp, i) => <li key={i}>{imp}</li>)}
@@ -384,7 +387,7 @@ export default function ProfilePage() {
 
           {/* Rewritten Profile */}
           {analysis.rewrite && (
-            <div className="p-3 bg-purple-50 rounded-lg border-l-3 border-purple-500">
+            <div className="p-3 bg-purple-50/80 rounded-xl border-l-3 border-purple-500">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-bold text-purple-700 uppercase">AI-Rewritten Profile</span>
                 <button onClick={() => {
@@ -392,7 +395,7 @@ export default function ProfilePage() {
                   setToast({ message: 'Rewritten profile applied to Summary field!', type: 'success' });
                   setTimeout(() => document.querySelector('textarea[name="summary"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
                 }}
-                  className="text-xs bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700">
+                  className="text-xs bg-gradient-to-r from-purple-500 to-purple-600 text-white px-3 py-1 rounded-lg shadow-sm hover:shadow-md transition-all">
                   Apply Rewrite
                 </button>
               </div>
@@ -402,7 +405,7 @@ export default function ProfilePage() {
 
           {/* Improved Skills */}
           {analysis.improved_skills && analysis.improved_skills.length > 0 && (
-            <div className="mt-4 p-3 bg-indigo-50 rounded-lg border-l-3 border-indigo-500">
+            <div className="mt-4 p-3 bg-indigo-50 rounded-xl border-l-3 border-indigo-500">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-bold text-indigo-700 uppercase">Improved Skills</span>
                 <button onClick={() => {
@@ -410,7 +413,7 @@ export default function ProfilePage() {
                   setToast({ message: 'Improved skills applied!', type: 'success' });
                   setTimeout(() => document.querySelector('input[name="skills"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
                 }}
-                  className="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700">
+                  className="text-xs bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-3 py-1 rounded-lg shadow-sm hover:shadow-md transition-all">
                   Apply Skills
                 </button>
               </div>
@@ -424,7 +427,7 @@ export default function ProfilePage() {
 
           {/* Improved Experience */}
           {analysis.improved_experience && (
-            <div className="mt-4 p-3 bg-teal-50 rounded-lg border-l-3 border-teal-500">
+            <div className="mt-4 p-3 bg-teal-50 rounded-xl border-l-3 border-teal-500">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-bold text-teal-700 uppercase">Improved Experience</span>
                 <button onClick={() => {
@@ -432,7 +435,7 @@ export default function ProfilePage() {
                   setToast({ message: 'Improved experience applied!', type: 'success' });
                   setTimeout(() => document.querySelector('textarea[name="experience"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
                 }}
-                  className="text-xs bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700">
+                  className="text-xs bg-gradient-to-r from-teal-500 to-teal-600 text-white px-3 py-1 rounded-lg shadow-sm hover:shadow-md transition-all">
                   Apply Experience
                 </button>
               </div>
@@ -442,7 +445,7 @@ export default function ProfilePage() {
 
           {/* Improved Portfolio */}
           {analysis.improved_portfolio && (
-            <div className="mt-4 p-3 bg-orange-50 rounded-lg border-l-3 border-orange-500">
+            <div className="mt-4 p-3 bg-orange-50 rounded-xl border-l-3 border-orange-500">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-bold text-orange-700 uppercase">Improved Portfolio Highlights</span>
                 <button onClick={() => {
@@ -450,7 +453,7 @@ export default function ProfilePage() {
                   setToast({ message: 'Improved portfolio applied!', type: 'success' });
                   setTimeout(() => document.querySelector('textarea[name="portfolio"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
                 }}
-                  className="text-xs bg-orange-600 text-white px-3 py-1 rounded hover:bg-orange-700">
+                  className="text-xs bg-gradient-to-r from-orange-500 to-orange-600 text-white px-3 py-1 rounded-lg shadow-sm hover:shadow-md transition-all">
                   Apply Portfolio
                 </button>
               </div>
@@ -464,76 +467,79 @@ export default function ProfilePage() {
 
       {/* Detected Projects from Resume */}
       {detectedProjects.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mt-6 max-w-3xl">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Projects Found in Resume</h2>
-              <p className="text-sm text-gray-600">We detected {detectedProjects.length} projects. Select the ones you want to add to your portfolio.</p>
-            </div>
-            <button
-              onClick={async () => {
-                const selected = detectedProjects.filter((_, i) => {
-                  const cb = document.getElementById(`proj-check-${i}`);
-                  return cb && cb.checked;
-                });
-                if (selected.length === 0) { setToast({ message: 'No projects selected', type: 'error' }); return; }
-                setSavingProjects(true);
-                try {
-                  let saved = 0;
-                  for (const p of selected) {
-                    await api.post('/projects', {
-                      name: p.name,
-                      description: p.description,
-                      technologies: p.technologies || [],
-                      category: p.category || 'Other',
-                      client_name: p.client_name || '',
-                      outcome: p.outcome || '',
-                      url: p.url || '',
-                    });
-                    saved++;
+        <div className="card overflow-hidden mt-6 max-w-3xl">
+          <div className="h-1 bg-gradient-to-r from-amber-400 to-orange-500" />
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Projects Found in Resume</h2>
+                <p className="text-sm text-gray-600">We detected {detectedProjects.length} projects. Select the ones you want to add to your portfolio.</p>
+              </div>
+              <button
+                onClick={async () => {
+                  const selected = detectedProjects.filter((_, i) => {
+                    const cb = document.getElementById(`proj-check-${i}`);
+                    return cb && cb.checked;
+                  });
+                  if (selected.length === 0) { setToast({ message: 'No projects selected', type: 'error' }); return; }
+                  setSavingProjects(true);
+                  try {
+                    let saved = 0;
+                    for (const p of selected) {
+                      await api.post('/projects', {
+                        name: p.name,
+                        description: p.description,
+                        technologies: p.technologies || [],
+                        category: p.category || 'Other',
+                        client_name: p.client_name || '',
+                        outcome: p.outcome || '',
+                        url: p.url || '',
+                      });
+                      saved++;
+                    }
+                    setToast({ message: `${saved} projects added to your portfolio!`, type: 'success' });
+                    setDetectedProjects([]);
+                  } catch (err) {
+                    setToast({ message: 'Failed to save projects', type: 'error' });
                   }
-                  setToast({ message: `${saved} projects added to your portfolio!`, type: 'success' });
-                  setDetectedProjects([]);
-                } catch (err) {
-                  setToast({ message: 'Failed to save projects', type: 'error' });
-                }
-                setSavingProjects(false);
-              }}
-              disabled={savingProjects}
-              className="bg-amber-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-amber-700 disabled:opacity-50 flex-shrink-0"
+                  setSavingProjects(false);
+                }}
+                disabled={savingProjects}
+                className="bg-amber-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-amber-700 disabled:opacity-50 flex-shrink-0"
+              >
+                {savingProjects ? 'Saving...' : 'Add Selected'}
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {detectedProjects.map((p, i) => (
+                <label key={i} className="flex items-start gap-3 bg-white rounded-md p-3 border border-amber-100 cursor-pointer hover:border-amber-300">
+                  <input type="checkbox" id={`proj-check-${i}`} defaultChecked className="mt-1 rounded border-gray-300" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-gray-900 text-sm">{p.name}</div>
+                    {p.description && <div className="text-xs text-gray-600 mt-1 line-clamp-2">{p.description}</div>}
+                    {p.technologies && p.technologies.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {p.technologies.map(t => (
+                          <span key={t} className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{t}</span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="text-[10px] text-gray-400 mt-1">
+                      {p.category}{p.client_name ? ` • ${p.client_name}` : ''}{p.outcome ? ` • ${p.outcome}` : ''}
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setDetectedProjects([])}
+              className="text-sm text-gray-500 mt-3 hover:text-gray-700"
             >
-              {savingProjects ? 'Saving...' : 'Add Selected'}
+              Dismiss
             </button>
           </div>
-
-          <div className="space-y-3">
-            {detectedProjects.map((p, i) => (
-              <label key={i} className="flex items-start gap-3 bg-white rounded-md p-3 border border-amber-100 cursor-pointer hover:border-amber-300">
-                <input type="checkbox" id={`proj-check-${i}`} defaultChecked className="mt-1 rounded border-gray-300" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-900 text-sm">{p.name}</div>
-                  {p.description && <div className="text-xs text-gray-600 mt-1 line-clamp-2">{p.description}</div>}
-                  {p.technologies && p.technologies.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {p.technologies.map(t => (
-                        <span key={t} className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{t}</span>
-                      ))}
-                    </div>
-                  )}
-                  <div className="text-[10px] text-gray-400 mt-1">
-                    {p.category}{p.client_name ? ` • ${p.client_name}` : ''}{p.outcome ? ` • ${p.outcome}` : ''}
-                  </div>
-                </div>
-              </label>
-            ))}
-          </div>
-
-          <button
-            onClick={() => setDetectedProjects([])}
-            className="text-sm text-gray-500 mt-3 hover:text-gray-700"
-          >
-            Dismiss
-          </button>
         </div>
       )}
 
@@ -638,14 +644,13 @@ function HookGenerator({ profileTitle, onApply }) {
 }
 
 function Field({ label, name, value, onChange, textarea, rows, placeholder }) {
-  const cls = "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500";
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <label className="label">{label}</label>
       {textarea ? (
-        <textarea name={name} value={value} onChange={onChange} rows={rows} placeholder={placeholder} className={cls} />
+        <textarea name={name} value={value} onChange={onChange} rows={rows} placeholder={placeholder} className="input" />
       ) : (
-        <input type="text" name={name} value={value} onChange={onChange} placeholder={placeholder} className={cls} />
+        <input type="text" name={name} value={value} onChange={onChange} placeholder={placeholder} className="input" />
       )}
     </div>
   );
