@@ -1,25 +1,22 @@
 /**
  * options.js
- * Extension settings: login/logout + backend URL + default rate.
+ * Extension settings: login/logout + backend URL.
  */
 
 'use strict';
 
 // ---- DOM references ----
-var backendUrlInput  = document.getElementById('backend-url');
-var defaultRateInput = document.getElementById('default-rate');
-var btnSave          = document.getElementById('btn-save');
-var saveFeedback     = document.getElementById('save-feedback');
+var backendUrlInput    = document.getElementById('backend-url');
 
 // Auth elements
-var authStatus       = document.getElementById('auth-status');
-var authLogin        = document.getElementById('auth-login');
-var authEmail        = document.getElementById('auth-email');
-var loginEmailInput  = document.getElementById('login-email');
+var authStatus         = document.getElementById('auth-status');
+var authLogin          = document.getElementById('auth-login');
+var authEmail          = document.getElementById('auth-email');
+var loginEmailInput    = document.getElementById('login-email');
 var loginPasswordInput = document.getElementById('login-password');
-var btnLogin         = document.getElementById('btn-login');
-var btnLogout        = document.getElementById('btn-logout');
-var loginFeedback    = document.getElementById('login-feedback');
+var btnLogin           = document.getElementById('btn-login');
+var btnLogout          = document.getElementById('btn-logout');
+var loginFeedback      = document.getElementById('login-feedback');
 
 // ---- Show/hide auth state ----
 function showLoggedIn(email) {
@@ -42,8 +39,7 @@ function showLoggedOut() {
 // ---- Load settings on page open ----
 function loadPage() {
   getSettings().then(function (settings) {
-    backendUrlInput.value  = settings.backendUrl || BACKEND_URL_DEFAULT;
-    defaultRateInput.value = settings.defaultRate || 50;
+    backendUrlInput.value = settings.backendUrl || BACKEND_URL_DEFAULT;
 
     if (settings.accessToken && settings.userEmail) {
       showLoggedIn(settings.userEmail);
@@ -112,29 +108,10 @@ btnLogout.addEventListener('click', function () {
   });
 });
 
-// ---- Save non-auth settings ----
-function saveNonAuthSettings() {
-  var settings = {
-    backendUrl:  backendUrlInput.value.trim() || BACKEND_URL_DEFAULT,
-    defaultRate: parseInt(defaultRateInput.value, 10) || 50
-  };
-
-  saveSettings(settings).then(function () {
-    saveFeedback.classList.remove('hidden');
-    clearTimeout(saveFeedback._hideTimer);
-    saveFeedback._hideTimer = setTimeout(function () {
-      saveFeedback.classList.add('hidden');
-    }, 2500);
-  });
-}
-
-btnSave.addEventListener('click', saveNonAuthSettings);
-
-// ---- Allow saving with Enter ----
-[backendUrlInput, defaultRateInput].forEach(function (input) {
-  input.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') saveNonAuthSettings();
-  });
+// ---- Auto-save backend URL on blur ----
+backendUrlInput.addEventListener('blur', function () {
+  var url = backendUrlInput.value.trim() || BACKEND_URL_DEFAULT;
+  saveSettings({ backendUrl: url });
 });
 
 // ---- Allow login with Enter ----
