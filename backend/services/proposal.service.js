@@ -4,7 +4,6 @@ import { getProfileOrDefault } from './profile.service.js';
 import { resolveLLMConfig, callLLM } from './llm.service.js';
 import { buildSystemPrompt, buildUserPrompt } from '../prompts/proposal.js';
 import { ValidationError, NotFoundError } from '../lib/errors.js';
-import { validateRequired } from '../lib/validators.js';
 
 const ALLOWED_STATUSES = new Set(['sent', 'pending', 'hired', 'rejected', 'withdrawn']);
 
@@ -155,9 +154,8 @@ export async function generateProposal(input, logger = null, userId = null) {
   if (!jobData || typeof jobData !== 'object') {
     throw new ValidationError('jobData is required');
   }
-  const jobValidation = validateRequired(['title', 'description'], jobData);
-  if (!jobValidation.valid) {
-    throw new ValidationError(`jobData: ${jobValidation.errors.join(', ')}`);
+  if (!jobData.title || !jobData.description) {
+    throw new ValidationError('jobData: title and description are required');
   }
 
   // 3. Fetch profile (non-fatal)

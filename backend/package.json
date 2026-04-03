@@ -13,6 +13,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.0",
     "express": "^4.21.0",
+    "express-rate-limit": "^8.3.2",
     "ioredis": "^5.10.1",
     "jsonwebtoken": "^9.0.3",
     "mammoth": "^1.8.0",
@@ -21,7 +22,9 @@
     "pdf-parse": "^1.1.1",
     "pg": "^8.13.0",
     "pino": "^10.3.1",
-    "pino-http": "^11.0.0"
+    "pino-http": "^11.0.0",
+    "rate-limit-redis": "^4.3.1",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "nodemon": "^3.1.0",

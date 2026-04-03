@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler } from '../middleware/async-handler.js';
+import { validate } from '../middleware/validate.js';
+import { updateSettingsSchema } from '../schemas/settings.schema.js';
 import * as settingsService from '../services/settings.service.js';
 
 const router = Router();
@@ -9,7 +11,7 @@ router.get('/', asyncHandler(async (req, res) => {
   res.json(settings);
 }));
 
-router.put('/', asyncHandler(async (req, res) => {
+router.put('/', validate(updateSettingsSchema), asyncHandler(async (req, res) => {
   const settings = await settingsService.updateSettings(req.body, req.user.id);
   res.json(settings);
 }));

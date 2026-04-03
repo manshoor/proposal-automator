@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler } from '../middleware/async-handler.js';
+import { validate } from '../middleware/validate.js';
+import { createPromptSchema, updatePromptSchema } from '../schemas/prompt.schema.js';
 import * as promptService from '../services/prompt.service.js';
 
 const router = Router();
@@ -19,12 +21,12 @@ router.get('/:id', asyncHandler(async (req, res) => {
   res.json(prompt);
 }));
 
-router.post('/', asyncHandler(async (req, res) => {
+router.post('/', validate(createPromptSchema), asyncHandler(async (req, res) => {
   const prompt = await promptService.createPrompt(req.body, req.user.id);
   res.status(201).json(prompt);
 }));
 
-router.put('/:id', asyncHandler(async (req, res) => {
+router.put('/:id', validate(updatePromptSchema), asyncHandler(async (req, res) => {
   const prompt = await promptService.updatePrompt(req.params.id, req.body, req.user.id);
   res.json(prompt);
 }));

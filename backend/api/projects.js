@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler } from '../middleware/async-handler.js';
+import { validate } from '../middleware/validate.js';
+import { createProjectSchema, updateProjectSchema } from '../schemas/project.schema.js';
 import * as projectService from '../services/project.service.js';
 
 const router = Router();
@@ -14,12 +16,12 @@ router.get('/:id', asyncHandler(async (req, res) => {
   res.json(project);
 }));
 
-router.post('/', asyncHandler(async (req, res) => {
+router.post('/', validate(createProjectSchema), asyncHandler(async (req, res) => {
   const project = await projectService.createProject(req.body, req.user.id);
   res.status(201).json(project);
 }));
 
-router.put('/:id', asyncHandler(async (req, res) => {
+router.put('/:id', validate(updateProjectSchema), asyncHandler(async (req, res) => {
   const project = await projectService.updateProject(req.params.id, req.body, req.user.id);
   res.json(project);
 }));

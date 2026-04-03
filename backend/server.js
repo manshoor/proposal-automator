@@ -6,6 +6,7 @@ import { join } from 'path';
 import { logger, requestLogger } from './lib/logger.js';
 import { requestId } from './middleware/request-id.js';
 import { errorHandler } from './middleware/error-handler.js';
+import { globalLimiter } from './middleware/rate-limiter.js';
 import { runMigrations } from './db/migrate.js';
 import pool from './db/pool.js';
 import { connectRedis, disconnectRedis } from './lib/redis.js';
@@ -23,6 +24,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
 }));
 app.use(express.json({ limit: '50kb' }));
+app.use(globalLimiter);
 
 // Health check (before routes, no auth needed)
 app.get('/health', (_req, res) => {

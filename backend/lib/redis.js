@@ -4,7 +4,7 @@ import { logger } from './logger.js';
 let client = null;
 let connected = false;
 
-function getClient() {
+export function getClient() {
   if (client) return client;
 
   const url = process.env.REDIS_URL || 'redis://localhost:6379';

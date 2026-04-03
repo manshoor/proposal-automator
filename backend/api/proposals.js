@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { asyncHandler } from '../middleware/async-handler.js';
+import { validate } from '../middleware/validate.js';
+import { listProposalsSchema, createProposalSchema, updateProposalSchema } from '../schemas/proposal.schema.js';
 import * as proposalService from '../services/proposal.service.js';
 
 const router = Router();
 
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', validate(listProposalsSchema, 'query'), asyncHandler(async (req, res) => {
   const proposals = await proposalService.listProposals(req.query, req.user.id);
   res.json(proposals);
 }));
@@ -14,12 +16,12 @@ router.get('/:id', asyncHandler(async (req, res) => {
   res.json(proposal);
 }));
 
-router.post('/', asyncHandler(async (req, res) => {
+router.post('/', validate(createProposalSchema), asyncHandler(async (req, res) => {
   const proposal = await proposalService.createProposal(req.body, req.user.id);
   res.status(201).json(proposal);
 }));
 
-router.put('/:id', asyncHandler(async (req, res) => {
+router.put('/:id', validate(updateProposalSchema), asyncHandler(async (req, res) => {
   const proposal = await proposalService.updateProposal(req.params.id, req.body, req.user.id);
   res.json(proposal);
 }));
