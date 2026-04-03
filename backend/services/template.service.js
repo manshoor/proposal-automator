@@ -1,5 +1,6 @@
 import * as templateRepo from '../repositories/template.repository.js';
 import { ValidationError, NotFoundError } from '../lib/errors.js';
+import { cacheGet, cacheSet, cacheDel } from '../lib/redis.js';
 
 /**
  * Extracts all {variableName} placeholders from a template string.
@@ -19,7 +20,13 @@ function extractVariables(content) {
  * @returns {Promise<object[]>}
  */
 export async function listTemplates(userId = null) {
-  return templateRepo.findAll(userId);
+  const cacheKey = 'templates:' + (userId || 'global');
+  const cached = await cacheGet(cacheKey);
+  if (cached) return JSON.parse(cached);
+
+  const result = await templateRepo.findAll(userId);
+  await cacheSet(cacheKey, JSON.stringify(result), 600);
+  return result;
 }
 
 /**
@@ -49,7 +56,9 @@ export async function createTemplate(data, userId = null) {
   }
 
   const variables = extractVariables(content);
-  return templateRepo.create({ name, content, variables, is_default: is_default ?? false }, userId);
+  const result = await templateRepo.create({ name, content, variables, is_default: is_default ?? false }, userId);
+  await cacheDel('templates:' + (userId || 'global'));
+  return result;
 }
 
 /**
@@ -76,6 +85,7 @@ export async function updateTemplate(id, data, userId = null) {
     is_default: is_default ?? null,
   }, userId);
 
+  await cacheDel('templates:' + (userId || 'global'));
   return updated;
 }
 
@@ -89,4 +99,5 @@ export async function updateTemplate(id, data, userId = null) {
 export async function deleteTemplate(id, userId = null) {
   const deleted = await templateRepo.remove(id, userId);
   if (!deleted) throw new NotFoundError('Template');
+  await cacheDel('templates:' + (userId || 'global'));
 }

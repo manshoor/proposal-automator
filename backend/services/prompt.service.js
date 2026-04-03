@@ -1,5 +1,6 @@
 import * as promptRepo from '../repositories/prompt.repository.js';
 import { ValidationError, NotFoundError } from '../lib/errors.js';
+import { cacheGet, cacheSet, cacheDel } from '../lib/redis.js';
 
 /**
  * Returns all prompts with optional platform and active filters.
@@ -10,6 +11,17 @@ import { ValidationError, NotFoundError } from '../lib/errors.js';
  */
 export async function listPrompts(query, userId = null) {
   const { platform, active } = query || {};
+
+  if (!platform && !active) {
+    const cacheKey = 'prompts:' + (userId || 'global');
+    const cached = await cacheGet(cacheKey);
+    if (cached) return JSON.parse(cached);
+
+    const result = await promptRepo.findAll({ platform, active }, userId);
+    await cacheSet(cacheKey, JSON.stringify(result), 600);
+    return result;
+  }
+
   return promptRepo.findAll({ platform, active }, userId);
 }
 
@@ -23,7 +35,13 @@ export async function listPrompts(query, userId = null) {
  * @returns {Promise<object|null>}
  */
 export async function getActivePrompt(platform, userId = null) {
-  return promptRepo.findActiveForPlatform(platform, userId);
+  const cacheKey = 'prompt:active:' + (userId || 'global') + ':' + platform;
+  const cached = await cacheGet(cacheKey);
+  if (cached) return JSON.parse(cached);
+
+  const result = await promptRepo.findActiveForPlatform(platform, userId);
+  await cacheSet(cacheKey, JSON.stringify(result), 600);
+  return result;
 }
 
 /**
@@ -51,7 +69,15 @@ export async function createPrompt(data, userId = null) {
   if (!name || !prompt_text) {
     throw new ValidationError('name and prompt_text are required');
   }
-  return promptRepo.create(data, userId);
+  const result = await promptRepo.create(data, userId);
+  const uid = userId || 'global';
+  await Promise.all([
+    cacheDel('prompts:' + uid),
+    cacheDel('prompt:active:' + uid + ':upwork'),
+    cacheDel('prompt:active:' + uid + ':all'),
+    cacheDel('prompt:active:' + uid + ':fiverr'),
+  ]);
+  return result;
 }
 
 /**
@@ -65,6 +91,13 @@ export async function createPrompt(data, userId = null) {
 export async function updatePrompt(id, data, userId = null) {
   const updated = await promptRepo.update(id, data, userId);
   if (!updated) throw new NotFoundError('Prompt');
+  const uid = userId || 'global';
+  await Promise.all([
+    cacheDel('prompts:' + uid),
+    cacheDel('prompt:active:' + uid + ':upwork'),
+    cacheDel('prompt:active:' + uid + ':all'),
+    cacheDel('prompt:active:' + uid + ':fiverr'),
+  ]);
   return updated;
 }
 
@@ -84,4 +117,11 @@ export async function deletePrompt(id, userId = null) {
   }
   const deleted = await promptRepo.remove(id, userId);
   if (!deleted) throw new NotFoundError('Prompt');
+  const uid = userId || 'global';
+  await Promise.all([
+    cacheDel('prompts:' + uid),
+    cacheDel('prompt:active:' + uid + ':upwork'),
+    cacheDel('prompt:active:' + uid + ':all'),
+    cacheDel('prompt:active:' + uid + ':fiverr'),
+  ]);
 }

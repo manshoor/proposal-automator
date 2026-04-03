@@ -153,24 +153,13 @@ Rules:
     }
   }
 
-  // 7. Save projects if requested
-  const savedProjects = [];
+  // 7. Batch-save projects if requested
+  let savedProjects = [];
   if ((saveProjects === 'true' || saveProjects === true) && projects.length > 0) {
-    for (const p of projects) {
-      try {
-        const saved = await projectRepo.create({
-          name: p.name,
-          description: p.description,
-          technologies: p.technologies,
-          category: p.category,
-          client_name: p.client_name,
-          outcome: p.outcome,
-          url: p.url || null,
-        }, userId);
-        savedProjects.push(saved);
-      } catch (dbErr) {
-        logger?.error({ err: dbErr }, 'Save project failed');
-      }
+    try {
+      savedProjects = await projectRepo.createMany(projects, userId);
+    } catch (dbErr) {
+      logger?.error({ err: dbErr }, 'Batch save projects failed');
     }
   }
 
@@ -246,25 +235,12 @@ Rules:
     throw new ExternalServiceError('LLM', 'LLM returned invalid response. Try again.');
   }
 
-  // 5. Bulk insert projects
-  const inserted = [];
-  for (const p of projects) {
-    try {
-      const saved = await projectRepo.create({
-        name: p.name || 'Untitled Project',
-        description: p.description || '',
-        url: p.url || null,
-        technologies: Array.isArray(p.technologies) ? p.technologies : [],
-        category: p.category || 'Other',
-        client_name: p.client_name || '',
-        budget_range: p.budget_range || '',
-        duration: p.duration || '',
-        outcome: p.outcome || '',
-      }, userId);
-      inserted.push(saved);
-    } catch (dbErr) {
-      logger?.error({ err: dbErr }, 'Insert project error');
-    }
+  // 5. Batch insert all projects in a single query
+  let inserted = [];
+  try {
+    inserted = await projectRepo.createMany(projects, userId);
+  } catch (dbErr) {
+    logger?.error({ err: dbErr }, 'Batch insert projects error');
   }
 
   return {

@@ -4,6 +4,7 @@ import { getProfileOrDefault } from './profile.service.js';
 import { resolveLLMConfig, callLLM } from './llm.service.js';
 import { buildSystemPrompt, buildUserPrompt } from '../prompts/proposal.js';
 import { ValidationError, NotFoundError } from '../lib/errors.js';
+import { cacheDel } from '../lib/redis.js';
 
 const ALLOWED_STATUSES = new Set(['sent', 'pending', 'hired', 'rejected', 'withdrawn']);
 
@@ -84,6 +85,7 @@ export async function createProposal(data, userId = null) {
     connect_cost: null,
   }, userId);
 
+  await cacheDel('analytics:' + (userId || 'global'));
   return row;
 }
 
@@ -116,6 +118,7 @@ export async function updateProposal(id, data, userId = null) {
 
   const updated = await proposalRepo.update(id, data, userId);
   if (!updated) throw new NotFoundError('Proposal');
+  await cacheDel('analytics:' + (userId || 'global'));
   return updated;
 }
 
@@ -158,19 +161,17 @@ export async function generateProposal(input, logger = null, userId = null) {
     throw new ValidationError('jobData: title and description are required');
   }
 
-  // 3. Fetch profile (non-fatal)
-  const profile = await getProfileOrDefault(userId);
-
-  // 4. Build system prompt + check for custom prompt in DB
-  let systemPrompt = buildSystemPrompt(profile);
+  // 3. Fetch profile + custom prompt in parallel (non-fatal)
   const targetPlatform = platform || 'upwork';
-  try {
-    const customPrompt = await promptRepo.findActiveForPlatform(targetPlatform, userId);
-    if (customPrompt) {
-      systemPrompt += '\n\n--- CUSTOM INSTRUCTIONS ---\n' + customPrompt.prompt_text;
-    }
-  } catch {
-    // Non-fatal — use default prompt
+  const [profile, customPrompt] = await Promise.all([
+    getProfileOrDefault(userId),
+    promptRepo.findActiveForPlatform(targetPlatform, userId).catch(() => null),
+  ]);
+
+  // 4. Build system prompt
+  let systemPrompt = buildSystemPrompt(profile);
+  if (customPrompt) {
+    systemPrompt += '\n\n--- CUSTOM INSTRUCTIONS ---\n' + customPrompt.prompt_text;
   }
 
   // 5. Build user prompt
@@ -228,6 +229,7 @@ export async function generateProposal(input, logger = null, userId = null) {
       connect_cost: jobData.connectCost || null,
     }, userId);
     proposalId = row?.id || null;
+    await cacheDel('analytics:' + (userId || 'global'));
   } catch (dbErr) {
     logger?.error({ err: dbErr }, 'Failed to save proposal');
     // Non-fatal — still return the generated content

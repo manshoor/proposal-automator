@@ -25,35 +25,24 @@ export async function findAll({ platform, active } = {}, userId = null) {
 }
 
 export async function findActiveForPlatform(platform, userId = null) {
-  // Try platform-specific first
+  // Single query: prefer platform-specific, fall back to 'all'
   if (userId) {
-    let { rows } = await pool.query(
-      'SELECT * FROM prompts WHERE platform = $1 AND is_active = true AND user_id = $2 ORDER BY is_default DESC LIMIT 1',
-      [platform, userId]
+    const { rows } = await pool.query(
+      `SELECT * FROM prompts
+       WHERE user_id = $1 AND is_active = true AND (platform = $2 OR platform = 'all')
+       ORDER BY (platform = $2) DESC, is_default DESC
+       LIMIT 1`,
+      [userId, platform]
     );
-
-    // Fall back to master prompt
-    if (rows.length === 0) {
-      ({ rows } = await pool.query(
-        "SELECT * FROM prompts WHERE platform = 'all' AND is_active = true AND user_id = $1 ORDER BY is_default DESC LIMIT 1",
-        [userId]
-      ));
-    }
-
     return rows[0] || null;
   } else {
-    let { rows } = await pool.query(
-      'SELECT * FROM prompts WHERE platform = $1 AND is_active = true ORDER BY is_default DESC LIMIT 1',
+    const { rows } = await pool.query(
+      `SELECT * FROM prompts
+       WHERE is_active = true AND (platform = $1 OR platform = 'all')
+       ORDER BY (platform = $1) DESC, is_default DESC
+       LIMIT 1`,
       [platform]
     );
-
-    // Fall back to master prompt
-    if (rows.length === 0) {
-      ({ rows } = await pool.query(
-        "SELECT * FROM prompts WHERE platform = 'all' AND is_active = true ORDER BY is_default DESC LIMIT 1"
-      ));
-    }
-
     return rows[0] || null;
   }
 }

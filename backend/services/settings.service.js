@@ -1,7 +1,7 @@
 import * as settingsRepo from '../repositories/settings.repository.js';
 import { encrypt } from '../lib/crypto.js';
 import { invalidateLLMConfig } from '../lib/get-llm-config.js';
-import { cacheDel } from '../lib/redis.js';
+import { cacheGet, cacheSet, cacheDel } from '../lib/redis.js';
 
 /**
  * Returns settings, auto-creating defaults if no row exists yet.
@@ -11,12 +11,18 @@ import { cacheDel } from '../lib/redis.js';
  * @returns {Promise<object>}
  */
 export async function getSettings(userId = null) {
+  const cacheKey = 'settings:' + (userId || 'global');
+  const cached = await cacheGet(cacheKey);
+  if (cached) return JSON.parse(cached);
+
   let settings = await settingsRepo.findFirst(userId);
   if (!settings) {
     await settingsRepo.ensureExists(userId);
     settings = await settingsRepo.findFirst(userId);
   }
-  return maskApiKey(settings);
+  const masked = maskApiKey(settings);
+  await cacheSet(cacheKey, JSON.stringify(masked), 3600);
+  return masked;
 }
 
 /**
@@ -44,7 +50,7 @@ export async function updateSettings(data, userId = null) {
   }, userId);
 
   await invalidateLLMConfig(userId);
-  await cacheDel('settings');
+  await cacheDel('settings:' + (userId || 'global'));
 
   return maskApiKey(settings);
 }

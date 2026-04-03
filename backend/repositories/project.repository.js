@@ -81,6 +81,36 @@ export async function update(id, data, userId = null) {
   return rows[0] || null;
 }
 
+export async function createMany(projects, userId = null) {
+  if (!projects || projects.length === 0) return [];
+
+  const columns = ['name', 'description', 'url', 'technologies', 'category', 'client_name', 'budget_range', 'duration', 'outcome'];
+  if (userId) columns.push('user_id');
+
+  const values = [];
+  const rowPlaceholders = [];
+
+  for (const p of projects) {
+    const rowValues = [
+      p.name || 'Untitled Project', p.description || '', p.url || null,
+      p.technologies || [], p.category || 'Other', p.client_name || '',
+      p.budget_range || '', p.duration || '', p.outcome || '',
+    ];
+    if (userId) rowValues.push(userId);
+
+    const offset = values.length;
+    const placeholders = rowValues.map((_, i) => `$${offset + i + 1}`).join(', ');
+    rowPlaceholders.push(`(${placeholders})`);
+    values.push(...rowValues);
+  }
+
+  const { rows } = await pool.query(
+    `INSERT INTO projects (${columns.join(', ')}) VALUES ${rowPlaceholders.join(', ')} RETURNING *`,
+    values
+  );
+  return rows;
+}
+
 export async function remove(id, userId = null) {
   if (userId) {
     const { rowCount } = await pool.query('DELETE FROM projects WHERE id = $1 AND user_id = $2', [id, userId]);

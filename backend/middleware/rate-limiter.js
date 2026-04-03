@@ -14,14 +14,14 @@ function createStore(prefix) {
   }
 }
 
-// 100 requests per minute per user/IP
+// 100 requests per minute per user/IP — in-memory store (no Redis overhead per request)
 export const globalLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => req.user?.id || req.ip,
-  store: createStore('global'),
+  // No store = default in-memory (avoids 5-20ms Redis call on every request)
   message: { error: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many requests. Please try again later.' } },
 });
 

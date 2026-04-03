@@ -1,4 +1,5 @@
 import * as analyticsRepo from '../repositories/analytics.repository.js';
+import { cacheGet, cacheSet } from '../lib/redis.js';
 
 /**
  * Fetches and formats analytics data for proposals, skills, connects, and status.
@@ -7,6 +8,10 @@ import * as analyticsRepo from '../repositories/analytics.repository.js';
  * @returns {Promise<{summary, weeklyProposals, topSkills, statusBreakdown, connects, weeklyConnects}>}
  */
 export async function getAnalytics(userId = null) {
+  const cacheKey = 'analytics:' + (userId || 'global');
+  const cached = await cacheGet(cacheKey);
+  if (cached) return JSON.parse(cached);
+
   const {
     summaryResult,
     weeklyResult,
@@ -61,5 +66,7 @@ export async function getAnalytics(userId = null) {
     connects: parseInt(r.connects, 10),
   }));
 
-  return { summary, weeklyProposals, topSkills, statusBreakdown, connects, weeklyConnects };
+  const result = { summary, weeklyProposals, topSkills, statusBreakdown, connects, weeklyConnects };
+  await cacheSet(cacheKey, JSON.stringify(result), 300);
+  return result;
 }
