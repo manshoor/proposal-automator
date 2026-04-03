@@ -292,6 +292,25 @@ function scrapeProposalCountText() {
 // ---- Client info (only available on job detail page) ----
 
 function scrapeClientInfo() {
+  var pageText = document.body.innerText || '';
+
+  // ---- Recent reviews (DOM first, then text fallback) ----
+  var recentReviews = [];
+  var reviewEls = document.querySelectorAll('.review-item, [data-test="review"], .feedback-entry');
+  for (var ri = 0; ri < Math.min(reviewEls.length, 5); ri++) {
+    var revText = (reviewEls[ri].textContent || '').trim();
+    if (revText.length > 10) {
+      recentReviews.push(revText.substring(0, 300));
+    }
+  }
+  if (recentReviews.length === 0) {
+    var reviewSection = pageText.match(/(?:reviews?|feedback)[\s\S]{0,2000}/i);
+    if (reviewSection) {
+      var sentences = reviewSection[0].split(/[.!?]\s/).filter(function(s) { return s.length > 20 && s.length < 300; });
+      recentReviews = sentences.slice(0, 3);
+    }
+  }
+
   var info = {
     location: '',
     totalSpent: 0,
@@ -300,8 +319,12 @@ function scrapeClientInfo() {
     hireCount: 0,
     reviewCount: 0,
     memberSince: '',
-    recentReviews: [],
-    paymentVerified: false
+    recentReviews: recentReviews,
+    paymentVerified: false,
+    clientRating: null,
+    invitesSent: 0,
+    alreadyHired: false,
+    lastClientActivity: null
   };
 
   // Location: [data-qa="client-location"] > strong
@@ -343,8 +366,7 @@ function scrapeClientInfo() {
     if (hrm) info.hireRate = parseFloat(hrm[1]);
   }
   if (!info.hireRate) {
-    var pt = document.body.innerText || '';
-    var hrm2 = pt.match(/([\d.]+)%\s+hire\s+rate/i);
+    var hrm2 = pageText.match(/([\d.]+)%\s+hire\s+rate/i);
     if (hrm2) info.hireRate = parseFloat(hrm2[1]);
   }
 
@@ -355,8 +377,7 @@ function scrapeClientInfo() {
     if (rrm) info.reviewCount = parseInt(rrm[1], 10);
   }
   if (!info.reviewCount) {
-    var pt2 = document.body.innerText || '';
-    var rrm2 = pt2.match(/([\d.]+)\s+of\s+(\d+)\s+reviews?/i);
+    var rrm2 = pageText.match(/([\d.]+)\s+of\s+(\d+)\s+reviews?/i);
     if (rrm2) info.reviewCount = parseInt(rrm2[2], 10);
   }
 
@@ -367,7 +388,59 @@ function scrapeClientInfo() {
   // Payment verified
   info.paymentVerified = !!document.querySelector('.payment-verified');
 
+  // ---- Client rating ----
+  var ratingText = '';
+  var ratingQueryEl = document.querySelector('[data-testid="buyer-rating"]');
+  if (ratingQueryEl) ratingText = ratingQueryEl.textContent || '';
+  if (!ratingText) ratingText = pageText;
+  var ratingMatch = ratingText.match(/(\d+\.\d+)\s*(?:of\s*5|\/\s*5|stars?)/i);
+  var clientRating = ratingMatch ? parseFloat(ratingMatch[1]) : null;
+  if (!clientRating) {
+    var ratingCtx = pageText.match(/rating[:\s]*(\d+\.\d+)/i);
+    if (ratingCtx) clientRating = parseFloat(ratingCtx[1]);
+  }
+  info.clientRating = clientRating;
+
+  // ---- Invites sent ----
+  var inviteMatch = pageText.match(/(?:invites?\s*sent|invited)[:\s]*(\d+)/i)
+    || pageText.match(/(\d+)\s*(?:invites?\s*sent|invited)/i)
+    || pageText.match(/interviewing[:\s]*(\d+)/i);
+  info.invitesSent = inviteMatch ? parseInt(inviteMatch[1], 10) : 0;
+
+  // ---- Already hired ----
+  var hireActivityMatch = pageText.match(/(?:hires?)[:\s]*(\d+)/i);
+  var alreadyHired = (hireActivityMatch && parseInt(hireActivityMatch[1], 10) > 0) || false;
+  if (!alreadyHired) {
+    alreadyHired = /no longer accepting|position filled|job closed/i.test(pageText);
+  }
+  info.alreadyHired = alreadyHired;
+
+  // ---- Last client activity ----
+  var activityMatch = pageText.match(/last\s+viewed.*?(\d+\s*(?:hour|day|minute|week|month)s?\s*ago)/i);
+  info.lastClientActivity = activityMatch ? activityMatch[1].trim() : null;
+
   return info;
+}
+
+// ---- Preferred qualifications extraction ----
+
+function extractQualifications(description) {
+  var quals = [];
+  var patterns = [
+    /preferred\s+qualifications?\s*[:;]\s*([\s\S]*?)(?=\n\n|\n[A-Z]|$)/gi,
+    /requirements?\s*[:;]\s*([\s\S]*?)(?=\n\n|\n[A-Z]|$)/gi,
+    /must\s+have\s*[:;]\s*([\s\S]*?)(?=\n\n|\n[A-Z]|$)/gi,
+    /looking\s+for\s*[:;]\s*([\s\S]*?)(?=\n\n|\n[A-Z]|$)/gi,
+    /qualifications?\s*[:;]\s*([\s\S]*?)(?=\n\n|\n[A-Z]|$)/gi,
+  ];
+  for (var pi = 0; pi < patterns.length; pi++) {
+    var match;
+    while ((match = patterns[pi].exec(description)) !== null) {
+      var items = match[1].split(/[\n\u2022\-\*]+/).map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 3 && s.length < 200; });
+      quals = quals.concat(items);
+    }
+  }
+  return quals.filter(function(q, i) { return quals.indexOf(q) === i; });
 }
 
 // ---- Main scrape function ----
@@ -422,6 +495,7 @@ async function scrapeJobPage() {
       proposalCountText: proposalCountText,
       connectCost: connectCost,
       availableConnects: availableConnects,
+      preferredQualifications: extractQualifications(description || ''),
       url: currentUrl,
       isProposalPage: onProposalPage
     };
@@ -440,8 +514,11 @@ async function scrapeJobPage() {
       skills: [],
       client: { location: '', totalSpent: 0, avgHourlyRate: null, hireRate: 0,
                 hireCount: 0, reviewCount: 0, memberSince: '', recentReviews: [],
-                paymentVerified: false },
-      proposalCount: 0, proposalCountText: '', url: window.location.href,
+                paymentVerified: false, clientRating: null, invitesSent: 0,
+                alreadyHired: false, lastClientActivity: null },
+      proposalCount: 0, proposalCountText: '',
+      preferredQualifications: [],
+      url: window.location.href,
       isProposalPage: false
     };
   }

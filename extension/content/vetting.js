@@ -151,6 +151,10 @@ function vetClient(clientInfo, jobData) {
   var reviewCount = ci.reviewCount || 0;
   var recentReviews = ci.recentReviews || [];
   var proposalCount = ci.proposalCount || 0;
+  var clientRating = ci.clientRating || null;
+  var invitesSent = ci.invitesSent || 0;
+  var alreadyHired = ci.alreadyHired || false;
+  var lastActivity = ci.lastClientActivity || null;
 
   // ---- Location check ----
   var locationNormalized = location.trim();
@@ -226,6 +230,40 @@ function vetClient(clientInfo, jobData) {
   }
   var reviewsCheck = { status: reviewsStatus, count: reviewCount, recentSentiment: recentSentiment, message: reviewsMessage };
 
+  // ---- Rating check ----
+  var ratingCheck;
+  if (!clientRating) {
+    ratingCheck = { status: 'unknown', rating: null, message: 'No client rating available' };
+  } else if (clientRating >= 4.5) {
+    ratingCheck = { status: 'good', rating: clientRating, message: 'Client rating: ' + clientRating.toFixed(1) + '/5 — Excellent' };
+  } else if (clientRating >= 4.0) {
+    ratingCheck = { status: 'fair', rating: clientRating, message: 'Client rating: ' + clientRating.toFixed(1) + '/5 — Below average' };
+  } else {
+    ratingCheck = { status: 'low', rating: clientRating, message: 'Client rating: ' + clientRating.toFixed(1) + '/5 — Poor' };
+  }
+
+  // ---- Client activity check ----
+  var activityCheck;
+  if (!lastActivity) {
+    activityCheck = { status: 'unknown', lastActivity: null, message: 'Client activity not available' };
+  } else {
+    var daysMatch = lastActivity.match(/(\d+)\s*day/i);
+    var weeksMatch = lastActivity.match(/(\d+)\s*week/i);
+    var monthsMatch = lastActivity.match(/(\d+)\s*month/i);
+    var daysInactive = 0;
+    if (monthsMatch) daysInactive = parseInt(monthsMatch[1], 10) * 30;
+    else if (weeksMatch) daysInactive = parseInt(weeksMatch[1], 10) * 7;
+    else if (daysMatch) daysInactive = parseInt(daysMatch[1], 10);
+
+    if (daysInactive > 14) {
+      activityCheck = { status: 'inactive', lastActivity: lastActivity, message: 'Client inactive — last seen ' + lastActivity };
+    } else if (daysInactive > 7) {
+      activityCheck = { status: 'slow', lastActivity: lastActivity, message: 'Client slow to respond — last seen ' + lastActivity };
+    } else {
+      activityCheck = { status: 'active', lastActivity: lastActivity, message: 'Client recently active — ' + lastActivity };
+    }
+  }
+
   // ---- Proposal competition ----
   var competitionLevel = getCompetitionLevel(proposalCount);
   var competitionMessages = {
@@ -241,12 +279,40 @@ function vetClient(clientInfo, jobData) {
 
   // ---- Red Flags ----
   var redFlags = detectRedFlags(ci, jobData);
+
+  // Low client rating
+  if (clientRating && clientRating < 4.0) {
+    redFlags.push({ severity: 'high', flag: 'Poor Client Rating', detail: 'Client rating is ' + clientRating.toFixed(1) + '/5. Consider avoiding clients rated below 4.0.' });
+  } else if (clientRating && clientRating < 4.5) {
+    redFlags.push({ severity: 'low', flag: 'Below Average Rating', detail: 'Client rating is ' + clientRating.toFixed(1) + '/5. Average is 4.5+.' });
+  }
+
+  // Single invitation (may have preferred candidate)
+  if (invitesSent === 1) {
+    redFlags.push({ severity: 'medium', flag: 'Only 1 Invite Sent', detail: 'Client invited only 1 freelancer — they may already have a preferred candidate.' });
+  }
+
+  // Already hired
+  if (alreadyHired) {
+    redFlags.push({ severity: 'high', flag: 'Already Hired', detail: 'Client has already hired someone for this job. The position may be filled.' });
+  }
+
+  // Client inactive or slow
+  if (activityCheck.status === 'inactive') {
+    redFlags.push({ severity: 'high', flag: 'Client Inactive', detail: 'Client hasn\'t viewed proposals in ' + lastActivity + '. Job may be abandoned.' });
+  } else if (activityCheck.status === 'slow') {
+    redFlags.push({ severity: 'medium', flag: 'Slow Client Response', detail: 'Client last active ' + lastActivity + '. May take long to respond.' });
+  }
+
   var highFlags = redFlags.filter(function (f) { return f.severity === 'high'; });
   var medFlags = redFlags.filter(function (f) { return f.severity === 'medium'; });
 
   // ---- Overall rating (now includes red flags) ----
   var hasLocationWarning = locationCheck.status === 'warning';
   var hasCriticalWeakness = spendingStatus === 'none' || hireRateStatus === 'none';
+  var hasAlreadyHired = alreadyHired === true;
+  var hasPoorRating = clientRating && clientRating < 4.0;
+  var isClientInactive = activityCheck.status === 'inactive';
 
   var overall;
   if (highFlags.length > 0) {
@@ -255,11 +321,16 @@ function vetClient(clientInfo, jobData) {
     overall = 'red';
   } else if (medFlags.length >= 2) {
     overall = 'red';
+  } else if (hasAlreadyHired || hasPoorRating || isClientInactive) {
+    overall = 'red';
   } else if (
     hasLocationWarning || hasCriticalWeakness ||
     spendingStatus === 'low' || hireRateStatus === 'low' ||
     reviewsStatus === 'none' || reviewsStatus === 'few' ||
-    medFlags.length > 0
+    medFlags.length > 0 ||
+    (clientRating && clientRating < 4.5) ||
+    activityCheck.status === 'slow' ||
+    invitesSent === 1
   ) {
     overall = 'yellow';
   } else {
@@ -272,7 +343,12 @@ function vetClient(clientInfo, jobData) {
     spendingCheck: spendingCheck,
     hireRateCheck: hireRateCheck,
     reviewsCheck: reviewsCheck,
+    ratingCheck: ratingCheck,
+    activityCheck: activityCheck,
     proposalCompetition: proposalCompetition,
-    redFlags: redFlags
+    redFlags: redFlags,
+    invitesSent: invitesSent,
+    alreadyHired: alreadyHired,
+    preferredQualifications: jobData.preferredQualifications || []
   };
 }

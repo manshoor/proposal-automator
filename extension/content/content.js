@@ -54,7 +54,11 @@
               proposalCount: jobData.proposalCount,
               paymentVerified: jobData.client.paymentVerified,
               memberSince: jobData.client.memberSince,
-              avgHourlyRate: jobData.client.avgHourlyRate
+              avgHourlyRate: jobData.client.avgHourlyRate,
+              clientRating: jobData.client.clientRating,
+              invitesSent: jobData.client.invitesSent,
+              alreadyHired: jobData.client.alreadyHired,
+              lastClientActivity: jobData.client.lastClientActivity
             }, jobData);
 
             var hiddenInstructions = detectHiddenInstructions(jobData.description);

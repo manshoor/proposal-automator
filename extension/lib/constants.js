@@ -55,6 +55,24 @@ var SELECTORS = {
   clientMemberSince: [
     '[data-qa="client-contract-date"]'
   ],
+  // Client rating
+  clientRating: [
+    '[data-testid="buyer-rating"]',
+    '[data-qa="client-rating"]',
+    '.rating .value'
+  ],
+  // Job activity section
+  jobActivity: [
+    '.ca-item',
+    '[data-test="job-activity"]',
+    '.job-activity'
+  ],
+  // Preferred qualifications
+  qualifications: [
+    '.qualification',
+    '[data-test="qualifications"]',
+    '.preferred-qualifications'
+  ],
   // Proposal form selectors (for autofill)
   coverLetterField: [
     'textarea.air3-textarea.inner-textarea',

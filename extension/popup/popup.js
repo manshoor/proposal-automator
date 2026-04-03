@@ -22,12 +22,16 @@ const dotLocation         = document.getElementById('dot-location');
 const dotSpending         = document.getElementById('dot-spending');
 const dotHireRate         = document.getElementById('dot-hirerate');
 const dotReviews          = document.getElementById('dot-reviews');
+const dotRating           = document.getElementById('dot-rating');
 const dotCompetition      = document.getElementById('dot-competition');
+const dotActivity         = document.getElementById('dot-activity');
 const msgLocation         = document.getElementById('msg-location');
 const msgSpending         = document.getElementById('msg-spending');
 const msgHireRate         = document.getElementById('msg-hirerate');
 const msgReviews          = document.getElementById('msg-reviews');
+const msgRating           = document.getElementById('msg-rating');
 const msgCompetition      = document.getElementById('msg-competition');
+const msgActivity         = document.getElementById('msg-activity');
 
 const locationWarning     = document.getElementById('location-warning');
 const locationWarningText = document.getElementById('location-warning-text');
@@ -267,7 +271,7 @@ function populateJobSummary(jobData) {
  * @param {object} vetting - Return value of vetClient()
  */
 function populateVetting(vetting) {
-  const { overall, locationCheck, spendingCheck, hireRateCheck, reviewsCheck, proposalCompetition } = vetting;
+  const { overall, locationCheck, spendingCheck, hireRateCheck, reviewsCheck, ratingCheck, activityCheck, proposalCompetition, preferredQualifications } = vetting;
 
   // Overall badge
   const badgeLabels = { green: 'Good', yellow: 'Caution', red: 'Risk' };
@@ -286,8 +290,38 @@ function populateVetting(vetting) {
   setDotClass(dotReviews,     statusToDotClass(reviewsCheck.status));
   msgReviews.textContent = reviewsCheck.message;
 
+  // Rating
+  if (ratingCheck) {
+    var ratingDotMap = { good: 'dot-green', fair: 'dot-yellow', low: 'dot-red', unknown: 'dot-grey' };
+    setDotClass(dotRating, ratingDotMap[ratingCheck.status] || 'dot-grey');
+    msgRating.textContent = ratingCheck.message;
+  }
+
   setDotClass(dotCompetition, competitionToDotClass(proposalCompetition.level));
   msgCompetition.textContent = proposalCompetition.message;
+
+  // Activity
+  if (activityCheck) {
+    var activityDotMap = { active: 'dot-green', slow: 'dot-yellow', inactive: 'dot-red', unknown: 'dot-grey' };
+    setDotClass(dotActivity, activityDotMap[activityCheck.status] || 'dot-grey');
+    msgActivity.textContent = activityCheck.message;
+  }
+
+  // Preferred Qualifications
+  var qualsSection = document.getElementById('qualifications-section');
+  var qualsList = document.getElementById('qualifications-list');
+  if (preferredQualifications && preferredQualifications.length > 0) {
+    qualsSection.classList.remove('hidden');
+    qualsList.innerHTML = '';
+    for (var qi = 0; qi < preferredQualifications.length; qi++) {
+      var qli = document.createElement('li');
+      qli.textContent = preferredQualifications[qi];
+      qli.style.cssText = 'padding:2px 0;border-bottom:1px solid #dbeafe;';
+      qualsList.appendChild(qli);
+    }
+  } else {
+    qualsSection.classList.add('hidden');
+  }
 
   // Location warning banner
   if (locationCheck.status === 'warning') {
