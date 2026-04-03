@@ -130,17 +130,27 @@ export default function ProjectsPage() {
     }
   };
 
-  if (loading) return <div className="animate-pulse text-gray-400">Loading projects...</div>;
+  if (loading) return (
+    <div className="page-container">
+      <div className="page-header"><div className="skeleton-line w-48 h-7" /><div className="skeleton-line-xs mt-2" /></div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="skeleton-card"><div className="skeleton-body"><div className="skeleton-line-xs" /><div className="skeleton-line w-1/2 h-8 mt-2" /></div></div>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
-        <div className="flex gap-2">
-          <button onClick={openNew} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
-            + Add Project
-          </button>
-        </div>
+    <div className="page-container">
+      <div className="page-header">
+        <h1 className="page-title">Projects</h1>
+        <p className="page-subtitle">Your portfolio projects for proposal references</p>
+      </div>
+      <div className="flex items-center justify-end mb-6">
+        <button onClick={openNew} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
+          + Add Project
+        </button>
       </div>
 
       {/* Bulk Import Card */}
@@ -302,7 +312,7 @@ export default function ProjectsPage() {
           <p className="text-sm">Add your portfolio projects so the AI can reference them in proposals.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map(p => (
             <div key={p.id} className={`bg-white rounded-lg shadow-sm p-5 ${p.is_featured ? 'ring-2 ring-blue-200' : ''}`}>
               <div className="flex items-start justify-between mb-2">

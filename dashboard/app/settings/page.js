@@ -92,11 +92,23 @@ export default function SettingsPage() {
     setSaving(false);
   };
 
-  if (loading) return <div className="animate-pulse text-gray-400">Loading settings...</div>;
+  if (loading) return (
+    <div className="page-container">
+      <div className="page-header"><div className="skeleton-line w-40 h-7" /><div className="skeleton-line-xs mt-2" /></div>
+      <div className="space-y-4 max-w-3xl">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="skeleton-card"><div className="skeleton-body"><div className="skeleton-line w-1/3 h-5 mb-3" /><div className="skeleton-line-xs" /><div className="skeleton-line w-3/4 h-4 mt-2" /></div></div>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
+    <div className="page-container">
+      <div className="page-header">
+        <h1 className="page-title">Settings</h1>
+        <p className="page-subtitle">Configure vetting thresholds, filters, and AI settings</p>
+      </div>
 
       <div className="space-y-6 max-w-3xl">
         {/* Target Locations */}

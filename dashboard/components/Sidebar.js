@@ -28,7 +28,7 @@ const NAV = [
   )},
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ mobileOpen, onClose }) {
   const pathname = usePathname();
   const [userEmail, setUserEmail] = useState('');
 
@@ -46,7 +46,17 @@ export default function Sidebar() {
   }, []);
 
   return (
-    <aside className="fixed left-0 top-0 w-64 min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 text-white flex flex-col">
+    <aside className={`
+      fixed top-0 left-0 w-64 min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 text-white flex flex-col z-50
+      ${mobileOpen ? 'flex animate-slide-in' : 'hidden lg:flex'}
+    `}>
+      {/* Close button (mobile only) */}
+      {onClose && (
+        <button onClick={onClose} className="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      )}
+
       {/* Brand */}
       <div className="px-5 py-5">
         <h1 className="text-lg font-bold tracking-tight">Proposal Automator</h1>

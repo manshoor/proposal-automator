@@ -131,12 +131,24 @@ export default function ProfilePage() {
   };
 
   if (loading) {
-    return <div className="animate-pulse text-gray-400">Loading profile...</div>;
+    return (
+      <div className="page-container">
+        <div className="page-header"><div className="skeleton-line w-40 h-7" /><div className="skeleton-line-xs mt-2" /></div>
+        <div className="space-y-4 max-w-3xl">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="skeleton-card"><div className="skeleton-body"><div className="skeleton-line w-1/4 h-4 mb-2" /><div className="skeleton-line h-9" /></div></div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Profile</h1>
+    <div className="page-container">
+      <div className="page-header">
+        <h1 className="page-title">Profile</h1>
+        <p className="page-subtitle">Your Upwork profile data used for proposal generation</p>
+      </div>
 
       {/* Resume Upload Card */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-5 mb-6 max-w-3xl">

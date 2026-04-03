@@ -94,7 +94,7 @@ export default function TemplatesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-8 sm:px-6 lg:px-8">
+    <div className="page-container">
       <div className="max-w-5xl mx-auto">
         <PageHeader title="Templates">
           <button
@@ -187,7 +187,7 @@ export default function TemplatesPage() {
 
         {/* Template grid */}
         {!loading && !error && templates.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {templates.map((template) => (
               <div
                 key={template.id}

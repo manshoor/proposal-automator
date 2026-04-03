@@ -17,19 +17,28 @@ export default function AnalyticsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="animate-pulse text-gray-400">Loading analytics...</div>;
+  if (loading) return (
+    <div className="page-container">
+      <div className="page-header"><div className="skeleton-line w-48 h-7" /><div className="skeleton-line-xs mt-2" /></div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="skeleton-card"><div className="skeleton-body"><div className="skeleton-line-xs" /><div className="skeleton-line w-1/2 h-8 mt-2" /></div></div>
+        ))}
+      </div>
+    </div>
+  );
   if (!data) return <div className="text-gray-500">Failed to load analytics.</div>;
 
   const s = data.summary || {};
 
   return (
-    <div>
+    <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">Analytics</h1>
         <p className="page-subtitle">Track your proposal performance and ROI over time.</p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
         <Card label="Total Proposals" value={s.total || 0} accent="border-blue-400" />
         <Card label="Win Rate" value={`${s.winRate || 0}%`} color="text-green-600" accent="border-green-400" />
         <Card label="Avg Hourly Rate" value={`$${s.avgHourlyRate || 0}`} accent="border-purple-400" />
@@ -38,7 +47,7 @@ export default function AnalyticsPage() {
 
       {/* Connect Budget Cards */}
       {(() => { const c = data.connects || {}; return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
           <Card label="Connects Spent" value={c.totalConnects || 0} sub={`${c.weeklyConnects || 0} this week`} accent="border-orange-400" />
           <Card label="Cost per Hire" value={c.connectsPerHire ? `${c.connectsPerHire} Connects` : '—'} sub={c.connectsPerHire ? `$${(c.connectsPerHire * 0.3).toFixed(2)}` : ''} accent="border-yellow-400" />
           <Card label="Total Earnings" value={`$${c.totalEarnings || 0}`} color="text-green-600" accent="border-green-400" />

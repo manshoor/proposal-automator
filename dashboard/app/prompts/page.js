@@ -90,7 +90,16 @@ export default function PromptsPage() {
     }
   };
 
-  if (loading) return <div className="animate-pulse text-gray-400">Loading prompts...</div>;
+  if (loading) return (
+    <div className="page-container">
+      <div className="page-header"><div className="skeleton-line w-40 h-7" /><div className="skeleton-line-xs mt-2" /></div>
+      <div className="space-y-3">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="skeleton-card"><div className="skeleton-body"><div className="skeleton-line w-1/3 h-5 mb-2" /><div className="skeleton-line-xs" /><div className="skeleton-line w-3/4 h-4 mt-2" /></div></div>
+        ))}
+      </div>
+    </div>
+  );
 
   // Group by platform
   const grouped = {};
@@ -100,12 +109,12 @@ export default function PromptsPage() {
   });
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Prompts</h1>
-          <p className="text-sm text-gray-500 mt-1">Customize how AI writes proposals for each platform</p>
-        </div>
+    <div className="page-container">
+      <div className="page-header">
+        <h1 className="page-title">Prompts</h1>
+        <p className="page-subtitle">Custom AI instructions per platform</p>
+      </div>
+      <div className="flex items-center justify-end mb-6">
         <button onClick={openNew} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
           + New Prompt
         </button>

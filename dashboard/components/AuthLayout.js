@@ -10,27 +10,20 @@ export default function AuthLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const [checked, setChecked] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const isAuthPage = AUTH_PAGES.includes(pathname);
 
   useEffect(() => {
-    if (isAuthPage) {
-      setChecked(true);
-      return;
-    }
-
+    if (isAuthPage) { setChecked(true); return; }
     const token = localStorage.getItem('accessToken');
-    if (!token) {
-      router.replace('/login');
-    } else {
-      setChecked(true);
-    }
+    if (!token) { router.replace('/login'); } else { setChecked(true); }
   }, [pathname, isAuthPage, router]);
 
-  if (isAuthPage) {
-    return children;
-  }
+  // Close sidebar on navigation
+  useEffect(() => { setSidebarOpen(false); }, [pathname]);
 
-  // Don't render protected pages until auth check completes
+  if (isAuthPage) return children;
+
   if (!checked) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -40,9 +33,25 @@ export default function AuthLayout({ children }) {
   }
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <main className="flex-1 ml-64 p-8 overflow-y-auto">
+    <div className="min-h-screen bg-gray-50">
+      {/* Mobile header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+        <button onClick={() => setSidebarOpen(true)} className="text-gray-600 hover:text-gray-900">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <span className="font-semibold text-gray-900 text-sm">Proposal Automator</span>
+      </div>
+
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* Sidebar */}
+      <Sidebar mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {/* Main content */}
+      <main className="lg:ml-64 pt-14 lg:pt-0 p-4 sm:p-6 lg:p-8 min-h-screen">
         {children}
       </main>
     </div>

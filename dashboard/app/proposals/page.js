@@ -45,11 +45,23 @@ export default function ProposalsPage() {
     return '—';
   };
 
-  if (loading) return <div className="animate-pulse text-gray-400">Loading proposals...</div>;
+  if (loading) return (
+    <div className="page-container">
+      <div className="page-header"><div className="skeleton-line w-48 h-7" /><div className="skeleton-line-xs mt-2" /></div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="skeleton-card"><div className="skeleton-body"><div className="skeleton-line-xs" /><div className="skeleton-line w-1/2 h-8 mt-2" /></div></div>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Proposals</h1>
+    <div className="page-container">
+      <div className="page-header">
+        <h1 className="page-title">Proposals</h1>
+        <p className="page-subtitle">Track your sent proposals, win rates, and earnings</p>
+      </div>
 
       <div className="flex gap-3 mb-4">
         <select
@@ -76,7 +88,8 @@ export default function ProposalsPage() {
           <p className="text-sm">Generate your first proposal from the Chrome extension.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="table-container">
+          <div className="table-responsive">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -107,6 +120,7 @@ export default function ProposalsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>
