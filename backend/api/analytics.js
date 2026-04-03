@@ -5,7 +5,7 @@ import * as analyticsService from '../services/analytics.service.js';
 const router = Router();
 
 router.get('/', asyncHandler(async (req, res) => {
-  const analytics = await analyticsService.getAnalytics();
+  const analytics = await analyticsService.getAnalytics(req.user.id);
   res.json(analytics);
 }));
 

@@ -7,7 +7,7 @@ const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 router.post('/', upload.single('resume'), asyncHandler(async (req, res) => {
-  const result = await parseService.parseResume(req.file, req.body, req.log);
+  const result = await parseService.parseResume(req.file, req.body, req.log, req.user.id);
   res.json(result);
 }));
 

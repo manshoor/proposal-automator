@@ -1,6 +1,10 @@
 import pool from '../db/pool.js';
 
 export async function getSummary(userId = null) {
+  const userFilter = userId ? 'WHERE user_id = $1' : '';
+  const andUserFilter = userId ? 'AND user_id = $1' : '';
+  const userParams = userId ? [userId] : [];
+
   const [summaryResult, weeklyResult, topSkillsResult, statusBreakdownResult, connectsResult, connectWeeklyResult] =
     await Promise.all([
       // Summary aggregates
@@ -22,7 +26,8 @@ export async function getSummary(userId = null) {
           ) AS win_rate,
           ROUND(AVG(hourly_rate) FILTER (WHERE hourly_rate IS NOT NULL), 2) AS avg_hourly_rate
         FROM proposals
-      `),
+        ${userFilter}
+      `, userParams),
 
       // Weekly proposal counts for the last 12 weeks
       pool.query(`
@@ -31,26 +36,29 @@ export async function getSummary(userId = null) {
           COUNT(*) AS count
         FROM proposals
         WHERE created_at >= NOW() - INTERVAL '12 weeks'
+        ${andUserFilter}
         GROUP BY DATE_TRUNC('week', created_at)
         ORDER BY week ASC
-      `),
+      `, userParams),
 
       // Top 10 skills across all proposals
       pool.query(`
         SELECT skill, COUNT(*) AS count
         FROM proposals, UNNEST(job_skills) AS skill
+        ${userFilter}
         GROUP BY skill
         ORDER BY count DESC
         LIMIT 10
-      `),
+      `, userParams),
 
       // Status breakdown
       pool.query(`
         SELECT status, COUNT(*) AS count
         FROM proposals
+        ${userFilter}
         GROUP BY status
         ORDER BY count DESC
-      `),
+      `, userParams),
 
       // Connect tracking
       pool.query(`
@@ -65,7 +73,8 @@ export async function getSummary(userId = null) {
             THEN ROUND(SUM(earnings) FILTER (WHERE status = 'hired') / (SUM(connect_cost) FILTER (WHERE status = 'hired') * 0.30), 1)
             ELSE 0 END AS roi_multiplier
         FROM proposals
-      `),
+        ${userFilter}
+      `, userParams),
 
       // Weekly connect spending
       pool.query(`
@@ -74,9 +83,10 @@ export async function getSummary(userId = null) {
           COALESCE(SUM(connect_cost), 0) AS connects
         FROM proposals
         WHERE created_at >= NOW() - INTERVAL '12 weeks'
+        ${andUserFilter}
         GROUP BY DATE_TRUNC('week', created_at)
         ORDER BY week ASC
-      `),
+      `, userParams),
     ]);
 
   return { summaryResult, weeklyResult, topSkillsResult, statusBreakdownResult, connectsResult, connectWeeklyResult };

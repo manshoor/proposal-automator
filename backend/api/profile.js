@@ -5,12 +5,12 @@ import * as profileService from '../services/profile.service.js';
 const router = Router();
 
 router.get('/', asyncHandler(async (req, res) => {
-  const profile = await profileService.getProfile();
+  const profile = await profileService.getProfile(req.user.id);
   res.json(profile);
 }));
 
 router.put('/', asyncHandler(async (req, res) => {
-  const profile = await profileService.updateProfile(req.body);
+  const profile = await profileService.updateProfile(req.body, req.user.id);
   res.json(profile);
 }));
 

@@ -10,12 +10,20 @@ export async function findAll({ status, limit = 20, offset = 0, sort = 'created_
   const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
 
   const params = [];
-  let whereClause = '';
+  const conditions = [];
 
   if (status && ALLOWED_STATUSES.has(status)) {
     params.push(status);
-    whereClause = `WHERE status = $${params.length}`;
+    conditions.push(`status = $${params.length}`);
   }
+
+  if (userId) {
+    params.push(userId);
+    conditions.push(`user_id = $${params.length}`);
+  }
+
+  let whereClause = '';
+  if (conditions.length > 0) whereClause = 'WHERE ' + conditions.join(' AND ');
 
   params.push(safeLimit, safeOffset);
 
@@ -31,8 +39,13 @@ export async function findAll({ status, limit = 20, offset = 0, sort = 'created_
 }
 
 export async function findById(id, userId = null) {
-  const { rows } = await pool.query('SELECT * FROM proposals WHERE id = $1', [id]);
-  return rows[0] || null;
+  if (userId) {
+    const { rows } = await pool.query('SELECT * FROM proposals WHERE id = $1 AND user_id = $2', [id, userId]);
+    return rows[0] || null;
+  } else {
+    const { rows } = await pool.query('SELECT * FROM proposals WHERE id = $1', [id]);
+    return rows[0] || null;
+  }
 }
 
 export async function create(data, userId = null) {
@@ -57,36 +70,44 @@ export async function create(data, userId = null) {
     connect_cost,
   } = data;
 
+  const columns = [
+    'job_url', 'job_title', 'job_description',
+    'job_budget_type', 'job_budget_min', 'job_budget_max', 'job_budget_amount',
+    'job_skills', 'client_location', 'client_total_spent', 'client_hire_rate',
+    'client_review_count', 'proposal_text', 'hourly_rate',
+    'hidden_instructions', 'vetting_result', 'proposal_count', 'connect_cost',
+  ];
+  const values = [
+    job_url,
+    job_title,
+    job_description,
+    job_budget_type,
+    job_budget_min,
+    job_budget_max,
+    job_budget_amount,
+    job_skills,
+    client_location,
+    client_total_spent,
+    client_hire_rate,
+    client_review_count,
+    proposal_text,
+    hourly_rate,
+    hidden_instructions,
+    vetting_result,
+    proposal_count,
+    connect_cost,
+  ];
+
+  if (userId) {
+    columns.push('user_id');
+    values.push(userId);
+  }
+
+  const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+
   const { rows } = await pool.query(
-    `INSERT INTO proposals (
-      job_url, job_title, job_description,
-      job_budget_type, job_budget_min, job_budget_max, job_budget_amount,
-      job_skills, client_location, client_total_spent, client_hire_rate,
-      client_review_count, proposal_text, hourly_rate,
-      hidden_instructions, vetting_result, proposal_count, connect_cost
-    ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
-    ) RETURNING id`,
-    [
-      job_url,
-      job_title,
-      job_description,
-      job_budget_type,
-      job_budget_min,
-      job_budget_max,
-      job_budget_amount,
-      job_skills,
-      client_location,
-      client_total_spent,
-      client_hire_rate,
-      client_review_count,
-      proposal_text,
-      hourly_rate,
-      hidden_instructions,
-      vetting_result,
-      proposal_count,
-      connect_cost,
-    ]
+    `INSERT INTO proposals (${columns.join(', ')}) VALUES (${placeholders}) RETURNING id`,
+    values
   );
   return rows[0] || null;
 }
@@ -114,9 +135,15 @@ export async function update(id, data, userId = null) {
 
   sets.push('updated_at = NOW()');
   values.push(id);
+  let whereClause = `WHERE id = $${idx++}`;
+
+  if (userId) {
+    values.push(userId);
+    whereClause += ` AND user_id = $${idx++}`;
+  }
 
   const { rows } = await pool.query(
-    `UPDATE proposals SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
+    `UPDATE proposals SET ${sets.join(', ')} ${whereClause} RETURNING *`,
     values
   );
   return rows[0] || null;

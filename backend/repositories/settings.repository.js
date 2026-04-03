@@ -1,14 +1,26 @@
 import pool from '../db/pool.js';
 
 export async function findFirst(userId = null) {
-  const { rows } = await pool.query('SELECT * FROM settings LIMIT 1');
-  return rows[0] || null;
+  if (userId) {
+    const { rows } = await pool.query('SELECT * FROM settings WHERE user_id = $1 LIMIT 1', [userId]);
+    return rows[0] || null;
+  } else {
+    const { rows } = await pool.query('SELECT * FROM settings LIMIT 1');
+    return rows[0] || null;
+  }
 }
 
 export async function ensureExists(userId = null) {
-  const { rows: existing } = await pool.query('SELECT id FROM settings LIMIT 1');
-  if (existing.length === 0) {
-    await pool.query('INSERT INTO settings DEFAULT VALUES');
+  if (userId) {
+    const { rows: existing } = await pool.query('SELECT id FROM settings WHERE user_id = $1 LIMIT 1', [userId]);
+    if (existing.length === 0) {
+      await pool.query('INSERT INTO settings (user_id) VALUES ($1)', [userId]);
+    }
+  } else {
+    const { rows: existing } = await pool.query('SELECT id FROM settings LIMIT 1');
+    if (existing.length === 0) {
+      await pool.query('INSERT INTO settings DEFAULT VALUES');
+    }
   }
 }
 
@@ -30,6 +42,31 @@ export async function update(data, userId = null) {
     encryption_iv,
   } = data;
 
+  const values = [
+    locations || null,
+    min_spent !== undefined ? min_spent : null,
+    min_hire_rate !== undefined ? min_hire_rate : null,
+    min_reviews !== undefined ? min_reviews : null,
+    notification_enabled !== undefined ? notification_enabled : null,
+    notification_interval !== undefined ? notification_interval : null,
+    budget_min !== undefined ? budget_min : null,
+    budget_max !== undefined ? budget_max : null,
+    skills_include || null,
+    keywords_include || null,
+    keywords_exclude || null,
+    llm_provider || null,
+    llm_api_key_encrypted || null,
+    encryption_iv || null,
+  ];
+
+  let whereClause;
+  if (userId) {
+    values.push(userId);
+    whereClause = `WHERE user_id = $${values.length}`;
+  } else {
+    whereClause = 'WHERE id = (SELECT id FROM settings LIMIT 1)';
+  }
+
   const { rows } = await pool.query(
     `UPDATE settings SET
       locations = COALESCE($1, locations),
@@ -47,31 +84,24 @@ export async function update(data, userId = null) {
       llm_api_key_encrypted = COALESCE($13, llm_api_key_encrypted),
       encryption_iv = COALESCE($14, encryption_iv),
       updated_at = NOW()
-    WHERE id = (SELECT id FROM settings LIMIT 1)
+    ${whereClause}
     RETURNING *`,
-    [
-      locations || null,
-      min_spent !== undefined ? min_spent : null,
-      min_hire_rate !== undefined ? min_hire_rate : null,
-      min_reviews !== undefined ? min_reviews : null,
-      notification_enabled !== undefined ? notification_enabled : null,
-      notification_interval !== undefined ? notification_interval : null,
-      budget_min !== undefined ? budget_min : null,
-      budget_max !== undefined ? budget_max : null,
-      skills_include || null,
-      keywords_include || null,
-      keywords_exclude || null,
-      llm_provider || null,
-      llm_api_key_encrypted || null,
-      encryption_iv || null,
-    ]
+    values
   );
   return rows[0] || null;
 }
 
 export async function getLLMConfig(userId = null) {
-  const { rows } = await pool.query(
-    'SELECT llm_provider, llm_api_key_encrypted, encryption_iv FROM settings LIMIT 1'
-  );
-  return rows[0] || null;
+  if (userId) {
+    const { rows } = await pool.query(
+      'SELECT llm_provider, llm_api_key_encrypted, encryption_iv FROM settings WHERE user_id = $1 LIMIT 1',
+      [userId]
+    );
+    return rows[0] || null;
+  } else {
+    const { rows } = await pool.query(
+      'SELECT llm_provider, llm_api_key_encrypted, encryption_iv FROM settings LIMIT 1'
+    );
+    return rows[0] || null;
+  }
 }

@@ -5,12 +5,12 @@ import * as settingsService from '../services/settings.service.js';
 const router = Router();
 
 router.get('/', asyncHandler(async (req, res) => {
-  const settings = await settingsService.getSettings();
+  const settings = await settingsService.getSettings(req.user.id);
   res.json(settings);
 }));
 
 router.put('/', asyncHandler(async (req, res) => {
-  const settings = await settingsService.updateSettings(req.body);
+  const settings = await settingsService.updateSettings(req.body, req.user.id);
   res.json(settings);
 }));
 

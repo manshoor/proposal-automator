@@ -5,7 +5,7 @@ import * as analyzerService from '../services/analyzer.service.js';
 const router = Router();
 
 router.post('/', asyncHandler(async (req, res) => {
-  const result = await analyzerService.analyzeProfile(req.body);
+  const result = await analyzerService.analyzeProfile(req.body, req.user.id);
   res.json(result);
 }));
 

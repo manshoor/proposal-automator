@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { optionalAuth } from '../../middleware/auth.js';
+import authRouter from '../../api/auth.js';
 import generateProposalRouter from '../../api/generate-proposal.js';
 import generateMessageRouter from '../../api/generate-message.js';
 import profileRouter from '../../api/profile.js';
@@ -16,6 +18,12 @@ import analyzeProfileRouter from '../../api/analyze-profile.js';
 import generateHooksRouter from '../../api/generate-hooks.js';
 
 const router = Router();
+
+// Auth routes (no auth middleware needed)
+router.use('/auth', authRouter);
+
+// All other routes use optionalAuth (JWT or legacy apiKey fallback)
+router.use(optionalAuth);
 
 router.use('/generate-proposal', generateProposalRouter);
 router.use('/generate-message', generateMessageRouter);

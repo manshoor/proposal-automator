@@ -1,8 +1,13 @@
 import pool from '../db/pool.js';
 
 export async function findFirst(userId = null) {
-  const { rows } = await pool.query('SELECT * FROM profiles LIMIT 1');
-  return rows[0] || null;
+  if (userId) {
+    const { rows } = await pool.query('SELECT * FROM profiles WHERE user_id = $1 LIMIT 1', [userId]);
+    return rows[0] || null;
+  } else {
+    const { rows } = await pool.query('SELECT * FROM profiles LIMIT 1');
+    return rows[0] || null;
+  }
 }
 
 export async function create(data, userId = null) {
@@ -16,11 +21,19 @@ export async function create(data, userId = null) {
     default_hourly_rate = 50.0,
   } = data;
 
+  const columns = ['full_name', 'title', 'summary', 'skills', 'experience', 'portfolio', 'default_hourly_rate'];
+  const values = [full_name, title, summary, skills, experience, portfolio, default_hourly_rate];
+
+  if (userId) {
+    columns.push('user_id');
+    values.push(userId);
+  }
+
+  const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+
   const { rows } = await pool.query(
-    `INSERT INTO profiles (full_name, title, summary, skills, experience, portfolio, default_hourly_rate)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     RETURNING *`,
-    [full_name, title, summary, skills, experience, portfolio, default_hourly_rate]
+    `INSERT INTO profiles (${columns.join(', ')}) VALUES (${placeholders}) RETURNING *`,
+    values
   );
   return rows[0];
 }
@@ -36,6 +49,24 @@ export async function update(id, data, userId = null) {
     default_hourly_rate,
   } = data;
 
+  const values = [
+    full_name ?? null,
+    title ?? null,
+    summary ?? null,
+    skills ?? null,
+    experience ?? null,
+    portfolio ?? null,
+    default_hourly_rate ?? null,
+    id,
+  ];
+
+  let whereClause = 'WHERE id = $8';
+
+  if (userId) {
+    values.push(userId);
+    whereClause += ` AND user_id = $${values.length}`;
+  }
+
   const { rows } = await pool.query(
     `UPDATE profiles SET
       full_name = COALESCE($1, full_name),
@@ -46,18 +77,9 @@ export async function update(id, data, userId = null) {
       portfolio = COALESCE($6, portfolio),
       default_hourly_rate = COALESCE($7, default_hourly_rate),
       updated_at = NOW()
-     WHERE id = $8
+     ${whereClause}
      RETURNING *`,
-    [
-      full_name ?? null,
-      title ?? null,
-      summary ?? null,
-      skills ?? null,
-      experience ?? null,
-      portfolio ?? null,
-      default_hourly_rate ?? null,
-      id,
-    ]
+    values
   );
   return rows[0] || null;
 }

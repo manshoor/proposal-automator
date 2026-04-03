@@ -43,7 +43,7 @@ export async function updateSettings(data, userId = null) {
     encryption_iv: iv || undefined,
   }, userId);
 
-  await invalidateLLMConfig();
+  await invalidateLLMConfig(userId);
   await cacheDel('settings');
 
   return maskApiKey(settings);

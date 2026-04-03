@@ -20,7 +20,8 @@ const DEFAULT_PROFILE = {
  * @returns {Promise<object>}
  */
 export async function getProfile(userId = null) {
-  const cached = await cacheGet('profile');
+  const cacheKey = `profile:${userId || 'global'}`;
+  const cached = await cacheGet(cacheKey);
   if (cached) return JSON.parse(cached);
 
   let profile = await profileRepo.findFirst(userId);
@@ -36,7 +37,7 @@ export async function getProfile(userId = null) {
     }, userId);
   }
 
-  await cacheSet('profile', JSON.stringify(profile), 300);
+  await cacheSet(cacheKey, JSON.stringify(profile), 300);
   return profile;
 }
 
@@ -69,6 +70,6 @@ export async function updateProfile(data, userId = null) {
   } else {
     profile = await profileRepo.update(profile.id, data, userId);
   }
-  await cacheDel('profile');
+  await cacheDel(`profile:${userId || 'global'}`);
   return profile;
 }

@@ -16,7 +16,7 @@ export async function resolveLLMConfig(requestBody, userId = null) {
   let apiKey = requestBody.apiKey;
 
   if (!apiKey) {
-    const config = await getLLMConfig();
+    const config = await getLLMConfig(userId);
     provider = config.provider;
     apiKey = config.apiKey;
   }
