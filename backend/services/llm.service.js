@@ -1,6 +1,7 @@
 import { getLLMConfig } from '../lib/get-llm-config.js';
 import { callLLM as callLLMRaw } from '../lib/llm.js';
 import { ValidationError, ExternalServiceError } from '../lib/errors.js';
+import { llmRequestDuration, llmRequestTotal } from '../lib/metrics.js';
 
 /**
  * Resolves the LLM provider and API key.
@@ -40,9 +41,15 @@ export async function resolveLLMConfig(requestBody, userId = null) {
  * @returns {Promise<string>}
  */
 export async function callLLM({ provider, apiKey, systemPrompt, userPrompt, maxTokens = 2048 }) {
+  const end = llmRequestDuration.startTimer({ provider, endpoint: 'callLLM' });
   try {
-    return await callLLMRaw({ provider, apiKey, systemPrompt, userPrompt, maxTokens });
+    const result = await callLLMRaw({ provider, apiKey, systemPrompt, userPrompt, maxTokens });
+    llmRequestTotal.inc({ provider, status: 'success' });
+    end();
+    return result;
   } catch (err) {
+    llmRequestTotal.inc({ provider, status: 'error' });
+    end();
     const status = err.status || err.statusCode;
     if (status === 401) throw new ValidationError('Invalid API key. Please check your settings.');
     if (status === 429) throw new ExternalServiceError('LLM', 'Rate limit reached. Please try again shortly.');

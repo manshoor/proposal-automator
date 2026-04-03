@@ -7,6 +7,8 @@ import { logger, requestLogger } from './lib/logger.js';
 import { requestId } from './middleware/request-id.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { globalLimiter } from './middleware/rate-limiter.js';
+import { metricsMiddleware } from './middleware/metrics.js';
+import { register } from './lib/metrics.js';
 import { runMigrations } from './db/migrate.js';
 import pool from './db/pool.js';
 import { connectRedis, disconnectRedis } from './lib/redis.js';
@@ -25,10 +27,17 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '50kb' }));
 app.use(globalLimiter);
+app.use(metricsMiddleware);
 
 // Health check (before routes, no auth needed)
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', version: '2.0.0', timestamp: new Date().toISOString() });
+});
+
+// Prometheus metrics endpoint
+app.get('/metrics', async (_req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
 });
 
 // Static uploads

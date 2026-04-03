@@ -120,6 +120,25 @@ logs-dashboard:
 logs-db:
 	docker compose logs db --tail 50
 
+### Observability ##########################################
+
+metrics:
+	@curl -s http://localhost:$${BACKEND_PORT:-3002}/metrics | head -80
+
+grafana:
+	@echo "Grafana: http://localhost:$${GRAFANA_PORT:-3004}"
+	@echo "Username: admin"
+	@echo "Password: $${GRAFANA_ADMIN_PASSWORD:-admin}"
+
+prometheus:
+	@echo "Prometheus: http://localhost:$${PROMETHEUS_PORT:-9090}"
+
+monitor-prometheus:
+	docker compose logs -f -t prometheus
+
+monitor-grafana:
+	docker compose logs -f -t grafana
+
 ### Database ###############################################
 
 db-shell:
