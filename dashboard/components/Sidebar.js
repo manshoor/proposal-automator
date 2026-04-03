@@ -47,39 +47,46 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
   return (
     <aside className={`
-      fixed top-0 left-0 w-64 min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 text-white flex flex-col z-50
+      fixed top-0 left-0 w-64 min-h-screen text-white flex flex-col z-50 overflow-hidden
       ${mobileOpen ? 'flex animate-slide-in' : 'hidden lg:flex'}
-    `}>
+    `} style={{
+      background: 'linear-gradient(180deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)',
+    }}>
+      {/* Ambient glow */}
+      <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-20 left-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl" />
+
       {/* Close button (mobile only) */}
       {onClose && (
-        <button onClick={onClose} className="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-white">
+        <button onClick={onClose} className="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-white z-10">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       )}
 
       {/* Brand */}
-      <div className="px-5 py-5">
-        <h1 className="text-lg font-bold tracking-tight">Proposal Automator</h1>
-        <p className="text-xs text-gray-500 mt-0.5">Upwork Dashboard</p>
-        <div className="mt-3 h-0.5 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full" />
+      <div className="px-5 py-6 relative">
+        <h1 className="text-lg font-extrabold tracking-tight bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">Proposal Automator</h1>
+        <p className="text-xs text-gray-400 mt-0.5 font-medium">Upwork Dashboard</p>
+        <div className="mt-4 h-px bg-gradient-to-r from-blue-500/50 via-purple-500/30 to-transparent" />
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-2 px-3">
+      <nav className="flex-1 py-2 px-3 relative">
         {NAV.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 mb-0.5 ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 mb-1 ${
                 active
-                  ? 'bg-blue-600/20 text-blue-400 font-medium border-l-2 border-blue-500 ml-0 pl-2.5'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5 border-l-2 border-transparent'
+                  ? 'bg-gradient-to-r from-blue-600/25 to-purple-600/15 text-white font-semibold shadow-lg shadow-blue-500/10'
+                  : 'text-gray-400 hover:text-white hover:bg-white/[0.06]'
               }`}
             >
-              <span className={active ? 'text-blue-400' : 'text-gray-500'}>{item.icon}</span>
+              <span className={`transition-colors ${active ? 'text-blue-400' : 'text-gray-500 group-hover:text-gray-300'}`}>{item.icon}</span>
               {item.label}
+              {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />}
             </Link>
           );
         })}
