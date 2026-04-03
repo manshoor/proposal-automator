@@ -43,8 +43,19 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="px-5 py-4 border-t border-gray-800 text-xs text-gray-500">
-        v1.0.0
+      <div className="px-5 py-4 border-t border-gray-800">
+        <button
+          onClick={() => {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            window.location.href = '/login';
+          }}
+          className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors w-full"
+        >
+          <span className="text-base">🚪</span>
+          Logout
+        </button>
+        <p className="text-xs text-gray-500 mt-3">v2.0.0</p>
       </div>
     </aside>
   );
