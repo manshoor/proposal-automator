@@ -6,6 +6,16 @@ import dynamic from 'next/dynamic';
 
 const Charts = dynamic(() => import('../../components/AnalyticsCharts'), { ssr: false });
 
+const STAT_ICONS = {
+  total: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>,
+  win: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.996.178-1.768-.767-1.768-1.768 0-1.001.772-1.945 1.768-1.768m0 3.536h13.5" /></svg>,
+  rate: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+  hired: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+  connects: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>,
+  cost: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg>,
+  roi: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg>,
+};
+
 export default function AnalyticsPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -30,42 +40,50 @@ export default function AnalyticsPage() {
   if (!data) return <div className="text-gray-500">Failed to load analytics.</div>;
 
   const s = data.summary || {};
+  const c = data.connects || {};
 
   return (
-    <div className="page-container">
+    <div className="page-container animate-fade-in">
       <div className="page-header">
         <h1 className="page-title">Analytics</h1>
-        <p className="page-subtitle">Track your proposal performance and ROI over time.</p>
+        <p className="page-subtitle">Track your proposal performance and ROI over time</p>
       </div>
 
+      {/* Proposal Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-        <Card label="Total Proposals" value={s.total || 0} accent="border-blue-400" />
-        <Card label="Win Rate" value={`${s.winRate || 0}%`} color="text-green-600" accent="border-green-400" />
-        <Card label="Avg Hourly Rate" value={`$${s.avgHourlyRate || 0}`} accent="border-purple-400" />
-        <Card label="Total Hired" value={s.hired || 0} color="text-green-600" accent="border-green-500" />
+        <StatCard icon={STAT_ICONS.total} label="Total Proposals" value={s.total || 0} gradient="from-blue-500 to-blue-600" />
+        <StatCard icon={STAT_ICONS.win} label="Win Rate" value={`${s.winRate || 0}%`} gradient="from-emerald-500 to-emerald-600" />
+        <StatCard icon={STAT_ICONS.rate} label="Avg Rate" value={`$${s.avgHourlyRate || 0}/hr`} gradient="from-purple-500 to-purple-600" />
+        <StatCard icon={STAT_ICONS.hired} label="Total Hired" value={s.hired || 0} gradient="from-green-500 to-green-600" />
       </div>
 
-      {/* Connect Budget Cards */}
-      {(() => { const c = data.connects || {}; return (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-          <Card label="Connects Spent" value={c.totalConnects || 0} sub={`${c.weeklyConnects || 0} this week`} accent="border-orange-400" />
-          <Card label="Cost per Hire" value={c.connectsPerHire ? `${c.connectsPerHire} Connects` : '—'} sub={c.connectsPerHire ? `$${(c.connectsPerHire * 0.3).toFixed(2)}` : ''} accent="border-yellow-400" />
-          <Card label="Total Earnings" value={`$${c.totalEarnings || 0}`} color="text-green-600" accent="border-green-400" />
-          <Card label="ROI" value={c.roiMultiplier ? `${c.roiMultiplier}x` : '—'} color={c.roiMultiplier > 1 ? 'text-green-600' : 'text-gray-500'} sub="earnings / connect cost" accent={c.roiMultiplier > 1 ? 'border-green-400' : 'border-red-400'} />
-        </div>
-      ); })()}
+      {/* Connect Budget Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard icon={STAT_ICONS.connects} label="Connects Spent" value={c.totalConnects || 0} sub={`${c.weeklyConnects || 0} this week`} gradient="from-orange-500 to-orange-600" />
+        <StatCard icon={STAT_ICONS.cost} label="Cost per Hire" value={c.connectsPerHire ? `${c.connectsPerHire}` : '—'} sub={c.connectsPerHire ? `$${(c.connectsPerHire * 0.3).toFixed(2)} USD` : 'No hires yet'} gradient="from-amber-500 to-amber-600" />
+        <StatCard icon={STAT_ICONS.rate} label="Total Earnings" value={`$${c.totalEarnings || 0}`} gradient="from-green-500 to-teal-600" />
+        <StatCard icon={STAT_ICONS.roi} label="ROI" value={c.roiMultiplier ? `${c.roiMultiplier}x` : '—'} sub="earnings / connect cost" gradient={c.roiMultiplier > 1 ? 'from-green-500 to-emerald-600' : 'from-gray-400 to-gray-500'} />
+      </div>
 
       <Charts data={data} />
     </div>
   );
 }
 
-function Card({ label, value, color = 'text-gray-900', sub, accent = 'border-gray-300' }) {
+function StatCard({ icon, label, value, sub, gradient }) {
   return (
-    <div className={`bg-white rounded-lg shadow-sm p-5 border-l-4 ${accent}`}>
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{label}</p>
-      <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+    <div className="card group hover:scale-[1.02] transition-all duration-200">
+      <div className="p-4 sm:p-5">
+        <div className="flex items-start justify-between mb-3">
+          <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white shadow-lg`}
+            style={{ boxShadow: `0 4px 14px rgba(0,0,0,0.15)` }}>
+            {icon}
+          </div>
+        </div>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</p>
+        <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1 tracking-tight">{value}</p>
+        {sub && <p className="text-xs text-gray-400 mt-1 font-medium">{sub}</p>}
+      </div>
     </div>
   );
 }
