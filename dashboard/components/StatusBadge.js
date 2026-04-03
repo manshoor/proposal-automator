@@ -1,17 +1,17 @@
 'use client';
 
-const COLORS = {
-  sent: 'bg-blue-100 text-blue-800',
-  hired: 'bg-green-100 text-green-800',
-  rejected: 'bg-red-100 text-red-800',
-  pending: 'bg-yellow-100 text-yellow-800',
-  withdrawn: 'bg-gray-100 text-gray-600',
+const BADGE_MAP = {
+  sent: 'badge badge-blue',
+  hired: 'badge badge-green',
+  rejected: 'badge badge-red',
+  pending: 'badge badge-yellow',
+  withdrawn: 'badge badge-gray',
 };
 
 export default function StatusBadge({ status }) {
-  const cls = COLORS[status] || COLORS.sent;
+  const cls = BADGE_MAP[status] || BADGE_MAP.sent;
   return (
-    <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium capitalize ${cls}`}>
+    <span className={`${cls} capitalize`}>
       {status}
     </span>
   );

@@ -171,7 +171,7 @@ export default function ProfilePage() {
                 accept=".pdf,.docx,.doc,.txt"
                 onChange={handleFileUpload}
                 disabled={parsing}
-                className="text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer disabled:opacity-50"
+                className="text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer disabled:opacity-50"
               />
               {parsing && (
                 <div className="flex items-center gap-2 text-sm text-blue-600">
@@ -505,7 +505,7 @@ export default function ProfilePage() {
                   setSavingProjects(false);
                 }}
                 disabled={savingProjects}
-                className="bg-amber-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-amber-700 disabled:opacity-50 flex-shrink-0"
+                className="btn-primary flex-shrink-0"
               >
                 {savingProjects ? 'Saving...' : 'Add Selected'}
               </button>
@@ -513,7 +513,7 @@ export default function ProfilePage() {
 
             <div className="space-y-3">
               {detectedProjects.map((p, i) => (
-                <label key={i} className="flex items-start gap-3 bg-white rounded-md p-3 border border-amber-100 cursor-pointer hover:border-amber-300">
+                <label key={i} className="flex items-start gap-3 bg-white/80 rounded-xl p-3 border border-amber-200/50 cursor-pointer hover:border-amber-300">
                   <input type="checkbox" id={`proj-check-${i}`} defaultChecked className="mt-1 rounded border-gray-300" />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-gray-900 text-sm">{p.name}</div>
@@ -604,7 +604,7 @@ function HookGenerator({ profileTitle, onApply }) {
               className="flex-1 input"
               onKeyDown={e => e.key === 'Enter' && generate()} />
             <button onClick={generate} disabled={generating}
-              className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-purple-700 disabled:opacity-50 whitespace-nowrap">
+              className="btn-primary whitespace-nowrap">
               {generating ? 'Generating...' : 'Generate Hooks'}
             </button>
           </div>
@@ -623,7 +623,7 @@ function HookGenerator({ profileTitle, onApply }) {
                       <p className="text-[11px] text-gray-500 mt-1 italic">{h.why_it_works}</p>
                     </div>
                     <button onClick={() => onApply(h.text)}
-                      className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded hover:bg-purple-700 flex-shrink-0">
+                      className="text-xs btn-primary py-1.5 flex-shrink-0">
                       Use This
                     </button>
                   </div>

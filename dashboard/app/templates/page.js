@@ -100,9 +100,7 @@ export default function TemplatesPage() {
           <button
             type="button"
             onClick={openCreate}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md
-                       hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500
-                       focus:ring-offset-2 transition-colors"
+            className="btn-primary"
           >
             Create Template
           </button>
@@ -142,8 +140,7 @@ export default function TemplatesPage() {
             <button
               type="button"
               onClick={fetchTemplates}
-              className="px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-300
-                         rounded-md hover:bg-blue-50 transition-colors"
+              className="btn-secondary"
             >
               Try again
             </button>
@@ -176,9 +173,7 @@ export default function TemplatesPage() {
             <button
               type="button"
               onClick={openCreate}
-              className="mt-4 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md
-                         hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500
-                         focus:ring-offset-2 transition-colors"
+              className="mt-4 btn-primary"
             >
               Create Template
             </button>
@@ -191,8 +186,7 @@ export default function TemplatesPage() {
             {templates.map((template) => (
               <div
                 key={template.id}
-                className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm
-                           flex flex-col justify-between hover:shadow-md transition-shadow"
+                className="card card-body flex flex-col justify-between hover:shadow-md transition-shadow"
               >
                 <div className="mb-4">
                   {/* Card header row */}
@@ -223,9 +217,7 @@ export default function TemplatesPage() {
                     <button
                       type="button"
                       onClick={() => openEdit(template)}
-                      className="px-3 py-1 text-xs font-medium text-gray-600 border border-gray-300
-                                 rounded hover:bg-gray-50 focus:outline-none focus:ring-2
-                                 focus:ring-gray-300 transition-colors"
+                      className="btn-secondary text-xs px-3 py-1"
                     >
                       Edit
                     </button>
@@ -233,10 +225,7 @@ export default function TemplatesPage() {
                       type="button"
                       onClick={() => handleDelete(template.id)}
                       disabled={deletingId === template.id}
-                      className="px-3 py-1 text-xs font-medium text-red-600 border border-red-200
-                                 rounded hover:bg-red-50 focus:outline-none focus:ring-2
-                                 focus:ring-red-300 transition-colors disabled:opacity-50
-                                 disabled:cursor-not-allowed"
+                      className="btn-danger text-xs px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {deletingId === template.id ? 'Deleting...' : 'Delete'}
                     </button>

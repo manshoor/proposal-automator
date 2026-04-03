@@ -15,13 +15,13 @@ const PLATFORMS = [
 ];
 
 const PLATFORM_COLORS = {
-  all: 'bg-gray-100 text-gray-800',
-  upwork: 'bg-green-100 text-green-800',
-  fiverr: 'bg-emerald-100 text-emerald-800',
-  peopleperhour: 'bg-blue-100 text-blue-800',
-  linkedin: 'bg-sky-100 text-sky-800',
-  freelancer: 'bg-orange-100 text-orange-800',
-  toptal: 'bg-purple-100 text-purple-800',
+  all: 'bg-gray-100 text-gray-800 ring-1 ring-gray-200/50',
+  upwork: 'bg-green-100 text-green-800 ring-1 ring-green-200/50',
+  fiverr: 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200/50',
+  peopleperhour: 'bg-blue-100 text-blue-800 ring-1 ring-blue-200/50',
+  linkedin: 'bg-sky-100 text-sky-800 ring-1 ring-sky-200/50',
+  freelancer: 'bg-orange-100 text-orange-800 ring-1 ring-orange-200/50',
+  toptal: 'bg-purple-100 text-purple-800 ring-1 ring-purple-200/50',
 };
 
 export default function PromptsPage() {
@@ -115,13 +115,13 @@ export default function PromptsPage() {
         <p className="page-subtitle">Custom AI instructions per platform</p>
       </div>
       <div className="flex items-center justify-end mb-6">
-        <button onClick={openNew} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
+        <button onClick={openNew} className="btn-primary">
           + New Prompt
         </button>
       </div>
 
       {/* How it works */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-sm text-blue-800">
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-sm text-blue-800">
         <strong>How it works:</strong> The AI uses your <span className="font-mono bg-blue-100 px-1 rounded">Master Prompt</span> for all platforms.
         If you add a platform-specific prompt (e.g., Upwork), it will be appended as additional instructions when generating proposals for that platform.
         Only <strong>active</strong> prompts are used.
@@ -160,10 +160,10 @@ export default function PromptsPage() {
             </div>
             <div className="flex gap-3">
               <button onClick={handleSave} disabled={saving}
-                className="bg-blue-600 text-white px-5 py-2 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+                className="btn-primary disabled:opacity-50">
                 {saving ? 'Saving...' : 'Save Prompt'}
               </button>
-              <button onClick={() => setEditing(null)} className="text-gray-500 text-sm hover:text-gray-700">Cancel</button>
+              <button onClick={() => setEditing(null)} className="btn-secondary text-sm">Cancel</button>
             </div>
           </div>
         </div>
@@ -184,7 +184,7 @@ export default function PromptsPage() {
               </h3>
               <div className="space-y-2">
                 {platformPrompts.map(p => (
-                  <div key={p.id} className={`card p-4 border-l-4 ${p.is_active ? 'border-green-500' : 'border-gray-300'}`}>
+                  <div key={p.id} className={`card p-4 border-l-4 ${p.is_active ? 'border-emerald-500' : 'border-gray-200'}`}>
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -198,12 +198,12 @@ export default function PromptsPage() {
                         <pre className="text-xs text-gray-600 whitespace-pre-wrap line-clamp-3 font-mono">{p.prompt_text}</pre>
                       </div>
                       <div className="flex gap-2 ml-4 flex-shrink-0">
-                        <button onClick={() => toggleActive(p)} className="text-xs text-gray-500 hover:text-gray-700">
+                        <button onClick={() => toggleActive(p)} className="btn-secondary text-xs px-2 py-1">
                           {p.is_active ? 'Deactivate' : 'Activate'}
                         </button>
-                        <button onClick={() => openEdit(p)} className="text-xs text-blue-600 hover:underline">Edit</button>
+                        <button onClick={() => openEdit(p)} className="btn-secondary text-xs px-2 py-1">Edit</button>
                         {!p.is_default && (
-                          <button onClick={() => handleDelete(p.id)} className="text-xs text-red-500 hover:underline">Delete</button>
+                          <button onClick={() => handleDelete(p.id)} className="btn-danger text-xs px-2 py-1">Delete</button>
                         )}
                       </div>
                     </div>

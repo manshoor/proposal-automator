@@ -148,15 +148,15 @@ export default function ProjectsPage() {
         <p className="page-subtitle">Your portfolio projects for proposal references</p>
       </div>
       <div className="flex items-center justify-end mb-6">
-        <button onClick={openNew} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
+        <button onClick={openNew} className="btn-primary">
           + Add Project
         </button>
       </div>
 
       {/* Bulk Import Card */}
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-5 mb-6">
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-5 mb-6">
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+          <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
             <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
@@ -173,7 +173,7 @@ export default function ProjectsPage() {
                 accept=".pdf,.docx,.doc,.txt,.csv"
                 onChange={handleFileImport}
                 disabled={importing}
-                className="text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 file:cursor-pointer disabled:opacity-50"
+                className="text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 file:cursor-pointer disabled:opacity-50"
               />
               {importing && (
                 <div className="flex items-center gap-2 text-sm text-indigo-600">
@@ -257,7 +257,7 @@ export default function ProjectsPage() {
               {form.screenshots && form.screenshots.length > 0 && (
                 <div className="space-y-2 mb-3">
                   {form.screenshots.map((src, i) => (
-                    <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-md p-2">
+                    <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-xl p-2">
                       <img src={src} alt="" className="w-12 h-12 object-cover rounded border border-gray-200"
                         onError={(e) => { e.target.style.display = 'none'; }} />
                       <input type="text" value={src} readOnly
@@ -290,17 +290,17 @@ export default function ProjectsPage() {
                     setForm({...form, screenshots: [...(form.screenshots || []), url]});
                     input.value = '';
                   }
-                }} className="bg-gray-100 text-gray-700 px-3 py-2 rounded-md text-sm hover:bg-gray-200">Add</button>
+                }} className="btn-secondary text-sm">Add</button>
               </div>
               <p className="text-xs text-gray-400 mt-1">Paste image URLs from Google Drive, Imgur, or any hosting. Up to 10 links. Press Enter to add.</p>
             </div>
           </div>
           <div className="flex gap-3 mt-4">
             <button onClick={handleSave} disabled={saving}
-              className="bg-blue-600 text-white px-5 py-2 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+              className="btn-primary disabled:opacity-50">
               {saving ? 'Saving...' : 'Save Project'}
             </button>
-            <button onClick={() => setEditing(null)} className="text-gray-500 text-sm hover:text-gray-700">Cancel</button>
+            <button onClick={() => setEditing(null)} className="btn-secondary text-sm">Cancel</button>
           </div>
         </div>
       )}
@@ -314,16 +314,16 @@ export default function ProjectsPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map(p => (
-            <div key={p.id} className={`card p-5 ${p.is_featured ? 'ring-2 ring-blue-200' : ''}`}>
+            <div key={p.id} className={`card p-5 ${p.is_featured ? 'ring-2 ring-blue-400/30 shadow-md' : ''}`}>
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <h3 className="font-semibold text-gray-900">{p.name}</h3>
-                  {p.category && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{p.category}</span>}
-                  {p.is_featured && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full ml-1">Featured</span>}
+                  {p.category && <span className="badge-purple">{p.category}</span>}
+                  {p.is_featured && <span className="badge-blue ml-1">Featured</span>}
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => openEdit(p)} className="text-xs text-blue-600 hover:underline">Edit</button>
-                  <button onClick={() => handleDelete(p.id)} className="text-xs text-red-500 hover:underline">Delete</button>
+                  <button onClick={() => openEdit(p)} className="btn-secondary text-xs px-2 py-1">Edit</button>
+                  <button onClick={() => handleDelete(p.id)} className="btn-danger text-xs px-2 py-1">Delete</button>
                 </div>
               </div>
               {/* Screenshot thumbnails */}
@@ -343,7 +343,7 @@ export default function ProjectsPage() {
               {p.technologies && p.technologies.length > 0 && (
                 <div className="flex flex-wrap gap-1 mb-2">
                   {p.technologies.map(t => (
-                    <span key={t} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{t}</span>
+                    <span key={t} className="badge-blue">{t}</span>
                   ))}
                 </div>
               )}

@@ -113,14 +113,20 @@ export default function SettingsPage() {
       <div className="space-y-6 max-w-3xl">
         {/* Target Locations */}
         <div className="card card-body">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Target Client Locations</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">Target Client Locations</h2>
           <p className="text-sm text-gray-500 mb-4">Clients outside these locations will trigger a warning in the extension.</p>
 
           <div className="flex flex-wrap gap-2 mb-4">
             {locations.map(loc => (
-              <span key={loc} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm">
+              <span key={loc} className="badge badge-blue ring-1 ring-blue-200/50 font-medium">
                 {loc}
-                <button onClick={() => removeLocation(loc)} className="text-blue-400 hover:text-blue-600 ml-1">&times;</button>
+                <button
+                  onClick={() => removeLocation(loc)}
+                  className="ml-1.5 text-blue-400 hover:text-blue-700 hover:bg-blue-100 rounded-full w-4 h-4 inline-flex items-center justify-center text-xs leading-none transition-colors"
+                  aria-label={`Remove ${loc}`}
+                >
+                  &times;
+                </button>
               </span>
             ))}
           </div>
@@ -129,13 +135,13 @@ export default function SettingsPage() {
             <input type="text" value={newLocation} onChange={(e) => setNewLocation(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addLocation()} placeholder="Add country..."
               className="flex-1 input" />
-            <button onClick={addLocation} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">Add</button>
+            <button onClick={addLocation} className="btn-primary">Add</button>
           </div>
         </div>
 
         {/* Vetting Thresholds */}
         <div className="card card-body">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Vetting Thresholds</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">Vetting Thresholds</h2>
           <p className="text-sm text-gray-500 mb-4">Clients below these thresholds will be flagged in the extension.</p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -162,7 +168,7 @@ export default function SettingsPage() {
 
         {/* Job Feed Filters */}
         <div className="card card-body">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Job Feed Filters</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">Job Feed Filters</h2>
           <p className="text-sm text-gray-500 mb-4">Configure filters for the Upwork job feed. Matching jobs trigger notifications.</p>
 
           <div className="space-y-4">
@@ -203,11 +209,11 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex items-center gap-4 pt-2">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
                 <input type="checkbox" checked={filters.notificationEnabled}
                   onChange={(e) => setFilters({ ...filters, notificationEnabled: e.target.checked })}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                <span className="text-sm text-gray-700">Enable browser notifications</span>
+                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-0 transition-colors" />
+                <span className="text-sm font-medium text-gray-700">Enable browser notifications</span>
               </label>
 
               {filters.notificationEnabled && (
@@ -229,7 +235,7 @@ export default function SettingsPage() {
 
         {/* LLM Configuration */}
         <div className="card card-body">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">LLM Configuration</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">LLM Configuration</h2>
           <p className="text-sm text-gray-500 mb-4">Configure your AI provider and API key. The key is stored encrypted on the server.</p>
 
           <div className="space-y-4">

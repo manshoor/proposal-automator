@@ -92,7 +92,7 @@ export default function ProposalsPage() {
           <div className="table-responsive">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <tr className="bg-gray-50/60 border-b border-gray-200/60 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Job Title</th>
                 <th className="px-4 py-3">Location</th>
@@ -131,7 +131,7 @@ function Row({ proposal, expanded, onToggle, onStatusChange, onEarningsUpdate, f
   const p = proposal;
   return (
     <>
-      <tr onClick={onToggle} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
+      <tr onClick={onToggle} className="cursor-pointer">
         <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(p.created_at)}</td>
         <td className="px-4 py-3 font-medium text-gray-900 max-w-xs truncate">
           {p.job_title || '—'}
@@ -144,17 +144,17 @@ function Row({ proposal, expanded, onToggle, onStatusChange, onEarningsUpdate, f
       </tr>
       {expanded && (
         <tr>
-          <td colSpan={6} className="px-4 py-4 bg-gray-50 border-b border-gray-200">
+          <td colSpan={6} className="px-4 py-4 bg-gray-50/60 border-b border-gray-200/60">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Proposal</h4>
-                <div className="text-sm text-gray-700 whitespace-pre-wrap bg-white rounded p-3 border border-gray-200 max-h-60 overflow-y-auto">
+                <div className="text-sm text-gray-700 whitespace-pre-wrap bg-white/80 rounded-xl p-3 border border-gray-200/60 max-h-60 overflow-y-auto">
                   {p.proposal_text || 'No proposal text'}
                 </div>
               </div>
               <div>
                 <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Job Description</h4>
-                <div className="text-sm text-gray-600 whitespace-pre-wrap bg-white rounded p-3 border border-gray-200 max-h-40 overflow-y-auto">
+                <div className="text-sm text-gray-600 whitespace-pre-wrap bg-white/80 rounded-xl p-3 border border-gray-200/60 max-h-40 overflow-y-auto">
                   {p.job_description || 'No description'}
                 </div>
 
@@ -209,7 +209,7 @@ function Row({ proposal, expanded, onToggle, onStatusChange, onEarningsUpdate, f
               </div>
             </div>
             {p.job_url && (
-              <a href={p.job_url} target="_blank" rel="noopener noreferrer" className="inline-block mt-3 text-blue-600 text-sm hover:underline">
+              <a href={p.job_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-3 text-blue-600 text-sm font-medium hover:text-blue-700 hover:underline transition-colors">
                 View job on Upwork →
               </a>
             )}
