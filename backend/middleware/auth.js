@@ -50,14 +50,6 @@ export function optionalAuth(req, _res, next) {
     }
   }
 
-  // Path 2: Legacy extension — apiKey in request body (backward compat)
-  if (req.body && req.body.apiKey) {
-    req.user = { id: DEFAULT_USER_ID, email: 'default@localhost' };
-    return next();
-  }
-
-  // Path 3: No auth at all — use default user for now (transitional)
-  // This allows the dashboard and extension to work during migration
-  req.user = { id: DEFAULT_USER_ID, email: 'default@localhost' };
-  next();
+  // Path 2: No auth — require login
+  throw new AuthenticationError('Authentication required. Please login in the extension settings or dashboard.');
 }

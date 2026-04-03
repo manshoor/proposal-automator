@@ -462,6 +462,18 @@ function sendToBackground(message) {
 // ---- Initialisation ----
 
 async function init() {
+  // Check login status first
+  const loggedIn = await isLoggedIn();
+  if (!loggedIn) {
+    document.getElementById('login-required-msg').classList.remove('hidden');
+    mainContent.classList.add('hidden');
+    notUpworkMsg.classList.add('hidden');
+    document.getElementById('btn-open-login').addEventListener('click', function() {
+      chrome.runtime.openOptionsPage();
+    });
+    return;
+  }
+
   // Find the active tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab) {
