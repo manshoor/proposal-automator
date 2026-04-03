@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import pool from '../db/pool.js';
+import { encrypt } from '../lib/crypto.js';
+import { invalidateLLMConfig } from '../lib/get-llm-config.js';
+import { cacheDel } from '../lib/redis.js';
 
 const router = Router();
 
@@ -30,7 +33,18 @@ router.get('/', async (_req, res) => {
       );
       rows = result.rows;
     }
-    return res.json(rows[0]);
+    const settings = rows[0];
+    // Mask the API key — never return the raw encrypted value
+    if (settings.llm_api_key_encrypted) {
+      settings.llm_api_key_masked = '****' + settings.llm_api_key_encrypted.slice(-8);
+      settings.llm_api_key_set = true;
+    } else {
+      settings.llm_api_key_masked = null;
+      settings.llm_api_key_set = false;
+    }
+    delete settings.llm_api_key_encrypted;
+    delete settings.encryption_iv;
+    return res.json(settings);
   } catch (err) {
     console.error('GET /api/settings error:', err.message);
     return res.status(500).json({ error: 'Failed to fetch settings' });
@@ -42,7 +56,8 @@ router.put('/', async (req, res) => {
   const {
     locations, min_spent, min_hire_rate, min_reviews,
     notification_enabled, notification_interval,
-    budget_min, budget_max, skills_include, keywords_include, keywords_exclude
+    budget_min, budget_max, skills_include, keywords_include, keywords_exclude,
+    llm_provider, llm_api_key
   } = req.body;
 
   try {
@@ -50,6 +65,15 @@ router.put('/', async (req, res) => {
     const { rows: existing } = await pool.query('SELECT id FROM settings LIMIT 1');
     if (existing.length === 0) {
       await pool.query('INSERT INTO settings DEFAULT VALUES');
+    }
+
+    // Encrypt API key if provided
+    let encryptedKey = undefined;
+    let iv = undefined;
+    if (llm_api_key) {
+      const result = encrypt(llm_api_key);
+      encryptedKey = result.encrypted;
+      iv = result.iv;
     }
 
     const { rows } = await pool.query(
@@ -65,6 +89,9 @@ router.put('/', async (req, res) => {
         skills_include = COALESCE($9, skills_include),
         keywords_include = COALESCE($10, keywords_include),
         keywords_exclude = COALESCE($11, keywords_exclude),
+        llm_provider = COALESCE($12, llm_provider),
+        llm_api_key_encrypted = COALESCE($13, llm_api_key_encrypted),
+        encryption_iv = COALESCE($14, encryption_iv),
         updated_at = NOW()
       WHERE id = (SELECT id FROM settings LIMIT 1)
       RETURNING *`,
@@ -80,10 +107,29 @@ router.put('/', async (req, res) => {
         skills_include || null,
         keywords_include || null,
         keywords_exclude || null,
+        llm_provider || null,
+        encryptedKey || null,
+        iv || null,
       ]
     );
 
-    return res.json(rows[0]);
+    // Invalidate caches when settings change
+    await invalidateLLMConfig();
+    await cacheDel('settings');
+
+    const settings = rows[0];
+    // Mask the API key in response
+    if (settings.llm_api_key_encrypted) {
+      settings.llm_api_key_masked = '****' + settings.llm_api_key_encrypted.slice(-8);
+      settings.llm_api_key_set = true;
+    } else {
+      settings.llm_api_key_masked = null;
+      settings.llm_api_key_set = false;
+    }
+    delete settings.llm_api_key_encrypted;
+    delete settings.encryption_iv;
+
+    return res.json(settings);
   } catch (err) {
     console.error('PUT /api/settings error:', err.message);
     return res.status(500).json({ error: 'Failed to save settings' });

@@ -3,6 +3,7 @@ import pool from '../db/pool.js';
 import { callLLM } from '../lib/llm.js';
 import { validateRequired } from '../lib/validators.js';
 import { buildMessageSystemPrompt, buildMessageUserPrompt, buildQuestionUserPrompt } from '../prompts/message.js';
+import { getLLMConfig } from '../lib/get-llm-config.js';
 
 const router = Router();
 
@@ -32,12 +33,18 @@ const DEFAULT_PROFILE = {
  *   { reply: string }
  */
 router.post('/', async (req, res) => {
-  const { conversationHistory, jobTitle, question, tone, provider, apiKey } = req.body;
+  const { conversationHistory, jobTitle, question, tone } = req.body;
 
-  // Validate required fields
-  const validation = validateRequired(['provider', 'apiKey'], req.body);
-  if (!validation.valid) {
-    return res.status(400).json({ error: validation.errors.join(', ') });
+  // Get LLM config — prefer request body, fall back to stored config
+  let provider = req.body.provider;
+  let apiKey = req.body.apiKey;
+  if (!apiKey) {
+    const config = await getLLMConfig();
+    provider = config.provider;
+    apiKey = config.apiKey;
+  }
+  if (!apiKey) {
+    return res.status(400).json({ error: 'No API key configured. Set it in dashboard settings or send in request.' });
   }
 
   // conversationHistory must be an array if provided

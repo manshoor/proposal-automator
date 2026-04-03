@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import pool from '../db/pool.js';
 import { callLLM } from '../lib/llm.js';
+import { getLLMConfig } from '../lib/get-llm-config.js';
 
 const router = Router();
 
@@ -9,9 +10,19 @@ const router = Router();
  * Generate 3 catchy profile hooks based on title, skills, and niche.
  */
 router.post('/', async (req, res) => {
-  const { provider, apiKey, profileTitle, niche } = req.body;
+  const { profileTitle, niche } = req.body;
 
-  if (!provider || !apiKey) return res.status(400).json({ error: 'provider and apiKey are required' });
+  // Get LLM config — prefer request body, fall back to stored config
+  let provider = req.body.provider;
+  let apiKey = req.body.apiKey;
+  if (!apiKey) {
+    const config = await getLLMConfig();
+    provider = config.provider;
+    apiKey = config.apiKey;
+  }
+  if (!apiKey) {
+    return res.status(400).json({ error: 'No API key configured. Set it in dashboard settings or send in request.' });
+  }
   if (!profileTitle) return res.status(400).json({ error: 'profileTitle is required' });
 
   // Fetch profile for context

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { callLLM } from '../lib/llm.js';
 import { buildAnalyzerSystemPrompt, buildAnalyzerUserPrompt } from '../prompts/analyzer.js';
+import { getLLMConfig } from '../lib/get-llm-config.js';
 
 const router = Router();
 
@@ -9,10 +10,21 @@ const router = Router();
  * Analyzes a proposal against a job description. Returns structured feedback.
  */
 router.post('/', async (req, res) => {
-  const { coverLetter, jobTitle, jobDescription, jobSkills, provider, apiKey } = req.body;
+  const { coverLetter, jobTitle, jobDescription, jobSkills } = req.body;
 
   if (!coverLetter) return res.status(400).json({ error: 'coverLetter is required' });
-  if (!provider || !apiKey) return res.status(400).json({ error: 'provider and apiKey are required' });
+
+  // Get LLM config — prefer request body, fall back to stored config
+  let provider = req.body.provider;
+  let apiKey = req.body.apiKey;
+  if (!apiKey) {
+    const config = await getLLMConfig();
+    provider = config.provider;
+    apiKey = config.apiKey;
+  }
+  if (!apiKey) {
+    return res.status(400).json({ error: 'No API key configured. Set it in dashboard settings or send in request.' });
+  }
 
   const systemPrompt = buildAnalyzerSystemPrompt();
   const userPrompt = buildAnalyzerUserPrompt(coverLetter, jobTitle, jobDescription, jobSkills);

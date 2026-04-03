@@ -1,0 +1,78 @@
+import Redis from 'ioredis';
+
+let client = null;
+let connected = false;
+
+function getClient() {
+  if (client) return client;
+
+  const url = process.env.REDIS_URL || 'redis://localhost:6379';
+  client = new Redis(url, {
+    maxRetriesPerRequest: 3,
+    retryStrategy(times) {
+      if (times > 5) return null; // stop retrying
+      return Math.min(times * 200, 2000);
+    },
+    lazyConnect: true,
+  });
+
+  client.on('connect', () => {
+    connected = true;
+    console.log('Redis connected.');
+  });
+
+  client.on('error', (err) => {
+    connected = false;
+    console.error('Redis error:', err.message);
+  });
+
+  client.on('close', () => {
+    connected = false;
+  });
+
+  return client;
+}
+
+export async function connectRedis() {
+  const c = getClient();
+  try {
+    await c.connect();
+  } catch (err) {
+    console.warn('Redis connection failed — caching disabled:', err.message);
+  }
+}
+
+export async function disconnectRedis() {
+  if (client) {
+    await client.quit().catch(() => {});
+    client = null;
+    connected = false;
+  }
+}
+
+export async function cacheGet(key) {
+  if (!connected) return null;
+  try {
+    return await getClient().get(key);
+  } catch {
+    return null;
+  }
+}
+
+export async function cacheSet(key, value, ttlSeconds = 300) {
+  if (!connected) return;
+  try {
+    await getClient().set(key, value, 'EX', ttlSeconds);
+  } catch {
+    // silently fail — cache is optional
+  }
+}
+
+export async function cacheDel(key) {
+  if (!connected) return;
+  try {
+    await getClient().del(key);
+  } catch {
+    // silently fail
+  }
+}

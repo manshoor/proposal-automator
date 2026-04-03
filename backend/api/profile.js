@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import pool from '../db/pool.js';
+import { cacheGet, cacheSet, cacheDel } from '../lib/redis.js';
 
 const router = Router();
 
@@ -84,6 +85,9 @@ router.put('/', async (req, res) => {
         profileId,
       ]
     );
+
+    // Invalidate profile cache
+    await cacheDel('profile');
 
     return res.json(updateResult.rows[0]);
   } catch (err) {

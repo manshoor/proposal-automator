@@ -13,6 +13,7 @@ export default function SettingsPage() {
     skillsInclude: '', keywordsInclude: '', keywordsExclude: '',
     notificationEnabled: false, notificationInterval: 5,
   });
+  const [llm, setLlm] = useState({ provider: 'anthropic', apiKey: '', apiKeySet: false, apiKeyMasked: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
@@ -34,6 +35,12 @@ export default function SettingsPage() {
         notificationEnabled: data.notification_enabled || false,
         notificationInterval: data.notification_interval || 5,
       });
+      setLlm({
+        provider: data.llm_provider || 'anthropic',
+        apiKey: '',
+        apiKeySet: data.llm_api_key_set || false,
+        apiKeyMasked: data.llm_api_key_masked || '',
+      });
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -53,7 +60,7 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await api.put('/settings', {
+      const payload = {
         locations,
         min_spent: thresholds.minSpent,
         min_hire_rate: thresholds.minHireRate,
@@ -65,7 +72,19 @@ export default function SettingsPage() {
         keywords_exclude: filters.keywordsExclude ? filters.keywordsExclude.split(',').map(s => s.trim()).filter(Boolean) : [],
         notification_enabled: filters.notificationEnabled,
         notification_interval: filters.notificationInterval,
-      });
+        llm_provider: llm.provider,
+      };
+      // Only send API key if user entered a new one
+      if (llm.apiKey) {
+        payload.llm_api_key = llm.apiKey;
+      }
+      const data = await api.put('/settings', payload);
+      setLlm(prev => ({
+        ...prev,
+        apiKey: '',
+        apiKeySet: data.llm_api_key_set || false,
+        apiKeyMasked: data.llm_api_key_masked || '',
+      }));
       setToast({ message: 'Settings saved successfully', type: 'success' });
     } catch (err) {
       setToast({ message: 'Failed to save settings', type: 'error' });
@@ -196,13 +215,43 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* LLM Config Note */}
-        <div className="bg-gray-50 rounded-lg border border-gray-200 p-6">
+        {/* LLM Configuration */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-2">LLM Configuration</h2>
-          <p className="text-sm text-gray-600">
-            API keys and LLM provider settings are configured in the Chrome extension settings page.
-            Click the extension icon → Settings to manage your API key.
-          </p>
+          <p className="text-sm text-gray-500 mb-4">Configure your AI provider and API key. The key is stored encrypted on the server.</p>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Provider</label>
+              <select value={llm.provider}
+                onChange={(e) => setLlm({ ...llm, provider: e.target.value })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="anthropic">Anthropic (Claude)</option>
+                <option value="openai">OpenAI (GPT-4o)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+              <div className="relative">
+                <input type="password" value={llm.apiKey}
+                  onChange={(e) => setLlm({ ...llm, apiKey: e.target.value })}
+                  placeholder={llm.apiKeySet ? `Current key: ${llm.apiKeyMasked}` : 'Enter your API key'}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm pr-20" />
+                {llm.apiKeySet && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-green-600 font-medium">
+                    Key set
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                {llm.provider === 'anthropic'
+                  ? 'Get your key at console.anthropic.com'
+                  : 'Get your key at platform.openai.com'}
+                . Leave blank to keep the existing key.
+              </p>
+            </div>
+          </div>
         </div>
 
         <button onClick={handleSave} disabled={saving}

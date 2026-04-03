@@ -4,6 +4,7 @@ import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 import pool from '../db/pool.js';
 import { callLLM } from '../lib/llm.js';
+import { getLLMConfig } from '../lib/get-llm-config.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -30,9 +31,16 @@ router.post('/', upload.single('file'), async (req, res) => {
     return res.status(400).json({ error: 'No file uploaded. Send a PDF, DOCX, or TXT file as "file".' });
   }
 
-  const { provider, apiKey } = req.body;
-  if (!provider || !apiKey) {
-    return res.status(400).json({ error: 'provider and apiKey are required.' });
+  // Get LLM config — prefer request body, fall back to stored config
+  let provider = req.body.provider;
+  let apiKey = req.body.apiKey;
+  if (!apiKey) {
+    const config = await getLLMConfig();
+    provider = config.provider;
+    apiKey = config.apiKey;
+  }
+  if (!apiKey) {
+    return res.status(400).json({ error: 'No API key configured. Set it in dashboard settings or send in request.' });
   }
 
   let rawText;

@@ -4,6 +4,7 @@ import cors from 'cors';
 
 import { runMigrations } from './db/migrate.js';
 import pool from './db/pool.js';
+import { connectRedis, disconnectRedis } from './lib/redis.js';
 import generateProposalRouter from './api/generate-proposal.js';
 import generateMessageRouter from './api/generate-message.js';
 import profileRouter from './api/profile.js';
@@ -69,6 +70,9 @@ async function start() {
     console.warn('Continuing despite migration error (development mode).');
   }
 
+  // Connect Redis (non-fatal if unavailable)
+  await connectRedis();
+
   const server = app.listen(PORT, () => {
     console.log(JSON.stringify({
       level: 'info',
@@ -87,10 +91,10 @@ async function start() {
     }));
 
     server.close(() => {
-      pool.end().then(() => {
-        console.log('Database pool closed.');
-        process.exit(0);
-      }).catch(() => process.exit(0));
+      Promise.all([
+        pool.end().then(() => console.log('Database pool closed.')),
+        disconnectRedis().then(() => console.log('Redis disconnected.')),
+      ]).then(() => process.exit(0)).catch(() => process.exit(0));
     });
 
     // Force exit after 10 seconds

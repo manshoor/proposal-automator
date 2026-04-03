@@ -3,6 +3,8 @@ import pool from '../db/pool.js';
 import { callLLM } from '../lib/llm.js';
 import { validateRequired } from '../lib/validators.js';
 import { buildSystemPrompt, buildUserPrompt } from '../prompts/proposal.js';
+import { getLLMConfig } from '../lib/get-llm-config.js';
+import { cacheGet, cacheSet } from '../lib/redis.js';
 
 const router = Router();
 
@@ -18,12 +20,18 @@ const DEFAULT_PROFILE = {
 };
 
 router.post('/', async (req, res) => {
-  const { jobData, hiddenInstructions, provider, apiKey, templateContent, extraInstruction, existingProposal, selectedProjects, platform } = req.body;
+  const { jobData, hiddenInstructions, templateContent, extraInstruction, existingProposal, selectedProjects, platform } = req.body;
 
-  // Validate top-level required fields
-  const topLevel = validateRequired(['provider', 'apiKey'], req.body);
-  if (!topLevel.valid) {
-    return res.status(400).json({ error: topLevel.errors.join(', ') });
+  // Get LLM config — prefer request body (backward compat), fall back to stored config
+  let provider = req.body.provider;
+  let apiKey = req.body.apiKey;
+  if (!apiKey) {
+    const config = await getLLMConfig();
+    provider = config.provider;
+    apiKey = config.apiKey;
+  }
+  if (!apiKey) {
+    return res.status(400).json({ error: 'No API key configured. Set it in dashboard settings or send in request.' });
   }
 
   // Validate jobData fields
@@ -36,12 +44,18 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: `jobData: ${jobValidation.errors.join(', ')}` });
   }
 
-  // Fetch profile (use default if none exists)
+  // Fetch profile (use default if none exists) — check cache first
   let profile = DEFAULT_PROFILE;
   try {
-    const { rows } = await pool.query('SELECT * FROM profiles LIMIT 1');
-    if (rows.length > 0) {
-      profile = rows[0];
+    const cached = await cacheGet('profile');
+    if (cached) {
+      profile = JSON.parse(cached);
+    } else {
+      const { rows } = await pool.query('SELECT * FROM profiles LIMIT 1');
+      if (rows.length > 0) {
+        profile = rows[0];
+        await cacheSet('profile', JSON.stringify(profile), 300);
+      }
     }
   } catch (dbErr) {
     console.error('Failed to fetch profile:', dbErr.message);
@@ -204,10 +218,19 @@ router.post('/', async (req, res) => {
 
 // ---- A/B Testing: Generate two variants ----
 router.post('/ab', async (req, res) => {
-  const { jobData, hiddenInstructions, provider, apiKey, templateContent } = req.body;
+  const { jobData, hiddenInstructions, templateContent } = req.body;
 
-  const topLevel = validateRequired(['provider', 'apiKey'], req.body);
-  if (!topLevel.valid) return res.status(400).json({ error: topLevel.errors.join(', ') });
+  // Get LLM config — prefer request body, fall back to stored config
+  let provider = req.body.provider;
+  let apiKey = req.body.apiKey;
+  if (!apiKey) {
+    const config = await getLLMConfig();
+    provider = config.provider;
+    apiKey = config.apiKey;
+  }
+  if (!apiKey) {
+    return res.status(400).json({ error: 'No API key configured. Set it in dashboard settings or send in request.' });
+  }
   if (!jobData || !jobData.title || !jobData.description) {
     return res.status(400).json({ error: 'jobData with title and description is required' });
   }
