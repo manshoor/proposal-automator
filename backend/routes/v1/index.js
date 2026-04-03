@@ -16,6 +16,7 @@ import promptsRouter from '../../api/prompts.js';
 import analyzeProposalRouter from '../../api/analyze-proposal.js';
 import analyzeProfileRouter from '../../api/analyze-profile.js';
 import generateHooksRouter from '../../api/generate-hooks.js';
+import jobsRouter from '../../api/jobs.js';
 
 const router = Router();
 
@@ -40,5 +41,6 @@ router.use('/prompts', promptsRouter);
 router.use('/analyze-proposal', analyzeProposalRouter);
 router.use('/analyze-profile', analyzeProfileRouter);
 router.use('/generate-hooks', generateHooksRouter);
+router.use('/jobs', jobsRouter);
 
 export default router;

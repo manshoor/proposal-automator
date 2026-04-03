@@ -12,6 +12,7 @@ import { register } from './lib/metrics.js';
 import { runMigrations } from './db/migrate.js';
 import pool from './db/pool.js';
 import { connectRedis, disconnectRedis } from './lib/redis.js';
+import { initQueues, closeQueues } from './queues/index.js';
 import v1Router from './routes/v1/index.js';
 
 const app = express();
@@ -64,6 +65,7 @@ async function start() {
   }
 
   await connectRedis();
+  initQueues();
 
   const server = app.listen(PORT, () => {
     logger.info({ port: PORT, env: process.env.NODE_ENV || 'development' }, 'Server running');
@@ -74,6 +76,7 @@ async function start() {
 
     server.close(() => {
       Promise.all([
+        closeQueues().then(() => logger.info('Job queues closed')),
         pool.end().then(() => logger.info('Database pool closed')),
         disconnectRedis().then(() => logger.info('Redis disconnected')),
       ]).then(() => process.exit(0)).catch(() => process.exit(0));
