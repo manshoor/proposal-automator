@@ -474,9 +474,7 @@ async function init() {
 
     // Fetch profile skills for fit score
     try {
-      const settingsForProfile = await sendToBackground({ type: 'GET_SETTINGS' });
-      const bUrl = (settingsForProfile && settingsForProfile.data && settingsForProfile.data.backendUrl) || 'http://localhost:3002';
-      const profileRes = await fetch(`${bUrl}/api/profile`);
+      const profileRes = await apiFetch('/api/v1/profile');
       if (profileRes.ok) {
         const profile = await profileRes.json();
         _profileSkills = Array.isArray(profile.skills) ? profile.skills : [];
@@ -511,9 +509,7 @@ async function init() {
 
     // Load templates for the dropdown
     try {
-      const settings = await sendToBackground({ type: 'GET_SETTINGS' });
-      const backendUrl = (settings && settings.data && settings.data.backendUrl) || 'http://localhost:3002';
-      const res = await fetch(`${backendUrl}/api/templates`);
+      const res = await apiFetch('/api/v1/templates');
       if (res.ok) {
         const templates = await res.json();
         if (Array.isArray(templates) && templates.length > 0) {
@@ -533,9 +529,7 @@ async function init() {
 
     // Load projects for selection
     try {
-      const settingsP = await sendToBackground({ type: 'GET_SETTINGS' });
-      const bUrlP = (settingsP && settingsP.data && settingsP.data.backendUrl) || 'http://localhost:3002';
-      const pRes = await fetch(`${bUrlP}/api/projects`);
+      const pRes = await apiFetch('/api/v1/projects');
       if (pRes.ok) {
         const projects = await pRes.json();
         if (Array.isArray(projects) && projects.length > 0) {
@@ -585,9 +579,7 @@ async function init() {
 
     // Check for duplicate proposals (already submitted to this job)
     try {
-      const settings2 = await sendToBackground({ type: 'GET_SETTINGS' });
-      const backendUrl2 = (settings2 && settings2.data && settings2.data.backendUrl) || 'http://localhost:3002';
-      const pRes = await fetch(`${backendUrl2}/api/proposals?limit=100`);
+      const pRes = await apiFetch('/api/v1/proposals?limit=100');
       if (pRes.ok) {
         const proposals = await pRes.json();
         if (Array.isArray(proposals)) {
@@ -767,19 +759,13 @@ btnAbTest.addEventListener('click', async () => {
   abComparison.classList.add('hidden');
 
   try {
-    const settings = await sendToBackground({ type: 'GET_SETTINGS' });
-    const backendUrl = (settings && settings.data && settings.data.backendUrl) || 'http://localhost:3002';
-
     const selectedOpt = templateDropdown.options[templateDropdown.selectedIndex];
     const templateContent = selectedOpt && selectedOpt.dataset.content ? selectedOpt.dataset.content : null;
 
-    const res = await fetch(`${backendUrl}/api/generate-proposal/ab`, {
+    const res = await apiFetch('/api/v1/generate-proposal/ab', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jobData: _currentJobData,
-        provider: settings.data.provider,
-        apiKey: settings.data.apiKey,
         templateContent: templateContent
       })
     });

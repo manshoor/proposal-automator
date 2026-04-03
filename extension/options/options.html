@@ -22,46 +22,34 @@
 
     <main class="form-card">
 
-      <!-- Provider -->
+      <!-- Auth Section -->
       <div class="field-group">
-        <label for="provider" class="field-label">AI Provider</label>
-        <select id="provider" class="field-input field-select">
-          <option value="anthropic">Anthropic (Claude)</option>
-          <option value="openai">OpenAI (GPT)</option>
-        </select>
-        <p class="field-hint">The AI provider used by the backend to generate proposals.</p>
-      </div>
+        <label class="field-label">Account</label>
 
-      <!-- API Key -->
-      <div class="field-group">
-        <label for="api-key" class="field-label">API Key</label>
-        <div class="input-with-toggle">
-          <input
-            type="password"
-            id="api-key"
-            class="field-input"
-            placeholder="sk-..."
-            autocomplete="off"
-            spellcheck="false"
-          />
-          <button type="button" id="btn-toggle-key" class="toggle-btn" aria-label="Show/hide API key">
-            <!-- Eye icon (show) -->
-            <svg id="icon-eye-open" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                 stroke-linecap="round" stroke-linejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-              <circle cx="12" cy="12" r="3"></circle>
-            </svg>
-            <!-- Eye-off icon (hide) — starts hidden -->
-            <svg id="icon-eye-off" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                 stroke-linecap="round" stroke-linejoin="round" class="hidden">
-              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-              <line x1="1" y1="1" x2="23" y2="23"></line>
-            </svg>
-          </button>
+        <!-- Logged-in state -->
+        <div id="auth-status" class="hidden" style="display:flex;align-items:center;gap:12px;padding:12px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;">
+          <span style="font-size:20px;">&#9989;</span>
+          <div style="flex:1;">
+            <div style="font-weight:600;color:#166534;" id="auth-email">user@email.com</div>
+            <div style="font-size:12px;color:#4ade80;">Logged in</div>
+          </div>
+          <button type="button" id="btn-logout" class="btn" style="background:#ef4444;color:#fff;padding:6px 16px;font-size:12px;">Logout</button>
         </div>
-        <p class="field-hint">Your API key is stored locally in your browser and never sent anywhere except your backend.</p>
+
+        <!-- Login form -->
+        <div id="auth-login">
+          <div style="margin-bottom:10px;">
+            <input type="email" id="login-email" class="field-input" placeholder="Email" autocomplete="email" />
+          </div>
+          <div style="margin-bottom:10px;">
+            <input type="password" id="login-password" class="field-input" placeholder="Password" autocomplete="current-password" />
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button type="button" id="btn-login" class="btn btn-primary">Login</button>
+            <span id="login-feedback" class="save-feedback hidden" style="color:#ef4444;"></span>
+          </div>
+          <p class="field-hint">Login with your dashboard account. Register at your dashboard first if you don't have one.</p>
+        </div>
       </div>
 
       <!-- Backend URL -->
@@ -101,6 +89,9 @@
 
   </div>
 
+  <script src="../lib/constants.js"></script>
+  <script src="../lib/storage.js"></script>
+  <script src="../lib/api.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

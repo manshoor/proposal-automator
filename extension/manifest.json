@@ -25,6 +25,7 @@
       "js": [
         "lib/constants.js",
         "lib/storage.js",
+        "lib/api.js",
         "content/hidden-instructions.js",
         "content/vetting.js",
         "content/scraper.js",
@@ -43,6 +44,7 @@
       "js": [
         "lib/constants.js",
         "lib/storage.js",
+        "lib/api.js",
         "content/vetting.js",
         "content/feed-scraper.js",
         "content/job-filter.js",
@@ -62,6 +64,7 @@
       "js": [
         "lib/constants.js",
         "lib/storage.js",
+        "lib/api.js",
         "content/message-scraper.js",
         "content/message-ui.js"
       ],

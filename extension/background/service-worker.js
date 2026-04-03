@@ -6,6 +6,8 @@
 
 'use strict';
 
+importScripts('../lib/constants.js', '../lib/storage.js', '../lib/api.js');
+
 // ---- Helpers ----
 
 async function getActiveTab() {
@@ -17,22 +19,6 @@ async function sendToContentScript(message) {
   const tab = await getActiveTab();
   if (!tab) throw new Error('No active tab found.');
   return chrome.tabs.sendMessage(tab.id, message);
-}
-
-async function loadSettings() {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get(
-      ['provider', 'apiKey', 'backendUrl', 'defaultRate'],
-      (result) => {
-        resolve({
-          provider: result.provider || 'anthropic',
-          apiKey: result.apiKey || '',
-          backendUrl: result.backendUrl || 'http://localhost:3002',
-          defaultRate: result.defaultRate || 50
-        });
-      }
-    );
-  });
 }
 
 async function loadFilters() {
@@ -173,25 +159,21 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     case 'GENERATE_PROPOSAL': {
       (async () => {
         try {
-          const settings = await loadSettings();
-          if (!settings.apiKey) {
-            sendResponse({ success: false, error: 'No API key configured.' });
+          const settings = await getSettings();
+          if (!settings.accessToken) {
+            sendResponse({ success: false, error: 'Not logged in. Open extension settings to log in.' });
             return;
           }
-          const backendUrl = (settings.backendUrl || 'http://localhost:3002').replace(/\/$/, '');
           const payload = {
             jobData: message.jobData || {},
-            provider: settings.provider,
-            apiKey: settings.apiKey,
             templateContent: message.templateContent || null,
             extraInstruction: message.extraInstruction || null,
             existingProposal: message.existingProposal || null,
             selectedProjects: message.selectedProjects || null,
             platform: message.platform || 'upwork'
           };
-          const response = await fetch(`${backendUrl}/api/generate-proposal`, {
+          const response = await apiFetch('/api/v1/generate-proposal', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
           if (!response.ok) {
@@ -212,23 +194,19 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     case 'ANALYZE_PROPOSAL': {
       (async () => {
         try {
-          const settings = await loadSettings();
-          if (!settings.apiKey) {
-            sendResponse({ success: false, error: 'No API key configured.' });
+          const settings = await getSettings();
+          if (!settings.accessToken) {
+            sendResponse({ success: false, error: 'Not logged in. Open extension settings to log in.' });
             return;
           }
-          const backendUrl = (settings.backendUrl || 'http://localhost:3002').replace(/\/$/, '');
           const payload = {
             coverLetter: message.coverLetter,
             jobTitle: message.jobTitle || '',
             jobDescription: message.jobDescription || '',
-            jobSkills: message.jobSkills || [],
-            provider: settings.provider,
-            apiKey: settings.apiKey
+            jobSkills: message.jobSkills || []
           };
-          const response = await fetch(`${backendUrl}/api/analyze-proposal`, {
+          const response = await apiFetch('/api/v1/analyze-proposal', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
           if (!response.ok) {
@@ -249,23 +227,19 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     case 'GENERATE_MESSAGE': {
       (async () => {
         try {
-          const settings = await loadSettings();
-          if (!settings.apiKey) {
-            sendResponse({ success: false, error: 'No API key configured.' });
+          const settings = await getSettings();
+          if (!settings.accessToken) {
+            sendResponse({ success: false, error: 'Not logged in. Open extension settings to log in.' });
             return;
           }
-          const backendUrl = (settings.backendUrl || 'http://localhost:3002').replace(/\/$/, '');
           const payload = {
             conversationHistory: message.conversationHistory || [],
             jobTitle: message.jobTitle || '',
             tone: message.tone || 'professional',
-            question: message.question || null,
-            provider: settings.provider,
-            apiKey: settings.apiKey
+            question: message.question || null
           };
-          const response = await fetch(`${backendUrl}/api/generate-message`, {
+          const response = await apiFetch('/api/v1/generate-message', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
           if (!response.ok) {
@@ -319,8 +293,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     case 'GET_SETTINGS': {
       (async () => {
         try {
-          const settings = await loadSettings();
-          sendResponse({ success: true, data: settings });
+          const settings = await getSettings();
+          sendResponse({ success: true, data: {
+            backendUrl: settings.backendUrl,
+            defaultRate: settings.defaultRate,
+            loggedIn: !!settings.accessToken,
+            userEmail: settings.userEmail
+          }});
         } catch (err) {
           sendResponse({ success: false, error: err.message || String(err) });
         }

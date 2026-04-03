@@ -50,46 +50,23 @@
     element.dispatchEvent(new Event('blur', { bubbles: true }));
   }
 
-  // ---- Settings helper ----
-
-  function loadSettingsMsg(callback) {
-    try {
-      chrome.storage.sync.get(
-        ['provider', 'apiKey', 'backendUrl'],
-        function (result) {
-          callback({
-            provider: result.provider || 'anthropic',
-            apiKey: result.apiKey || '',
-            backendUrl: (result.backendUrl || 'http://localhost:3002').replace(/\/$/, ''),
-          });
-        }
-      );
-    } catch (e) {
-      callback({ provider: 'anthropic', apiKey: '', backendUrl: 'http://localhost:3002' });
-    }
-  }
-
   // ---- Backend call ----
 
   function generateMessage(payload, onSuccess, onError) {
-    loadSettingsMsg(function (settings) {
-      if (!settings.apiKey) {
-        onError('No API key configured. Open the extension settings to add your key.');
+    // apiFetch is available via lib/api.js loaded in manifest
+    isLoggedIn().then(function (loggedIn) {
+      if (!loggedIn) {
+        onError('Not logged in. Open the extension settings to log in.');
         return;
       }
-      var endpoint = settings.backendUrl + '/api/generate-message';
-      fetch(endpoint, {
+      apiFetch('/api/v1/generate-message', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign({}, payload, {
-          provider: settings.provider,
-          apiKey: settings.apiKey,
-        })),
+        body: JSON.stringify(payload),
       })
         .then(function (res) {
           if (!res.ok) {
             return res.json().then(function (errBody) {
-              throw new Error(errBody.error || ('Backend error ' + res.status));
+              throw new Error((errBody.error && errBody.error.message) || ('Backend error ' + res.status));
             }).catch(function () {
               throw new Error('Backend error ' + res.status);
             });
