@@ -167,7 +167,7 @@
   background: #14a800;
   color: #fff;
   border: none;
-  border-radius: 6px;
+  border-radius: 12px;
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -225,7 +225,7 @@
   max-height: 200px;
   padding: 8px 10px;
   border: 1.5px solid #d0d0d0;
-  border-radius: 6px;
+  border-radius: 12px;
   font-family: inherit;
   font-size: 13px;
   line-height: 1.55;
@@ -252,7 +252,7 @@
   background: #14a800;
   color: #fff;
   border: none;
-  border-radius: 6px;
+  border-radius: 12px;
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -270,7 +270,7 @@
   background: #fff;
   color: #14a800;
   border: 1.5px solid #14a800;
-  border-radius: 6px;
+  border-radius: 12px;
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -288,7 +288,7 @@
   color: #c7341a;
   background: #fff5f4;
   border: 1px solid #f5c2b8;
-  border-radius: 6px;
+  border-radius: 12px;
   padding: 7px 10px;
   display: none;
 }

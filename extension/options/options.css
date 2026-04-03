@@ -13,7 +13,8 @@ body {
   font-size: 14px;
   line-height: 1.5;
   color: #1e293b;
-  background: #f1f5f9;
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  background-attachment: fixed;
   min-height: 100vh;
   padding: 32px 16px;
 }
@@ -35,7 +36,7 @@ body {
 .page-header {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 18px 22px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
@@ -49,7 +50,7 @@ body {
 .header-logo {
   width: 40px;
   height: 40px;
-  border-radius: 8px;
+  border-radius: 14px;
 }
 
 .page-title {
@@ -69,7 +70,7 @@ body {
 .form-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 22px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   display: flex;
@@ -92,7 +93,7 @@ body {
 
 .field-input {
   border: 1.5px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 14px;
   padding: 9px 12px;
   font-size: 14px;
   font-family: inherit;
@@ -169,7 +170,7 @@ body {
 
 .btn {
   border: none;
-  border-radius: 8px;
+  border-radius: 14px;
   padding: 9px 20px;
   font-size: 14px;
   font-weight: 600;
