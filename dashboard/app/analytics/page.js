@@ -24,22 +24,25 @@ export default function AnalyticsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Analytics</h1>
+      <div className="page-header">
+        <h1 className="page-title">Analytics</h1>
+        <p className="page-subtitle">Track your proposal performance and ROI over time.</p>
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card label="Total Proposals" value={s.total || 0} />
-        <Card label="Win Rate" value={`${s.winRate || 0}%`} color="text-green-600" />
-        <Card label="Avg Hourly Rate" value={`$${s.avgHourlyRate || 0}`} />
-        <Card label="Total Hired" value={s.hired || 0} color="text-green-600" />
+        <Card label="Total Proposals" value={s.total || 0} accent="border-blue-400" />
+        <Card label="Win Rate" value={`${s.winRate || 0}%`} color="text-green-600" accent="border-green-400" />
+        <Card label="Avg Hourly Rate" value={`$${s.avgHourlyRate || 0}`} accent="border-purple-400" />
+        <Card label="Total Hired" value={s.hired || 0} color="text-green-600" accent="border-green-500" />
       </div>
 
       {/* Connect Budget Cards */}
       {(() => { const c = data.connects || {}; return (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Card label="Connects Spent" value={c.totalConnects || 0} sub={`${c.weeklyConnects || 0} this week`} />
-          <Card label="Cost per Hire" value={c.connectsPerHire ? `${c.connectsPerHire} Connects` : '—'} sub={c.connectsPerHire ? `$${(c.connectsPerHire * 0.3).toFixed(2)}` : ''} />
-          <Card label="Total Earnings" value={`$${c.totalEarnings || 0}`} color="text-green-600" />
-          <Card label="ROI" value={c.roiMultiplier ? `${c.roiMultiplier}x` : '—'} color={c.roiMultiplier > 1 ? 'text-green-600' : 'text-gray-500'} sub="earnings / connect cost" />
+          <Card label="Connects Spent" value={c.totalConnects || 0} sub={`${c.weeklyConnects || 0} this week`} accent="border-orange-400" />
+          <Card label="Cost per Hire" value={c.connectsPerHire ? `${c.connectsPerHire} Connects` : '—'} sub={c.connectsPerHire ? `$${(c.connectsPerHire * 0.3).toFixed(2)}` : ''} accent="border-yellow-400" />
+          <Card label="Total Earnings" value={`$${c.totalEarnings || 0}`} color="text-green-600" accent="border-green-400" />
+          <Card label="ROI" value={c.roiMultiplier ? `${c.roiMultiplier}x` : '—'} color={c.roiMultiplier > 1 ? 'text-green-600' : 'text-gray-500'} sub="earnings / connect cost" accent={c.roiMultiplier > 1 ? 'border-green-400' : 'border-red-400'} />
         </div>
       ); })()}
 
@@ -48,11 +51,11 @@ export default function AnalyticsPage() {
   );
 }
 
-function Card({ label, value, color = 'text-gray-900', sub }) {
+function Card({ label, value, color = 'text-gray-900', sub, accent = 'border-gray-300' }) {
   return (
-    <div className="bg-white rounded-lg shadow-sm p-5">
+    <div className={`bg-white rounded-lg shadow-sm p-5 border-l-4 ${accent}`}>
       <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{label}</p>
-      <p className={`text-2xl font-bold mt-1 ${color}`}>{value}</p>
+      <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
       {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
     </div>
   );
