@@ -92,6 +92,39 @@ function isProposalPage() {
   return /\/proposals\/job\/.*\/apply/i.test(window.location.pathname);
 }
 
+// ---- Job UID extraction (works on both page types) ----
+
+function extractJobUid() {
+  var path = window.location.pathname;
+  // Job detail: /jobs/Title_~XXXX or /freelance-jobs/apply/~XXXX
+  var match = path.match(/~(\d{10,})/);
+  if (match) return match[1];
+  // Proposal page: /nx/proposals/job/~XXXX/apply
+  var match2 = path.match(/proposals\/job\/~(\d+)/);
+  if (match2) return match2[1];
+  return null;
+}
+
+// ---- Client data caching across pages (job detail → proposal page) ----
+
+function cacheClientData(jobUid, clientData) {
+  if (!jobUid || !clientData) return;
+  try {
+    var key = 'clientCache_' + jobUid;
+    var data = JSON.stringify(clientData);
+    sessionStorage.setItem(key, data);
+  } catch (e) { /* ignore quota errors */ }
+}
+
+function getCachedClientData(jobUid) {
+  if (!jobUid) return null;
+  try {
+    var key = 'clientCache_' + jobUid;
+    var data = sessionStorage.getItem(key);
+    return data ? JSON.parse(data) : null;
+  } catch (e) { return null; }
+}
+
 // ---- Title extraction ----
 
 function scrapeTitle() {
@@ -467,6 +500,7 @@ async function scrapeJobPage() {
     var onProposalPage = isProposalPage();
     console.log('[Upwork Scraper] Page type:', onProposalPage ? 'PROPOSAL' : 'JOB DETAIL');
 
+    var jobUid = extractJobUid();
     var title = scrapeTitle();
     var description = scrapeDescription();
     var budget = scrapeBudget();
@@ -474,6 +508,29 @@ async function scrapeJobPage() {
     var client = scrapeClientInfo();
     var proposalCount = scrapeProposalCount();
     var proposalCountText = scrapeProposalCountText();
+
+    // On proposal page, client selectors often missing — use cached data from job detail page
+    if (onProposalPage && client.totalSpent === 0 && !client.location && jobUid) {
+      var cached = getCachedClientData(jobUid);
+      if (cached) {
+        console.log('[Upwork Scraper] Using cached client data from job detail page');
+        client = cached;
+      }
+    }
+
+    // On job detail page, cache client data + proposal count for later use on proposal page
+    if (!onProposalPage && jobUid && (client.location || client.totalSpent > 0)) {
+      cacheClientData(jobUid, client);
+      try { sessionStorage.setItem('proposalCount_' + jobUid, String(proposalCount)); } catch (e) {}
+    }
+
+    // On proposal page, also restore proposal count if missing
+    if (onProposalPage && !proposalCount && jobUid) {
+      try {
+        var cachedCount = sessionStorage.getItem('proposalCount_' + jobUid);
+        if (cachedCount) proposalCount = parseInt(cachedCount, 10) || 0;
+      } catch (e) {}
+    }
 
     // ---- Connect cost (proposal pages show "Send a proposal for: X Connects") ----
     var connectCost = null;
