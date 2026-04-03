@@ -5,6 +5,8 @@ import { validateRequired } from '../lib/validators.js';
 import { buildSystemPrompt, buildUserPrompt } from '../prompts/proposal.js';
 import { getLLMConfig } from '../lib/get-llm-config.js';
 import { cacheGet, cacheSet } from '../lib/redis.js';
+import { asyncHandler } from '../middleware/async-handler.js';
+import { ValidationError, ExternalServiceError } from '../lib/errors.js';
 
 const router = Router();
 
@@ -19,7 +21,14 @@ const DEFAULT_PROFILE = {
   default_hourly_rate: 50.0,
 };
 
-router.post('/', async (req, res) => {
+function handleLLMError(err) {
+  const status = err.status || err.statusCode;
+  if (status === 401) throw new ValidationError('Invalid API key. Please check your settings.');
+  if (status === 429) throw new ExternalServiceError('LLM', 'Rate limit reached. Please try again shortly.');
+  throw new ExternalServiceError('LLM', 'Failed to generate response. Please try again.');
+}
+
+router.post('/', asyncHandler(async (req, res) => {
   const { jobData, hiddenInstructions, templateContent, extraInstruction, existingProposal, selectedProjects, platform } = req.body;
 
   // Get LLM config — prefer request body (backward compat), fall back to stored config
@@ -31,17 +40,17 @@ router.post('/', async (req, res) => {
     apiKey = config.apiKey;
   }
   if (!apiKey) {
-    return res.status(400).json({ error: 'No API key configured. Set it in dashboard settings or send in request.' });
+    throw new ValidationError('No API key configured. Set it in dashboard settings or send in request.');
   }
 
   // Validate jobData fields
   if (!jobData || typeof jobData !== 'object') {
-    return res.status(400).json({ error: 'jobData is required' });
+    throw new ValidationError('jobData is required');
   }
 
   const jobValidation = validateRequired(['title', 'description'], jobData);
   if (!jobValidation.valid) {
-    return res.status(400).json({ error: `jobData: ${jobValidation.errors.join(', ')}` });
+    throw new ValidationError(`jobData: ${jobValidation.errors.join(', ')}`);
   }
 
   // Fetch profile (use default if none exists) — check cache first
@@ -58,7 +67,7 @@ router.post('/', async (req, res) => {
       }
     }
   } catch (dbErr) {
-    console.error('Failed to fetch profile:', dbErr.message);
+    req.log.error({ err: dbErr }, 'Failed to fetch profile');
     // Non-fatal — fall through with default profile
   }
 
@@ -121,16 +130,8 @@ router.post('/', async (req, res) => {
       userPrompt,
       maxTokens: 2048,
     });
-  } catch (llmErr) {
-    const status = llmErr.status || llmErr.statusCode;
-    if (status === 401) {
-      return res.status(401).json({ error: 'Invalid API key. Please check your settings.' });
-    }
-    if (status === 429) {
-      return res.status(429).json({ error: 'API rate limit reached. Please try again shortly.' });
-    }
-    console.error('LLM error:', llmErr.message);
-    return res.status(502).json({ error: 'Failed to generate proposal. Please try again.' });
+  } catch (err) {
+    handleLLMError(err);
   }
 
   // Parse structured output
@@ -147,7 +148,7 @@ router.post('/', async (req, res) => {
   const milestonesSection = rawResponse.match(/MILESTONES:\s*([\s\S]*?)(?=BUDGET_WARNING:|$)/i);
   if (milestonesSection) {
     const lines = milestonesSection[1].trim().split('\n').filter(l => l.trim());
-    console.log('[Milestones] Raw lines:', lines);
+    req.log.info({ lines }, '[Milestones] Raw lines');
     for (const line of lines) {
       // Try multiple formats:
       // "1. Description | $200"
@@ -166,7 +167,7 @@ router.post('/', async (req, res) => {
         });
       }
     }
-    console.log('[Milestones] Parsed:', milestones);
+    req.log.info({ milestones }, '[Milestones] Parsed');
   }
 
   // Parse budget warning
@@ -209,15 +210,15 @@ router.post('/', async (req, res) => {
     );
     proposalId = insertResult.rows[0].id;
   } catch (dbErr) {
-    console.error('Failed to save proposal:', dbErr.message);
+    req.log.error({ err: dbErr }, 'Failed to save proposal');
     // Non-fatal — still return the generated content
   }
 
   return res.status(200).json({ coverLetter, hourlyRate, milestones, budgetWarning, proposalId });
-});
+}));
 
 // ---- A/B Testing: Generate two variants ----
-router.post('/ab', async (req, res) => {
+router.post('/ab', asyncHandler(async (req, res) => {
   const { jobData, hiddenInstructions, templateContent } = req.body;
 
   // Get LLM config — prefer request body, fall back to stored config
@@ -229,10 +230,10 @@ router.post('/ab', async (req, res) => {
     apiKey = config.apiKey;
   }
   if (!apiKey) {
-    return res.status(400).json({ error: 'No API key configured. Set it in dashboard settings or send in request.' });
+    throw new ValidationError('No API key configured. Set it in dashboard settings or send in request.');
   }
   if (!jobData || !jobData.title || !jobData.description) {
-    return res.status(400).json({ error: 'jobData with title and description is required' });
+    throw new ValidationError('jobData with title and description is required');
   }
 
   let profile = DEFAULT_PROFILE;
@@ -255,48 +256,46 @@ router.post('/ab', async (req, res) => {
     // Already appended per variant below
   }
 
-  try {
-    // Generate both variants in parallel
-    const [rawA, rawB] = await Promise.all([
-      callLLM({ provider, apiKey, systemPrompt, userPrompt: promptA + (templateContent ? '\n\nUSE THIS TEMPLATE AS A STRUCTURAL GUIDE:\n' + templateContent : ''), maxTokens: 2048 }),
-      callLLM({ provider, apiKey, systemPrompt, userPrompt: promptB + (templateContent ? '\n\nUSE THIS TEMPLATE AS A STRUCTURAL GUIDE:\n' + templateContent : ''), maxTokens: 2048 }),
-    ]);
-
-    // Parse both
-    function parseLLMResponse(raw) {
-      const clMatch = raw.match(/COVER_LETTER:\s*([\s\S]*?)(?=HOURLY_RATE:|$)/i);
-      const hrMatch = raw.match(/HOURLY_RATE:\s*([0-9]+(?:\.[0-9]{1,2})?)/i);
-      const msSection = raw.match(/MILESTONES:\s*([\s\S]*?)(?=BUDGET_WARNING:|$)/i);
-      const milestones = [];
-      if (msSection) {
-        const lines = msSection[1].trim().split('\n').filter(l => l.trim());
-        for (const line of lines) {
-          let m = line.match(/^\d+[\.\)]\s*(.+?)\s*[\|–—-]\s*\$?([\d,.]+)/);
-          if (!m) m = line.match(/^\d+[\.\)]\s*(.+?)\s+\$?([\d,.]+)\s*$/);
-          if (m) milestones.push({ description: m[1].replace(/[\|–—-]\s*$/, '').trim(), amount: parseFloat(m[2].replace(/,/g, '')) });
-        }
-      }
-      return {
-        coverLetter: clMatch ? clMatch[1].trim() : raw.trim(),
-        hourlyRate: hrMatch ? parseFloat(hrMatch[1]) : profile.default_hourly_rate || 50,
-        milestones,
-      };
+  // Generate both variants in parallel
+  const [rawA, rawB] = await (async () => {
+    try {
+      return await Promise.all([
+        callLLM({ provider, apiKey, systemPrompt, userPrompt: promptA + (templateContent ? '\n\nUSE THIS TEMPLATE AS A STRUCTURAL GUIDE:\n' + templateContent : ''), maxTokens: 2048 }),
+        callLLM({ provider, apiKey, systemPrompt, userPrompt: promptB + (templateContent ? '\n\nUSE THIS TEMPLATE AS A STRUCTURAL GUIDE:\n' + templateContent : ''), maxTokens: 2048 }),
+      ]);
+    } catch (err) {
+      handleLLMError(err);
     }
+  })();
 
-    const variantA = parseLLMResponse(rawA);
-    const variantB = parseLLMResponse(rawB);
-
-    res.status(200).json({
-      variantA: { ...variantA, style: 'Direct & Confident' },
-      variantB: { ...variantB, style: 'Consultative & Thoughtful' },
-    });
-  } catch (err) {
-    const status = err.status || err.statusCode;
-    if (status === 401) return res.status(401).json({ error: 'Invalid API key.' });
-    if (status === 429) return res.status(429).json({ error: 'Rate limit reached.' });
-    console.error('A/B generation error:', err.message);
-    res.status(502).json({ error: 'Failed to generate variants.' });
+  // Parse both
+  function parseLLMResponse(raw) {
+    const clMatch = raw.match(/COVER_LETTER:\s*([\s\S]*?)(?=HOURLY_RATE:|$)/i);
+    const hrMatch = raw.match(/HOURLY_RATE:\s*([0-9]+(?:\.[0-9]{1,2})?)/i);
+    const msSection = raw.match(/MILESTONES:\s*([\s\S]*?)(?=BUDGET_WARNING:|$)/i);
+    const milestones = [];
+    if (msSection) {
+      const lines = msSection[1].trim().split('\n').filter(l => l.trim());
+      for (const line of lines) {
+        let m = line.match(/^\d+[\.\)]\s*(.+?)\s*[\|–—-]\s*\$?([\d,.]+)/);
+        if (!m) m = line.match(/^\d+[\.\)]\s*(.+?)\s+\$?([\d,.]+)\s*$/);
+        if (m) milestones.push({ description: m[1].replace(/[\|–—-]\s*$/, '').trim(), amount: parseFloat(m[2].replace(/,/g, '')) });
+      }
+    }
+    return {
+      coverLetter: clMatch ? clMatch[1].trim() : raw.trim(),
+      hourlyRate: hrMatch ? parseFloat(hrMatch[1]) : profile.default_hourly_rate || 50,
+      milestones,
+    };
   }
-});
+
+  const variantA = parseLLMResponse(rawA);
+  const variantB = parseLLMResponse(rawB);
+
+  res.status(200).json({
+    variantA: { ...variantA, style: 'Direct & Confident' },
+    variantB: { ...variantB, style: 'Consultative & Thoughtful' },
+  });
+}));
 
 export default router;

@@ -5,9 +5,18 @@ import mammoth from 'mammoth';
 import pool from '../db/pool.js';
 import { callLLM } from '../lib/llm.js';
 import { getLLMConfig } from '../lib/get-llm-config.js';
+import { asyncHandler } from '../middleware/async-handler.js';
+import { ValidationError, ExternalServiceError } from '../lib/errors.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+function handleLLMError(err) {
+  const status = err.status || err.statusCode;
+  if (status === 401) throw new ValidationError('Invalid API key. Please check your settings.');
+  if (status === 429) throw new ExternalServiceError('LLM', 'Rate limit reached. Please try again shortly.');
+  throw new ExternalServiceError('LLM', 'Failed to generate response. Please try again.');
+}
 
 async function extractText(file) {
   const ext = (file.originalname || '').toLowerCase();
@@ -26,9 +35,9 @@ async function extractText(file) {
  * POST /api/parse-projects
  * Upload a PDF/DOCX/TXT with project portfolio → LLM extracts structured projects → bulk insert.
  */
-router.post('/', upload.single('file'), async (req, res) => {
+router.post('/', upload.single('file'), asyncHandler(async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded. Send a PDF, DOCX, or TXT file as "file".' });
+    throw new ValidationError('No file uploaded. Send a PDF, DOCX, or TXT file as "file".');
   }
 
   // Get LLM config — prefer request body, fall back to stored config
@@ -40,18 +49,18 @@ router.post('/', upload.single('file'), async (req, res) => {
     apiKey = config.apiKey;
   }
   if (!apiKey) {
-    return res.status(400).json({ error: 'No API key configured. Set it in dashboard settings or send in request.' });
+    throw new ValidationError('No API key configured. Set it in dashboard settings or send in request.');
   }
 
   let rawText;
   try {
     rawText = await extractText(req.file);
   } catch (err) {
-    return res.status(400).json({ error: 'Could not parse file: ' + err.message });
+    throw new ValidationError('Could not parse file: ' + err.message);
   }
 
   if (!rawText || rawText.trim().length < 20) {
-    return res.status(400).json({ error: 'Could not extract meaningful text from the file.' });
+    throw new ValidationError('Could not extract meaningful text from the file.');
   }
 
   const text = rawText.substring(0, 12000);
@@ -85,10 +94,7 @@ Rules:
   try {
     llmResponse = await callLLM({ provider, apiKey, systemPrompt, userPrompt, maxTokens: 4096 });
   } catch (err) {
-    const status = err.status || err.statusCode;
-    if (status === 401) return res.status(401).json({ error: 'Invalid API key.' });
-    if (status === 429) return res.status(429).json({ error: 'Rate limit reached.' });
-    return res.status(502).json({ error: 'LLM failed to process the document.' });
+    handleLLMError(err);
   }
 
   let projects;
@@ -100,8 +106,7 @@ Rules:
       projects = [projects];
     }
   } catch (err) {
-    console.error('LLM JSON parse error:', err.message, 'Raw:', llmResponse.substring(0, 300));
-    return res.status(502).json({ error: 'LLM returned invalid JSON. Try again.' });
+    throw new ExternalServiceError('LLM', 'LLM returned invalid response. Try again.');
   }
 
   // Bulk insert
@@ -125,7 +130,7 @@ Rules:
       );
       inserted.push(rows[0]);
     } catch (dbErr) {
-      console.error('Insert project error:', dbErr.message);
+      req.log.error({ err: dbErr }, 'Insert project error');
     }
   }
 
@@ -134,6 +139,6 @@ Rules:
     inserted: inserted.length,
     projects: inserted,
   });
-});
+}));
 
 export default router;

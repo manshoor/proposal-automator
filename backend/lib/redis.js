@@ -1,4 +1,5 @@
 import Redis from 'ioredis';
+import { logger } from './logger.js';
 
 let client = null;
 let connected = false;
@@ -18,12 +19,12 @@ function getClient() {
 
   client.on('connect', () => {
     connected = true;
-    console.log('Redis connected.');
+    logger.info('Redis connected');
   });
 
   client.on('error', (err) => {
     connected = false;
-    console.error('Redis error:', err.message);
+    logger.error({ err }, 'Redis error');
   });
 
   client.on('close', () => {
@@ -38,7 +39,7 @@ export async function connectRedis() {
   try {
     await c.connect();
   } catch (err) {
-    console.warn('Redis connection failed — caching disabled:', err.message);
+    logger.warn({ err }, 'Redis connection failed — caching disabled');
   }
 }
 

@@ -2,14 +2,23 @@ import { Router } from 'express';
 import pool from '../db/pool.js';
 import { callLLM } from '../lib/llm.js';
 import { getLLMConfig } from '../lib/get-llm-config.js';
+import { asyncHandler } from '../middleware/async-handler.js';
+import { ValidationError, ExternalServiceError } from '../lib/errors.js';
 
 const router = Router();
+
+function handleLLMError(err) {
+  const status = err.status || err.statusCode;
+  if (status === 401) throw new ValidationError('Invalid API key. Please check your settings.');
+  if (status === 429) throw new ExternalServiceError('LLM', 'Rate limit reached. Please try again shortly.');
+  throw new ExternalServiceError('LLM', 'Failed to generate response. Please try again.');
+}
 
 /**
  * POST /api/generate-hooks
  * Generate 3 catchy profile hooks based on title, skills, and niche.
  */
-router.post('/', async (req, res) => {
+router.post('/', asyncHandler(async (req, res) => {
   const { profileTitle, niche } = req.body;
 
   // Get LLM config — prefer request body, fall back to stored config
@@ -21,9 +30,9 @@ router.post('/', async (req, res) => {
     apiKey = config.apiKey;
   }
   if (!apiKey) {
-    return res.status(400).json({ error: 'No API key configured. Set it in dashboard settings or send in request.' });
+    throw new ValidationError('No API key configured. Set it in dashboard settings or send in request.');
   }
-  if (!profileTitle) return res.status(400).json({ error: 'profileTitle is required' });
+  if (!profileTitle) throw new ValidationError('profileTitle is required');
 
   // Fetch profile for context
   let profile = {};
@@ -91,10 +100,7 @@ Create 3 hooks that emphasize quantifiable benefits specific to this niche. Make
   try {
     rawResponse = await callLLM({ provider, apiKey, systemPrompt, userPrompt, maxTokens: 1500 });
   } catch (err) {
-    const status = err.status || err.statusCode;
-    if (status === 401) return res.status(401).json({ error: 'Invalid API key.' });
-    if (status === 429) return res.status(429).json({ error: 'Rate limit reached.' });
-    return res.status(502).json({ error: 'LLM failed to generate hooks.' });
+    handleLLMError(err);
   }
 
   let result;
@@ -103,11 +109,10 @@ Create 3 hooks that emphasize quantifiable benefits specific to this niche. Make
     cleaned = cleaned.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '');
     result = JSON.parse(cleaned);
   } catch (err) {
-    console.error('Hook generator JSON error:', err.message);
-    return res.status(502).json({ error: 'LLM returned invalid response. Try again.' });
+    throw new ExternalServiceError('LLM', 'LLM returned invalid response. Try again.');
   }
 
   res.json(result);
-});
+}));
 
 export default router;

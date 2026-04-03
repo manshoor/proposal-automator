@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { logger } from '../lib/logger.js';
 
 const { Pool } = pg;
 
@@ -7,7 +8,7 @@ const pool = new Pool({
 });
 
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle PostgreSQL client:', err.message);
+  logger.error({ err }, 'Unexpected error on idle PostgreSQL client');
 });
 
 export default pool;

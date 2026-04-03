@@ -2,6 +2,8 @@ import { Router } from 'express';
 import multer from 'multer';
 import { mkdirSync, existsSync } from 'fs';
 import { join, extname } from 'path';
+import { asyncHandler } from '../middleware/async-handler.js';
+import { ValidationError } from '../lib/errors.js';
 
 const router = Router();
 
@@ -36,13 +38,13 @@ const upload = multer({
  * POST /api/upload/screenshot
  * Upload 1-5 screenshots. Returns array of URLs.
  */
-router.post('/screenshot', upload.array('screenshots', 5), (req, res) => {
+router.post('/screenshot', upload.array('screenshots', 5), asyncHandler((req, res) => {
   if (!req.files || req.files.length === 0) {
-    return res.status(400).json({ error: 'No files uploaded' });
+    throw new ValidationError('No files uploaded');
   }
 
   const urls = req.files.map(f => `/uploads/screenshots/${f.filename}`);
   res.json({ urls });
-});
+}));
 
 export default router;

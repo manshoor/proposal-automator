@@ -4,6 +4,8 @@ import { callLLM } from '../lib/llm.js';
 import { validateRequired } from '../lib/validators.js';
 import { buildMessageSystemPrompt, buildMessageUserPrompt, buildQuestionUserPrompt } from '../prompts/message.js';
 import { getLLMConfig } from '../lib/get-llm-config.js';
+import { asyncHandler } from '../middleware/async-handler.js';
+import { ValidationError, ExternalServiceError } from '../lib/errors.js';
 
 const router = Router();
 
@@ -17,6 +19,13 @@ const DEFAULT_PROFILE = {
   portfolio: '',
   default_hourly_rate: 50.0,
 };
+
+function handleLLMError(err) {
+  const status = err.status || err.statusCode;
+  if (status === 401) throw new ValidationError('Invalid API key. Please check your settings.');
+  if (status === 429) throw new ExternalServiceError('LLM', 'Rate limit reached. Please try again shortly.');
+  throw new ExternalServiceError('LLM', 'Failed to generate response. Please try again.');
+}
 
 /**
  * POST /api/generate-message
@@ -32,7 +41,7 @@ const DEFAULT_PROFILE = {
  * Response:
  *   { reply: string }
  */
-router.post('/', async (req, res) => {
+router.post('/', asyncHandler(async (req, res) => {
   const { conversationHistory, jobTitle, question, tone } = req.body;
 
   // Get LLM config — prefer request body, fall back to stored config
@@ -44,12 +53,12 @@ router.post('/', async (req, res) => {
     apiKey = config.apiKey;
   }
   if (!apiKey) {
-    return res.status(400).json({ error: 'No API key configured. Set it in dashboard settings or send in request.' });
+    throw new ValidationError('No API key configured. Set it in dashboard settings or send in request.');
   }
 
   // conversationHistory must be an array if provided
   if (conversationHistory !== undefined && !Array.isArray(conversationHistory)) {
-    return res.status(400).json({ error: 'conversationHistory must be an array' });
+    throw new ValidationError('conversationHistory must be an array');
   }
 
   // Fetch profile from DB (fall back to default if none exists)
@@ -60,7 +69,7 @@ router.post('/', async (req, res) => {
       profile = rows[0];
     }
   } catch (dbErr) {
-    console.error('[generate-message] Failed to fetch profile:', dbErr.message);
+    req.log.error({ err: dbErr }, '[generate-message] Failed to fetch profile');
     // Non-fatal — use default profile
   }
 
@@ -88,16 +97,8 @@ router.post('/', async (req, res) => {
       userPrompt,
       maxTokens: 512,
     });
-  } catch (llmErr) {
-    const status = llmErr.status || llmErr.statusCode;
-    if (status === 401) {
-      return res.status(401).json({ error: 'Invalid API key. Please check your settings.' });
-    }
-    if (status === 429) {
-      return res.status(429).json({ error: 'API rate limit reached. Please try again shortly.' });
-    }
-    console.error('[generate-message] LLM error:', llmErr.message);
-    return res.status(502).json({ error: 'Failed to generate message. Please try again.' });
+  } catch (err) {
+    handleLLMError(err);
   }
 
   // Extract the reply after the REPLY: or ANSWER: label; fall back to raw response
@@ -105,6 +106,6 @@ router.post('/', async (req, res) => {
   const reply = replyMatch ? replyMatch[1].trim() : rawResponse.trim();
 
   return res.status(200).json({ reply });
-});
+}));
 
 export default router;

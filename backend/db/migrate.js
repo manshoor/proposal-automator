@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pool from './pool.js';
+import { logger } from '../lib/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,14 +46,14 @@ export async function runMigrations() {
           [filename]
         );
         await client.query('COMMIT');
-        console.log(`Migration applied: ${filename}`);
+        logger.info({ filename }, 'Migration applied');
       } catch (err) {
         await client.query('ROLLBACK');
         throw new Error(`Migration failed for ${filename}: ${err.message}`);
       }
     }
 
-    console.log('All migrations up to date.');
+    logger.info('All migrations up to date');
   } finally {
     client.release();
   }
