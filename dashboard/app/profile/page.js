@@ -347,7 +347,14 @@ export default function ProfilePage() {
                   <span key={k} className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{k}</span>
                 ))}
                 {(analysis.seo.keywords_missing || []).map(k => (
-                  <span key={k} className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">+ {k}</span>
+                  <span key={k} onClick={() => {
+                    setForm(prev => {
+                      const current = prev.skills.split(',').map(s => s.trim()).filter(Boolean);
+                      if (current.some(s => s.toLowerCase() === k.toLowerCase())) return prev;
+                      return { ...prev, skills: [...current, k].join(', ') };
+                    });
+                    setToast({ message: `Added "${k}" to skills`, type: 'success' });
+                  }} className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full cursor-pointer hover:bg-red-200 transition-colors">+ {k}</span>
                 ))}
               </div>
             </div>
