@@ -7,3 +7,5 @@ backend/node_modules/
 dashboard/node_modules/
 data/
 backend/uploads/
+.playwright-mcp/
+.claude/settings.local.json
