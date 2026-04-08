@@ -11,7 +11,7 @@ export async function create({ userId, tokenHash, expiresAt }) {
 
 export async function findByHash(tokenHash) {
   const { rows } = await pool.query(
-    `SELECT rt.*, u.email, u.full_name, u.is_active
+    `SELECT rt.*, u.email, u.full_name, u.is_active, u.role
      FROM refresh_tokens rt
      JOIN users u ON u.id = rt.user_id
      WHERE rt.token_hash = $1 AND rt.expires_at > NOW()`,

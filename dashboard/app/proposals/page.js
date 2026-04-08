@@ -34,6 +34,17 @@ export default function ProposalsPage() {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this proposal? This cannot be undone.')) return;
+    try {
+      await api.del(`/proposals/${id}`);
+      setProposals(proposals.filter(p => p.id !== id));
+      setExpandedId(null);
+    } catch (err) {
+      alert('Failed to delete proposal');
+    }
+  };
+
   const formatDate = (d) => {
     if (!d) return '—';
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -109,6 +120,7 @@ export default function ProposalsPage() {
                   expanded={expandedId === p.id}
                   onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)}
                   onStatusChange={(s) => updateStatus(p.id, s)}
+                  onDelete={() => handleDelete(p.id)}
                   onEarningsUpdate={(earnings) => {
                     api.put(`/proposals/${p.id}`, { earnings }).then((updated) => {
                       setProposals(proposals.map(x => x.id === p.id ? updated : x));
@@ -127,7 +139,7 @@ export default function ProposalsPage() {
   );
 }
 
-function Row({ proposal, expanded, onToggle, onStatusChange, onEarningsUpdate, formatDate, formatBudget }) {
+function Row({ proposal, expanded, onToggle, onStatusChange, onDelete, onEarningsUpdate, formatDate, formatBudget }) {
   const p = proposal;
   return (
     <>
@@ -208,11 +220,16 @@ function Row({ proposal, expanded, onToggle, onStatusChange, onEarningsUpdate, f
                 )}
               </div>
             </div>
-            {p.job_url && (
-              <a href={p.job_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-3 text-blue-600 text-sm font-medium hover:text-blue-700 hover:underline transition-colors">
-                View job on Upwork →
-              </a>
-            )}
+            <div className="flex items-center gap-4 mt-3">
+              {p.job_url && (
+                <a href={p.job_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-blue-600 text-sm font-medium hover:text-blue-700 hover:underline transition-colors">
+                  View job on Upwork →
+                </a>
+              )}
+              <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="btn-danger text-xs px-3 py-1">
+                Delete Proposal
+              </button>
+            </div>
           </td>
         </tr>
       )}

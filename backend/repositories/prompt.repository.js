@@ -58,10 +58,10 @@ export async function findById(id, userId = null) {
 }
 
 export async function create(data, userId = null) {
-  const { name, platform, prompt_text, is_active } = data;
+  const { name, platform, prompt_text, is_active, type, is_global } = data;
 
-  const columns = ['name', 'platform', 'prompt_text', 'is_active'];
-  const values = [name, platform || 'all', prompt_text, is_active !== false];
+  const columns = ['name', 'platform', 'prompt_text', 'is_active', 'type', 'is_global'];
+  const values = [name, platform || 'all', prompt_text, is_active !== false, type || 'custom', is_global || false];
 
   if (userId) {
     columns.push('user_id');
@@ -109,4 +109,44 @@ export async function remove(id, userId = null) {
     const { rowCount } = await pool.query('DELETE FROM prompts WHERE id = $1', [id]);
     return rowCount > 0;
   }
+}
+
+/**
+ * Find user's active prompt by type (system or custom) for a platform.
+ */
+export async function findActiveByType(type, platform, userId) {
+  const { rows } = await pool.query(
+    `SELECT * FROM prompts
+     WHERE user_id = $1 AND type = $2 AND is_active = true
+       AND (platform = $3 OR platform = 'all')
+     ORDER BY (platform = $3) DESC
+     LIMIT 1`,
+    [userId, type, platform]
+  );
+  return rows[0] || null;
+}
+
+/**
+ * Find global (admin's) active prompt by type for a platform.
+ */
+export async function findGlobalByType(type, platform) {
+  const { rows } = await pool.query(
+    `SELECT * FROM prompts
+     WHERE is_global = true AND type = $1 AND is_active = true
+       AND (platform = $2 OR platform = 'all')
+     ORDER BY (platform = $2) DESC
+     LIMIT 1`,
+    [type, platform]
+  );
+  return rows[0] || null;
+}
+
+/**
+ * List all global prompts (admin view).
+ */
+export async function findAllGlobal() {
+  const { rows } = await pool.query(
+    `SELECT * FROM prompts WHERE is_global = true ORDER BY type, platform, created_at DESC`
+  );
+  return rows;
 }

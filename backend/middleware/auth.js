@@ -1,7 +1,9 @@
 import { AuthenticationError } from '../lib/errors.js';
 import { verifyAccessToken } from '../services/auth.service.js';
 
-const DEFAULT_USER_ID = '00000000-0000-0000-0000-000000000001';
+function extractUser(payload) {
+  return { id: payload.sub, email: payload.email, role: payload.role || 'user' };
+}
 
 /**
  * Required authentication middleware.
@@ -16,7 +18,7 @@ export function authenticate(req, _res, next) {
   const token = authHeader.slice(7);
   try {
     const payload = verifyAccessToken(token);
-    req.user = { id: payload.sub, email: payload.email };
+    req.user = extractUser(payload);
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
       throw new AuthenticationError('Access token expired. Please refresh.');
@@ -28,19 +30,17 @@ export function authenticate(req, _res, next) {
 }
 
 /**
- * Optional authentication middleware.
- * If JWT present → authenticates. If no JWT but apiKey in body → uses default user.
- * If neither → returns 401.
+ * Authentication middleware.
+ * If JWT present → authenticates. Otherwise → returns 401.
  */
 export function optionalAuth(req, _res, next) {
   const authHeader = req.headers.authorization;
 
-  // Path 1: JWT token present
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.slice(7);
     try {
       const payload = verifyAccessToken(token);
-      req.user = { id: payload.sub, email: payload.email };
+      req.user = extractUser(payload);
       return next();
     } catch (err) {
       if (err.name === 'TokenExpiredError') {
@@ -50,6 +50,16 @@ export function optionalAuth(req, _res, next) {
     }
   }
 
-  // Path 2: No auth — require login
   throw new AuthenticationError('Authentication required. Please login in the extension settings or dashboard.');
+}
+
+/**
+ * Admin authorization middleware. Must run after authenticate/optionalAuth.
+ * Checks req.user.role === 'admin'.
+ */
+export function requireAdmin(req, _res, next) {
+  if (!req.user || req.user.role !== 'admin') {
+    throw new AuthenticationError('Admin access required.');
+  }
+  next();
 }

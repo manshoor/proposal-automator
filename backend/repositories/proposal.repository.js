@@ -148,3 +148,12 @@ export async function update(id, data, userId = null) {
   );
   return rows[0] || null;
 }
+
+export async function remove(id, userId = null) {
+  if (userId) {
+    const { rowCount } = await pool.query('DELETE FROM proposals WHERE id = $1 AND user_id = $2', [id, userId]);
+    return rowCount > 0;
+  }
+  const { rowCount } = await pool.query('DELETE FROM proposals WHERE id = $1', [id]);
+  return rowCount > 0;
+}

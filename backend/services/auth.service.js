@@ -18,7 +18,7 @@ function hashToken(token) {
 
 function generateTokens(user) {
   const accessToken = jwt.sign(
-    { sub: user.id, email: user.email },
+    { sub: user.id, email: user.email, role: user.role || 'user' },
     JWT_SECRET,
     { expiresIn: ACCESS_EXPIRY }
   );
@@ -117,7 +117,7 @@ export async function refresh(token) {
   // Rotate: delete old token, issue new pair
   await refreshTokenRepo.deleteByUserId(record.user_id);
 
-  const user = { id: record.user_id, email: record.email };
+  const user = { id: record.user_id, email: record.email, role: record.role || 'user' };
   const { accessToken, refreshToken } = generateTokens(user);
 
   const expiresAt = new Date(Date.now() + parseDuration(REFRESH_EXPIRY));

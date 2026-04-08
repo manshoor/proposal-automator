@@ -26,4 +26,9 @@ router.put('/:id', validate(updateProposalSchema), asyncHandler(async (req, res)
   res.json(proposal);
 }));
 
+router.delete('/:id', asyncHandler(async (req, res) => {
+  const result = await proposalService.deleteProposal(req.params.id, req.user.id);
+  res.json(result);
+}));
+
 export default router;

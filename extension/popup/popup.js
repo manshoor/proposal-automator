@@ -474,6 +474,33 @@ async function init() {
     return;
   }
 
+  // Sync notification settings and job filters from backend to extension storage
+  try {
+    const settingsRes = await apiFetch('/api/v1/settings');
+    if (settingsRes.ok) {
+      const s = await settingsRes.json();
+      // Sync filters so checkForNewJobs() can match
+      chrome.storage.sync.set({
+        jobFilters: {
+          enabled: true,
+          skillsInclude: s.skills_include || [],
+          keywordsInclude: s.keywords_include || [],
+          keywordsExclude: s.keywords_exclude || [],
+          budgetMin: s.budget_min || null,
+          budgetMax: s.budget_max || null,
+        }
+      });
+      // Activate/deactivate alarm
+      chrome.runtime.sendMessage({
+        type: 'ENABLE_FEED_NOTIFICATIONS',
+        enabled: s.notification_enabled || false,
+        intervalMinutes: s.notification_interval || 15
+      });
+    }
+  } catch (e) {
+    // Non-fatal — notification sync can fail silently
+  }
+
   // Find the active tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab) {

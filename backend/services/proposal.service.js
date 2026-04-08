@@ -1,8 +1,9 @@
 import * as proposalRepo from '../repositories/proposal.repository.js';
 import * as promptRepo from '../repositories/prompt.repository.js';
+import * as projectRepo from '../repositories/project.repository.js';
 import { getProfileOrDefault } from './profile.service.js';
 import { resolveLLMConfig, callLLM } from './llm.service.js';
-import { buildSystemPrompt, buildUserPrompt } from '../prompts/proposal.js';
+import { buildSystemPrompt, buildUserPrompt, buildAnalysisPrompt, injectProfileData } from '../prompts/proposal.js';
 import { ValidationError, NotFoundError } from '../lib/errors.js';
 import { cacheDel } from '../lib/redis.js';
 
@@ -123,6 +124,16 @@ export async function updateProposal(id, data, userId = null) {
 }
 
 /**
+ * Deletes a proposal by ID. Throws NotFoundError if missing.
+ */
+export async function deleteProposal(id, userId = null) {
+  const ok = await proposalRepo.remove(id, userId);
+  if (!ok) throw new NotFoundError('Proposal');
+  await cacheDel('analytics:' + (userId || 'global'));
+  return { success: true };
+}
+
+/**
  * Generates a proposal using the LLM, then persists it (non-fatal).
  *
  * @param {object} input
@@ -163,21 +174,82 @@ export async function generateProposal(input, logger = null, userId = null) {
 
   // 3. Fetch profile + custom prompt in parallel (non-fatal)
   const targetPlatform = platform || 'upwork';
-  const [profile, customPrompt] = await Promise.all([
+  const [profile] = await Promise.all([
     getProfileOrDefault(userId),
-    promptRepo.findActiveForPlatform(targetPlatform, userId).catch(() => null),
   ]);
 
-  // 4. Build system prompt
-  let systemPrompt = buildSystemPrompt(profile);
+  // 3b. Validate profile has enough data for a quality proposal
+  const profileSkills = Array.isArray(profile.skills) ? profile.skills : [];
+  if (!profile.title || !profile.summary || profileSkills.length === 0) {
+    throw new ValidationError(
+      'Please fill out your profile (title, summary, and skills) in the dashboard before generating proposals.'
+    );
+  }
+
+  // 4. Pre-generation job analysis (silent, non-blocking)
+  let jobAnalysis = null;
+  try {
+    const analysisPrompt = buildAnalysisPrompt(jobData, profile);
+    const analysisRaw = await callLLM({
+      provider, apiKey,
+      systemPrompt: analysisPrompt.system,
+      userPrompt: analysisPrompt.user,
+      maxTokens: 1024,
+    });
+    const cleaned = analysisRaw.trim().replace(/^```json?\s*/i, '').replace(/\s*```$/i, '');
+    jobAnalysis = JSON.parse(cleaned);
+    logger?.info({ jobAnalysis }, 'Job analysis complete');
+  } catch (err) {
+    logger?.warn({ err }, 'Job analysis failed, proceeding without it');
+  }
+
+  // 5. Build system prompt (3-tier resolution: user override → admin master → hardcoded)
+  let systemPrompt;
+  const userSystemPrompt = await promptRepo.findActiveByType('system', targetPlatform, userId).catch(() => null);
+  if (userSystemPrompt) {
+    systemPrompt = injectProfileData(userSystemPrompt.prompt_text, profile);
+  } else {
+    const globalPrompt = await promptRepo.findGlobalByType('system', targetPlatform).catch(() => null);
+    if (globalPrompt) {
+      systemPrompt = injectProfileData(globalPrompt.prompt_text, profile);
+    } else {
+      systemPrompt = buildSystemPrompt(profile);
+    }
+  }
+
+  // Append custom instructions (type='custom') if any
+  const customPrompt = await promptRepo.findActiveByType('custom', targetPlatform, userId).catch(() => null);
   if (customPrompt) {
     systemPrompt += '\n\n--- CUSTOM INSTRUCTIONS ---\n' + customPrompt.prompt_text;
   }
 
-  // 5. Build user prompt
+  // 6. Build user prompt
   let userPrompt = buildUserPrompt(jobData, hiddenInstructions);
 
-  // 6. Append template, extra instruction, and selected projects
+  // Inject job analysis if available
+  if (jobAnalysis) {
+    const urgency = Array.isArray(jobAnalysis.urgencySignals) && jobAnalysis.urgencySignals.length > 0
+      ? jobAnalysis.urgencySignals.join(', ')
+      : 'None detected';
+    const critical = Array.isArray(jobAnalysis.criticalRequirements)
+      ? jobAnalysis.criticalRequirements.join('; ')
+      : '';
+    const flags = Array.isArray(jobAnalysis.redFlags) && jobAnalysis.redFlags.length > 0
+      ? jobAnalysis.redFlags.join('; ')
+      : 'None';
+
+    userPrompt += `
+
+JOB ANALYSIS (use these insights to write a targeted proposal):
+- Pain point: ${jobAnalysis.painPoint || 'Not identified'}
+- Urgency signals: ${urgency}
+- Critical requirements: ${critical}
+- Approach angle: ${jobAnalysis.approachAngle || ''}
+- Suggested opening: ${jobAnalysis.openingHook || ''}
+- Red flags: ${flags}`;
+  }
+
+  // 7. Append template, extra instruction, and selected projects
   if (templateContent) {
     userPrompt += `\n\nUSE THIS TEMPLATE AS A STRUCTURAL GUIDE for the cover letter. Fill in the variables with appropriate content based on the job:\n${templateContent}`;
   }
@@ -188,11 +260,37 @@ export async function generateProposal(input, logger = null, userId = null) {
     userPrompt += `\n\nADDITIONAL INSTRUCTION: ${extraInstruction}`;
   }
 
-  if (selectedProjects && Array.isArray(selectedProjects) && selectedProjects.length > 0) {
+  // Auto-match portfolio projects if none manually selected
+  let projectsToInclude = selectedProjects;
+  if (!projectsToInclude || !Array.isArray(projectsToInclude) || projectsToInclude.length === 0) {
+    try {
+      const allProjects = await projectRepo.findAll({}, userId);
+      const jobSkills = (jobData.skills || []).map(s => s.toLowerCase());
+      if (allProjects.length > 0 && jobSkills.length > 0) {
+        const scored = allProjects
+          .map(p => {
+            const techs = (Array.isArray(p.technologies) ? p.technologies : []).map(t => t.toLowerCase());
+            const overlap = jobSkills.filter(s => techs.some(t => t.includes(s) || s.includes(t))).length;
+            return { ...p, score: overlap };
+          })
+          .filter(p => p.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 3);
+        if (scored.length > 0) projectsToInclude = scored;
+      }
+    } catch (err) {
+      logger?.warn({ err }, 'Auto portfolio matching failed, continuing without projects');
+    }
+  }
+
+  if (projectsToInclude && Array.isArray(projectsToInclude) && projectsToInclude.length > 0) {
     let projectsText = '\n\nRELEVANT PORTFOLIO PROJECTS to reference in the proposal (mention the most relevant ones as proof of experience):';
-    selectedProjects.forEach((p, i) => {
+    projectsToInclude.forEach((p, i) => {
       projectsText += `\n${i + 1}. "${p.name}"`;
-      if (p.technologies) projectsText += ` — Technologies: ${p.technologies}`;
+      if (p.technologies) {
+        const techs = Array.isArray(p.technologies) ? p.technologies.join(', ') : p.technologies;
+        projectsText += ` — Technologies: ${techs}`;
+      }
       if (p.description) projectsText += `\n   ${p.description.substring(0, 200)}`;
       if (p.outcome) projectsText += `\n   Result: ${p.outcome}`;
     });
@@ -200,7 +298,7 @@ export async function generateProposal(input, logger = null, userId = null) {
   }
 
   // 7. Call LLM
-  const rawResponse = await callLLM({ provider, apiKey, systemPrompt, userPrompt, maxTokens: 2048 });
+  const rawResponse = await callLLM({ provider, apiKey, systemPrompt, userPrompt, maxTokens: 4096 });
 
   // 8. Parse structured output
   const parsed = parseLLMResponse(rawResponse, profile, logger);

@@ -24,11 +24,26 @@ const PLATFORM_COLORS = {
   toptal: 'bg-purple-100 text-purple-800 ring-1 ring-purple-200/50',
 };
 
+const PROMPT_TYPES = [
+  { value: 'custom', label: 'Custom Instructions', description: 'Appended to system prompt' },
+  { value: 'system', label: 'Full System Prompt Override', description: 'Replaces the master prompt for you' },
+];
+
+const PLACEHOLDERS = [
+  '{profile.full_name}',
+  '{profile.title}',
+  '{profile.skills}',
+  '{profile.summary}',
+  '{profile.experience}',
+  '{profile.portfolio}',
+  '{profile.default_hourly_rate}',
+];
+
 export default function PromptsPage() {
   const [prompts, setPrompts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: '', platform: 'all', prompt_text: '', is_active: true });
+  const [form, setForm] = useState({ name: '', platform: 'all', prompt_text: '', is_active: true, type: 'custom' });
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -42,12 +57,12 @@ export default function PromptsPage() {
   useEffect(() => { fetchPrompts(); }, [fetchPrompts]);
 
   const openNew = () => {
-    setForm({ name: '', platform: 'all', prompt_text: '', is_active: true });
+    setForm({ name: '', platform: 'all', prompt_text: '', is_active: true, type: 'custom' });
     setEditing('new');
   };
 
   const openEdit = (p) => {
-    setForm({ name: p.name, platform: p.platform, prompt_text: p.prompt_text, is_active: p.is_active });
+    setForm({ name: p.name, platform: p.platform, prompt_text: p.prompt_text, is_active: p.is_active, type: p.type || 'custom' });
     setEditing(p);
   };
 
@@ -146,17 +161,63 @@ export default function PromptsPage() {
                 </select>
               </div>
             </div>
+
+            {/* Prompt type selector */}
+            <div>
+              <label className="block label">Prompt Type</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                {PROMPT_TYPES.map(t => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setForm({ ...form, type: t.value })}
+                    className={`text-left px-4 py-3 rounded-xl border-2 transition-all ${
+                      form.type === t.value
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                  >
+                    <div className="font-medium text-sm text-gray-800">{t.label}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{t.description}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Placeholder hint when type is system */}
+            {form.type === 'system' && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <p className="text-xs font-semibold text-amber-800 mb-2">Available Placeholders</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {PLACEHOLDERS.map(ph => (
+                    <span key={ph} className="font-mono text-[11px] bg-white text-amber-800 px-1.5 py-0.5 rounded border border-amber-200">
+                      {ph}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-[11px] text-amber-700 mt-2">These are replaced with your profile data at generation time. This prompt replaces the master system prompt entirely.</p>
+              </div>
+            )}
+
             <div>
               <label className="block label">Prompt Instructions</label>
               <textarea value={form.prompt_text} onChange={e => setForm({...form, prompt_text: e.target.value})}
                 rows={12} className="w-full input font-mono"
-                placeholder="Write the instructions that tell the AI how to write proposals for this platform..." />
-              <p className="text-xs text-gray-400 mt-1">These instructions are appended to the system prompt when generating proposals. Be specific about tone, length, format, and style.</p>
+                placeholder={form.type === 'system'
+                  ? 'Write your full system prompt. This replaces the master prompt entirely for you...'
+                  : 'Write the instructions that tell the AI how to write proposals for this platform...'
+                } />
+              <p className="text-xs text-gray-400 mt-1">
+                {form.type === 'system'
+                  ? 'This replaces the master system prompt entirely when generating your proposals.'
+                  : 'These instructions are appended to the system prompt when generating proposals. Be specific about tone, length, format, and style.'
+                }
+              </p>
             </div>
             <div className="flex items-center gap-2">
-              <input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})}
+              <input type="checkbox" id="prompt-active" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})}
                 className="rounded border-gray-300" />
-              <label className="text-sm text-gray-700">Active (used when generating proposals)</label>
+              <label htmlFor="prompt-active" className="text-sm text-gray-700">Active (used when generating proposals)</label>
             </div>
             <div className="flex gap-3">
               <button onClick={handleSave} disabled={saving}
@@ -187,11 +248,16 @@ export default function PromptsPage() {
                   <div key={p.id} className={`card p-4 border-l-4 ${p.is_active ? 'border-emerald-500' : 'border-gray-200'}`}>
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center flex-wrap gap-2 mb-1">
                           <span className="font-semibold text-gray-900">{p.name}</span>
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS[p.platform] || PLATFORM_COLORS.all}`}>
                             {p.platform}
                           </span>
+                          {p.type === 'system' ? (
+                            <span className="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-medium ring-1 ring-purple-200/50">System Override</span>
+                          ) : (
+                            <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium ring-1 ring-blue-200/50">Custom</span>
+                          )}
                           {p.is_default && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Default</span>}
                           {!p.is_active && <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Inactive</span>}
                         </div>

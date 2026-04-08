@@ -145,8 +145,38 @@ chrome.notifications.onClicked.addListener((notificationId) => {
 
 // ---- Install handler ----
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
   console.log('[Service Worker] Extension installed/updated');
+
+  // Resume notification alarm and sync filters if previously enabled
+  try {
+    const settings = await getSettings();
+    if (!settings.accessToken) return;
+
+    const res = await apiFetch('/api/v1/settings');
+    if (res.ok) {
+      const data = await res.json();
+      // Sync filters for checkForNewJobs()
+      chrome.storage.sync.set({
+        jobFilters: {
+          enabled: true,
+          skillsInclude: data.skills_include || [],
+          keywordsInclude: data.keywords_include || [],
+          keywordsExclude: data.keywords_exclude || [],
+          budgetMin: data.budget_min || null,
+          budgetMax: data.budget_max || null,
+        }
+      });
+      if (data.notification_enabled) {
+        chrome.alarms.create('checkFeed', {
+          periodInMinutes: data.notification_interval || 15
+        });
+        console.log('[Service Worker] Notification alarm resumed');
+      }
+    }
+  } catch (err) {
+    console.warn('[Service Worker] Could not resume notifications:', err);
+  }
 });
 
 // ---- Message listener ----

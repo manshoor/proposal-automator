@@ -20,6 +20,10 @@ export default function ProjectsPage() {
   const [importing, setImporting] = useState(false);
   const [toast, setToast] = useState(null);
   const fileRef = useRef(null);
+  const [enhancing, setEnhancing] = useState({}); // { [projectId]: true } for per-project loading
+  const [enhanced, setEnhanced] = useState({});   // { [projectId]: { outcome, description } }
+  const [bulkEnhancing, setBulkEnhancing] = useState(false);
+  const [bulkResults, setBulkResults] = useState(null); // array of results or null
 
   const handleFileImport = async (e) => {
     const file = e.target.files?.[0];
@@ -46,14 +50,7 @@ export default function ProjectsPage() {
       formData.append('provider', provider);
       formData.append('apiKey', apiKey);
 
-      const res = await fetch('/api/parse-projects', { method: 'POST', body: formData });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Upload failed' }));
-        throw new Error(err.error || 'Upload failed');
-      }
-
-      const data = await res.json();
+      const data = await api.upload('/parse-projects', formData);
       setToast({ message: `Imported ${data.inserted} projects from ${data.parsed} found!`, type: 'success' });
       fetchProjects();
     } catch (err) {
@@ -130,6 +127,69 @@ export default function ProjectsPage() {
     }
   };
 
+  const getLLMConfig = () => ({
+    provider: localStorage.getItem('llm_provider') || 'anthropic',
+    apiKey: localStorage.getItem('llm_api_key') || '',
+  });
+
+  const handleEnhance = async (id) => {
+    setEnhancing(prev => ({ ...prev, [id]: true }));
+    try {
+      const data = await api.post(`/projects/${id}/enhance`, getLLMConfig());
+      setEnhanced(prev => ({ ...prev, [id]: data }));
+    } catch (err) {
+      setToast({ message: err.message || 'Enhancement failed', type: 'error' });
+    }
+    setEnhancing(prev => ({ ...prev, [id]: false }));
+  };
+
+  const handleAcceptEnhance = async (id) => {
+    const data = enhanced[id];
+    if (!data) return;
+    try {
+      const updated = await api.put(`/projects/${id}`, { outcome: data.outcome, description: data.description });
+      setProjects(projects.map(p => p.id === id ? updated : p));
+      setEnhanced(prev => { const next = { ...prev }; delete next[id]; return next; });
+      setToast({ message: 'Enhancement applied!', type: 'success' });
+    } catch (err) {
+      setToast({ message: 'Failed to save enhancement', type: 'error' });
+    }
+  };
+
+  const handleDiscardEnhance = (id) => {
+    setEnhanced(prev => { const next = { ...prev }; delete next[id]; return next; });
+  };
+
+  const handleBulkEnhance = async () => {
+    setBulkEnhancing(true);
+    setToast({ message: 'Enhancing all projects with AI...', type: 'success' });
+    try {
+      const data = await api.post('/projects/enhance-all', getLLMConfig());
+      if (data.projects.length === 0) {
+        setToast({ message: 'All projects already have strong outcomes!', type: 'success' });
+      } else {
+        setBulkResults(data.projects);
+        setToast({ message: `Enhanced ${data.projects.length} projects — review below`, type: 'success' });
+      }
+    } catch (err) {
+      setToast({ message: err.message || 'Bulk enhancement failed', type: 'error' });
+    }
+    setBulkEnhancing(false);
+  };
+
+  const handleAcceptBulkItem = async (item) => {
+    try {
+      await api.put(`/projects/${item.id}`, { outcome: item.enhancedOutcome, description: item.enhancedDescription });
+      setBulkResults(prev => prev.filter(r => r.id !== item.id));
+      fetchProjects();
+      setToast({ message: `Updated "${item.name}"`, type: 'success' });
+    } catch (err) {
+      setToast({ message: `Failed to update "${item.name}"`, type: 'error' });
+    }
+  };
+
+  const handleDismissBulk = () => setBulkResults(null);
+
   if (loading) return (
     <div className="page-container">
       <div className="page-header"><div className="skeleton-line w-48 h-7" /><div className="skeleton-line-xs mt-2" /></div>
@@ -150,6 +210,9 @@ export default function ProjectsPage() {
       <div className="flex items-center justify-end mb-6">
         <button onClick={openNew} className="btn-primary">
           + Add Project
+        </button>
+        <button onClick={handleBulkEnhance} disabled={bulkEnhancing} className="btn-secondary ml-2">
+          {bulkEnhancing ? 'Enhancing...' : 'Enhance All Projects'}
         </button>
       </div>
 
@@ -188,6 +251,37 @@ export default function ProjectsPage() {
           </div>
         </div>
       </div>
+
+      {/* Bulk Enhancement Review */}
+      {bulkResults && bulkResults.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-5 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-gray-900">AI-Enhanced Projects — Review & Accept</h3>
+            <button onClick={handleDismissBulk} className="text-xs text-gray-500 hover:text-gray-700">Dismiss All</button>
+          </div>
+          <div className="space-y-3">
+            {bulkResults.map(item => (
+              <div key={item.id} className="bg-white rounded-lg p-4 border border-amber-100">
+                <h4 className="font-medium text-sm text-gray-900 mb-2">{item.name}</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs mb-3">
+                  <div>
+                    <span className="text-gray-400 block mb-1">Current outcome:</span>
+                    <span className="text-gray-600">{item.currentOutcome || 'None'}</span>
+                  </div>
+                  <div>
+                    <span className="text-green-600 block mb-1">Enhanced outcome:</span>
+                    <span className="text-gray-900 font-medium">{item.enhancedOutcome}</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleAcceptBulkItem(item)} className="btn-primary text-xs px-3 py-1">Accept</button>
+                  <button onClick={() => setBulkResults(prev => prev.filter(r => r.id !== item.id))} className="btn-secondary text-xs px-3 py-1">Skip</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Editor */}
       {editing !== null && (
@@ -323,6 +417,9 @@ export default function ProjectsPage() {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => openEdit(p)} className="btn-secondary text-xs px-2 py-1">Edit</button>
+                  <button onClick={() => handleEnhance(p.id)} disabled={enhancing[p.id]} className="btn-secondary text-xs px-2 py-1">
+                    {enhancing[p.id] ? '...' : 'Enhance'}
+                  </button>
                   <button onClick={() => handleDelete(p.id)} className="btn-danger text-xs px-2 py-1">Delete</button>
                 </div>
               </div>
@@ -352,6 +449,22 @@ export default function ProjectsPage() {
                 {p.budget_range && <div>Budget: {p.budget_range}</div>}
                 {p.outcome && <div>Result: {p.outcome}</div>}
               </div>
+              {enhanced[p.id] && (
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <div className="text-xs mb-2">
+                    <span className="text-green-600 font-medium block mb-1">Enhanced outcome:</span>
+                    <span className="text-gray-900">{enhanced[p.id].outcome}</span>
+                  </div>
+                  <div className="text-xs mb-2">
+                    <span className="text-green-600 font-medium block mb-1">Enhanced description:</span>
+                    <span className="text-gray-900">{enhanced[p.id].description}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleAcceptEnhance(p.id)} className="btn-primary text-xs px-3 py-1">Accept</button>
+                    <button onClick={() => handleDiscardEnhance(p.id)} className="btn-secondary text-xs px-3 py-1">Discard</button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

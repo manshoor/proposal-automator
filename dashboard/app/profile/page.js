@@ -92,17 +92,7 @@ export default function ProfilePage() {
       formData.append('apiKey', apiKey);
       formData.append('autoSave', 'true');
 
-      const res = await fetch('/api/parse-resume', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Upload failed' }));
-        throw new Error(err.error || 'Upload failed');
-      }
-
-      const data = await res.json();
+      const data = await api.upload('/parse-resume', formData);
       const p = data.profile;
 
       setForm({
@@ -246,16 +236,7 @@ export default function ProfilePage() {
                     localStorage.setItem('llm_provider', provider);
                     localStorage.setItem('llm_api_key', apiKey);
                   }
-                  const res = await fetch('/api/analyze-profile', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ provider, apiKey, profileDescription: form.summary }),
-                  });
-                  if (!res.ok) {
-                    const err = await res.json().catch(() => ({ error: 'Analysis failed' }));
-                    throw new Error(err.error);
-                  }
-                  const data = await res.json();
+                  const data = await api.post('/analyze-profile', { provider, apiKey, profileDescription: form.summary });
                   setAnalysis(data);
                   setToast({ message: `Profile scored ${data.score}/100`, type: data.score >= 70 ? 'success' : 'error' });
                 } catch (err) {
@@ -569,13 +550,8 @@ function HookGenerator({ profileTitle, onApply }) {
         localStorage.setItem('llm_provider', provider);
         localStorage.setItem('llm_api_key', apiKey);
       }
-      const res = await fetch('/api/generate-hooks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, apiKey, profileTitle: title, niche: niche || title }),
-      });
-      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Failed'); }
-      setHooks(await res.json());
+      const data = await api.post('/generate-hooks', { provider, apiKey, profileTitle: title, niche: niche || title });
+      setHooks(data);
     } catch (err) {
       alert(err.message);
     }
