@@ -9,9 +9,13 @@ const AUTH_PAGES = ['/login', '/register'];
 export default function AuthLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [checked, setChecked] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const isAuthPage = AUTH_PAGES.includes(pathname);
+  const [checked, setChecked] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    if (isAuthPage) return true;
+    return !!localStorage.getItem('accessToken');
+  });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (isAuthPage) { setChecked(true); return; }

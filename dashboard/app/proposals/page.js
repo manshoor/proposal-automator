@@ -12,6 +12,7 @@ export default function ProposalsPage() {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState(null);
+  const [details, setDetails] = useState({});
 
   useEffect(() => {
     api.get('/proposals?limit=100&sort=created_at&order=desc')
@@ -116,9 +117,18 @@ export default function ProposalsPage() {
               {filtered.map((p) => (
                 <Row
                   key={p.id}
-                  proposal={p}
+                  proposal={{ ...p, ...(details[p.id] || {}) }}
                   expanded={expandedId === p.id}
-                  onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)}
+                  onToggle={async () => {
+                    if (expandedId === p.id) { setExpandedId(null); return; }
+                    if (!details[p.id]) {
+                      try {
+                        const full = await api.get(`/proposals/${p.id}`);
+                        setDetails(prev => ({ ...prev, [p.id]: full }));
+                      } catch { /* use list data as fallback */ }
+                    }
+                    setExpandedId(p.id);
+                  }}
                   onStatusChange={(s) => updateStatus(p.id, s)}
                   onDelete={() => handleDelete(p.id)}
                   onEarningsUpdate={(earnings) => {

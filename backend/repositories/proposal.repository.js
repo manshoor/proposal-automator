@@ -28,7 +28,13 @@ export async function findAll({ status, limit = 20, offset = 0, sort = 'created_
   params.push(safeLimit, safeOffset);
 
   const query = `
-    SELECT * FROM proposals
+    SELECT id, job_title, job_url, status, response_type, hourly_rate,
+           client_location, client_total_spent, client_hire_rate, client_review_count,
+           job_budget_type, job_budget_amount, job_budget_min, job_budget_max,
+           connect_cost, earnings, proposal_count, proposal_length, template_used,
+           responded_at, decline_reason,
+           created_at, updated_at
+    FROM proposals
     ${whereClause}
     ORDER BY ${safeSort} ${safeOrder}
     LIMIT $${params.length - 1} OFFSET $${params.length}

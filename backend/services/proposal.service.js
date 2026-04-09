@@ -6,7 +6,7 @@ import { getProfileOrDefault } from './profile.service.js';
 import { resolveLLMConfig, callLLM } from './llm.service.js';
 import { buildSystemPrompt, buildUserPrompt, buildAnalysisPrompt, injectProfileData } from '../prompts/proposal.js';
 import { ValidationError, NotFoundError } from '../lib/errors.js';
-import { cacheDel } from '../lib/redis.js';
+import { cacheGet, cacheSet, cacheDel, cacheDelPrefix } from '../lib/redis.js';
 
 const ALLOWED_STATUSES = new Set(['sent', 'pending', 'hired', 'rejected', 'withdrawn']);
 
@@ -19,7 +19,12 @@ const ALLOWED_STATUSES = new Set(['sent', 'pending', 'hired', 'rejected', 'withd
  */
 export async function listProposals(query, userId = null) {
   const { status, limit = '20', offset = '0', sort = 'created_at', order = 'desc' } = query;
-  return proposalRepo.findAll({ status, limit, offset, sort, order }, userId);
+  const cacheKey = `proposals:${userId || 'global'}:${status || 'all'}:${limit}:${offset}:${sort}:${order}`;
+  const cached = await cacheGet(cacheKey);
+  if (cached) return JSON.parse(cached);
+  const result = await proposalRepo.findAll({ status, limit, offset, sort, order }, userId);
+  await cacheSet(cacheKey, JSON.stringify(result), 120);
+  return result;
 }
 
 /**
@@ -88,6 +93,7 @@ export async function createProposal(data, userId = null) {
   }, userId);
 
   await cacheDel('analytics:' + (userId || 'global'));
+  await cacheDelPrefix('proposals:' + (userId || 'global'));
   return row;
 }
 
@@ -125,6 +131,7 @@ export async function updateProposal(id, data, userId = null) {
   const updated = await proposalRepo.update(id, data, userId);
   if (!updated) throw new NotFoundError('Proposal');
   await cacheDel('analytics:' + (userId || 'global'));
+  await cacheDelPrefix('proposals:' + (userId || 'global'));
   return updated;
 }
 
@@ -135,6 +142,7 @@ export async function deleteProposal(id, userId = null) {
   const ok = await proposalRepo.remove(id, userId);
   if (!ok) throw new NotFoundError('Proposal');
   await cacheDel('analytics:' + (userId || 'global'));
+  await cacheDelPrefix('proposals:' + (userId || 'global'));
   return { success: true };
 }
 
@@ -209,21 +217,21 @@ export async function generateProposal(input, logger = null, userId = null) {
   }
 
   // 5. Build system prompt (3-tier resolution: user override → admin master → hardcoded)
+  const [userSystemPrompt, globalSystemPrompt, customPrompt] = await Promise.all([
+    promptRepo.findActiveByType('system', targetPlatform, userId).catch(() => null),
+    promptRepo.findGlobalByType('system', targetPlatform).catch(() => null),
+    promptRepo.findActiveByType('custom', targetPlatform, userId).catch(() => null),
+  ]);
+
   let systemPrompt;
-  const userSystemPrompt = await promptRepo.findActiveByType('system', targetPlatform, userId).catch(() => null);
   if (userSystemPrompt) {
     systemPrompt = injectProfileData(userSystemPrompt.prompt_text, profile);
+  } else if (globalSystemPrompt) {
+    systemPrompt = injectProfileData(globalSystemPrompt.prompt_text, profile);
   } else {
-    const globalPrompt = await promptRepo.findGlobalByType('system', targetPlatform).catch(() => null);
-    if (globalPrompt) {
-      systemPrompt = injectProfileData(globalPrompt.prompt_text, profile);
-    } else {
-      systemPrompt = buildSystemPrompt(profile);
-    }
+    systemPrompt = buildSystemPrompt(profile);
   }
 
-  // Append custom instructions (type='custom') if any
-  const customPrompt = await promptRepo.findActiveByType('custom', targetPlatform, userId).catch(() => null);
   if (customPrompt) {
     systemPrompt += '\n\n--- CUSTOM INSTRUCTIONS ---\n' + customPrompt.prompt_text;
   }
@@ -346,6 +354,7 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
     }, userId);
     proposalId = row?.id || null;
     await cacheDel('analytics:' + (userId || 'global'));
+  await cacheDelPrefix('proposals:' + (userId || 'global'));
   } catch (dbErr) {
     logger?.error({ err: dbErr }, 'Failed to save proposal');
     // Non-fatal — still return the generated content

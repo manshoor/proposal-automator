@@ -42,7 +42,17 @@ app.get('/metrics', async (_req, res) => {
 });
 
 // Static uploads
-app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
+app.use('/uploads', express.static(join(process.cwd(), 'uploads'), { maxAge: '1d' }));
+
+// HTTP caching for read-heavy endpoints
+app.use(['/api/v1/templates', '/api/templates'], (req, res, next) => {
+  if (req.method === 'GET') res.set('Cache-Control', 'private, max-age=300');
+  next();
+});
+app.use(['/api/v1/settings', '/api/settings'], (req, res, next) => {
+  if (req.method === 'GET') res.set('Cache-Control', 'private, max-age=300');
+  next();
+});
 
 // API routes — v1 and backward-compatible unversioned
 app.use('/api/v1', v1Router);

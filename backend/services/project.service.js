@@ -1,5 +1,6 @@
 import * as projectRepo from '../repositories/project.repository.js';
 import { ValidationError, NotFoundError } from '../lib/errors.js';
+import { cacheGet, cacheSet, cacheDel } from '../lib/redis.js';
 
 /**
  * Returns all projects, with optional category and featured filters.
@@ -10,7 +11,12 @@ import { ValidationError, NotFoundError } from '../lib/errors.js';
  */
 export async function listProjects(query, userId = null) {
   const { category, featured } = query || {};
-  return projectRepo.findAll({ category, featured }, userId);
+  const cacheKey = `projects:${userId || 'global'}:${category || 'all'}:${featured || 'all'}`;
+  const cached = await cacheGet(cacheKey);
+  if (cached) return JSON.parse(cached);
+  const result = await projectRepo.findAll({ category, featured }, userId);
+  await cacheSet(cacheKey, JSON.stringify(result), 300);
+  return result;
 }
 
 /**
@@ -36,7 +42,9 @@ export async function getProject(id, userId = null) {
 export async function createProject(data, userId = null) {
   const { name } = data;
   if (!name) throw new ValidationError('name is required');
-  return projectRepo.create(data, userId);
+  const result = await projectRepo.create(data, userId);
+  await cacheDel(`projects:${userId || 'global'}:all:all`);
+  return result;
 }
 
 /**
@@ -50,6 +58,7 @@ export async function createProject(data, userId = null) {
 export async function updateProject(id, data, userId = null) {
   const updated = await projectRepo.update(id, data, userId);
   if (!updated) throw new NotFoundError('Project');
+  await cacheDel(`projects:${userId || 'global'}:all:all`);
   return updated;
 }
 
@@ -63,4 +72,5 @@ export async function updateProject(id, data, userId = null) {
 export async function deleteProject(id, userId = null) {
   const deleted = await projectRepo.remove(id, userId);
   if (!deleted) throw new NotFoundError('Project');
+  await cacheDel(`projects:${userId || 'global'}:all:all`);
 }
