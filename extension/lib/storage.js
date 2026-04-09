@@ -33,3 +33,26 @@ function isLoggedIn() {
     return !!s.accessToken;
   });
 }
+
+var BOOTSTRAP_TTL = 15 * 60 * 1000; // 15 minutes
+
+function getBootstrapCache() {
+  return new Promise(function (resolve) {
+    chrome.storage.local.get(['bootstrapData', 'bootstrapTimestamp'], function (result) {
+      var age = Date.now() - (result.bootstrapTimestamp || 0);
+      if (result.bootstrapData && age < BOOTSTRAP_TTL) {
+        resolve(result.bootstrapData);
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
+function setBootstrapCache(data) {
+  chrome.storage.local.set({ bootstrapData: data, bootstrapTimestamp: Date.now() });
+}
+
+function clearBootstrapCache() {
+  chrome.storage.local.remove(['bootstrapData', 'bootstrapTimestamp']);
+}

@@ -94,6 +94,7 @@ export async function createProposal(data, userId = null) {
 
   await cacheDel('analytics:' + (userId || 'global'));
   await cacheDelPrefix('proposals:' + (userId || 'global'));
+  await cacheDel('bootstrap:' + (userId || 'global'));
   return row;
 }
 
@@ -132,6 +133,7 @@ export async function updateProposal(id, data, userId = null) {
   if (!updated) throw new NotFoundError('Proposal');
   await cacheDel('analytics:' + (userId || 'global'));
   await cacheDelPrefix('proposals:' + (userId || 'global'));
+  await cacheDel('bootstrap:' + (userId || 'global'));
   return updated;
 }
 
@@ -143,6 +145,7 @@ export async function deleteProposal(id, userId = null) {
   if (!ok) throw new NotFoundError('Proposal');
   await cacheDel('analytics:' + (userId || 'global'));
   await cacheDelPrefix('proposals:' + (userId || 'global'));
+  await cacheDel('bootstrap:' + (userId || 'global'));
   return { success: true };
 }
 
@@ -355,6 +358,7 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
     proposalId = row?.id || null;
     await cacheDel('analytics:' + (userId || 'global'));
   await cacheDelPrefix('proposals:' + (userId || 'global'));
+  await cacheDel('bootstrap:' + (userId || 'global'));
   } catch (dbErr) {
     logger?.error({ err: dbErr }, 'Failed to save proposal');
     // Non-fatal — still return the generated content

@@ -51,6 +51,7 @@ export async function updateSettings(data, userId = null) {
 
   await invalidateLLMConfig(userId);
   await cacheDel('settings:' + (userId || 'global'));
+  await cacheDel('bootstrap:' + (userId || 'global'));
 
   return maskApiKey(settings);
 }

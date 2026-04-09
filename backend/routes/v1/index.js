@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { optionalAuth, requireAdmin } from '../../middleware/auth.js';
 import authRouter from '../../api/auth.js';
 import adminRouter from '../../api/admin.js';
+import bootstrapRouter from '../../api/bootstrap.js';
 import generateProposalRouter from '../../api/generate-proposal.js';
 import generateMessageRouter from '../../api/generate-message.js';
 import profileRouter from '../../api/profile.js';
@@ -43,6 +44,7 @@ router.use('/analyze-proposal', analyzeProposalRouter);
 router.use('/analyze-profile', analyzeProfileRouter);
 router.use('/generate-hooks', generateHooksRouter);
 router.use('/jobs', jobsRouter);
+router.use('/bootstrap', bootstrapRouter);
 router.use('/admin', requireAdmin, adminRouter);
 
 export default router;

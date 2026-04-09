@@ -71,5 +71,6 @@ export async function updateProfile(data, userId = null) {
     profile = await profileRepo.update(profile.id, data, userId);
   }
   await cacheDel(`profile:${userId || 'global'}`);
+  await cacheDel(`bootstrap:${userId || 'global'}`);
   return profile;
 }

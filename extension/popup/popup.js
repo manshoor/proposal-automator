@@ -474,33 +474,6 @@ async function init() {
     return;
   }
 
-  // Sync notification settings and job filters from backend to extension storage
-  try {
-    const settingsRes = await apiFetch('/api/v1/settings');
-    if (settingsRes.ok) {
-      const s = await settingsRes.json();
-      // Sync filters so checkForNewJobs() can match
-      chrome.storage.sync.set({
-        jobFilters: {
-          enabled: true,
-          skillsInclude: s.skills_include || [],
-          keywordsInclude: s.keywords_include || [],
-          keywordsExclude: s.keywords_exclude || [],
-          budgetMin: s.budget_min || null,
-          budgetMax: s.budget_max || null,
-        }
-      });
-      // Activate/deactivate alarm
-      chrome.runtime.sendMessage({
-        type: 'ENABLE_FEED_NOTIFICATIONS',
-        enabled: s.notification_enabled || false,
-        intervalMinutes: s.notification_interval || 15
-      });
-    }
-  } catch (e) {
-    // Non-fatal — notification sync can fail silently
-  }
-
   // Find the active tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab) {
@@ -522,9 +495,12 @@ async function init() {
 
   showOnUpwork();
 
-  // Load vetting data (which also loads job data)
+  // Load bootstrap data and vetting in PARALLEL
   try {
-    const response = await sendToContent(_activeTabId, { type: 'GET_VETTING' });
+    const [response, bootstrap] = await Promise.all([
+      sendToContent(_activeTabId, { type: 'GET_VETTING' }),
+      loadBootstrapData(),
+    ]);
 
     if (!response) {
       statusText.textContent = 'Content script not responding. Reload the page and try again.';
@@ -545,21 +521,100 @@ async function init() {
     populateVetting(vetting);
     populateHiddenInstructions(hiddenInstructions);
 
-    // Fetch profile skills for fit score
-    try {
-      const profileRes = await apiFetch('/api/v1/profile');
-      if (profileRes.ok) {
-        const profile = await profileRes.json();
-        _profileSkills = Array.isArray(profile.skills) ? profile.skills : [];
+    // Use bootstrap data for profile skills, templates, projects, settings, duplicates
+    if (bootstrap) {
+      // Sync notification settings
+      const s = bootstrap.settings || {};
+      chrome.storage.sync.set({
+        jobFilters: {
+          enabled: true,
+          skillsInclude: s.skills_include || [],
+          keywordsInclude: s.keywords_include || [],
+          keywordsExclude: s.keywords_exclude || [],
+          budgetMin: s.budget_min || null,
+          budgetMax: s.budget_max || null,
+        }
+      });
+      chrome.runtime.sendMessage({
+        type: 'ENABLE_FEED_NOTIFICATIONS',
+        enabled: s.notification_enabled || false,
+        intervalMinutes: s.notification_interval || 15
+      });
+
+      // Profile skills for fit score
+      _profileSkills = Array.isArray(bootstrap.profile?.skills) ? bootstrap.profile.skills : [];
+
+      // Templates dropdown
+      const templates = bootstrap.templates || [];
+      if (templates.length > 0) {
+        templateSelector.classList.remove('hidden');
+        templates.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.textContent = t.name;
+          opt.dataset.content = t.content;
+          templateDropdown.appendChild(opt);
+        });
       }
-    } catch (e) { /* ignore */ }
+
+      // Project checkboxes
+      const projects = bootstrap.projects || [];
+      if (projects.length > 0) {
+        const container = document.getElementById('project-selector');
+        const checkboxes = document.getElementById('project-checkboxes');
+        container.classList.remove('hidden');
+
+        const selectAllDiv = document.createElement('div');
+        selectAllDiv.className = 'project-check-item';
+        selectAllDiv.style.borderBottom = '1px solid #e5e7eb';
+        selectAllDiv.style.paddingBottom = '6px';
+        selectAllDiv.style.marginBottom = '4px';
+        const selectAllCb = document.createElement('input');
+        selectAllCb.type = 'checkbox';
+        selectAllCb.id = 'project-select-all';
+        const selectAllLabel = document.createElement('div');
+        selectAllLabel.innerHTML = '<span class="project-check-name" style="color:#2563eb;">Select All Projects</span>';
+        selectAllCb.addEventListener('change', function () {
+          checkboxes.querySelectorAll('input[type="checkbox"]:not(#project-select-all)').forEach(function (cb) { cb.checked = selectAllCb.checked; });
+        });
+        selectAllDiv.appendChild(selectAllCb);
+        selectAllDiv.appendChild(selectAllLabel);
+        checkboxes.appendChild(selectAllDiv);
+
+        projects.forEach(p => {
+          const div = document.createElement('div');
+          div.className = 'project-check-item';
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.dataset.projectId = p.id;
+          cb.dataset.projectName = p.name;
+          cb.dataset.projectDesc = p.description || '';
+          cb.dataset.projectTech = Array.isArray(p.technologies) ? p.technologies.join(', ') : '';
+          cb.dataset.projectOutcome = p.outcome || '';
+          if (p.is_featured) cb.checked = true;
+          const label = document.createElement('div');
+          label.innerHTML = '<span class="project-check-name">' + p.name + '</span>' +
+            (p.technologies && p.technologies.length ? '<br><span class="project-check-tech">' + p.technologies.join(', ') + '</span>' : '');
+          div.appendChild(cb);
+          div.appendChild(label);
+          checkboxes.appendChild(div);
+        });
+      }
+
+      // Check for duplicate proposals
+      const recentUrls = bootstrap.recentProposalUrls || [];
+      const currentUrl = jobData.url || '';
+      if (recentUrls.some(url => url && currentUrl.includes(url.replace(/.*~/, '~')))) {
+        document.getElementById('duplicate-warning').classList.remove('hidden');
+      }
+    }
 
     // Calculate and show Job Fit Score + Bid Guidance
     const fitScore = calculateFitScore(jobData.skills || [], _profileSkills);
     showFitScore(fitScore);
     showBidGuidance(fitScore, vetting.overall);
 
-    // Enable generate button — even with partial data, the LLM can work with what we have
+    // Enable generate button
     if (jobData.title || jobData.description) {
       btnGenerate.disabled = false;
       btnAbTest.disabled = false;
@@ -579,97 +634,27 @@ async function init() {
     } catch (e) {
       // ignore — no cached proposal
     }
-
-    // Load templates for the dropdown
-    try {
-      const res = await apiFetch('/api/v1/templates');
-      if (res.ok) {
-        const templates = await res.json();
-        if (Array.isArray(templates) && templates.length > 0) {
-          templateSelector.classList.remove('hidden');
-          templates.forEach(t => {
-            const opt = document.createElement('option');
-            opt.value = t.id;
-            opt.textContent = t.name;
-            opt.dataset.content = t.content;
-            templateDropdown.appendChild(opt);
-          });
-        }
-      }
-    } catch (e) {
-      // ignore — templates are optional
-    }
-
-    // Load projects for selection
-    try {
-      const pRes = await apiFetch('/api/v1/projects');
-      if (pRes.ok) {
-        const projects = await pRes.json();
-        if (Array.isArray(projects) && projects.length > 0) {
-          const container = document.getElementById('project-selector');
-          const checkboxes = document.getElementById('project-checkboxes');
-          container.classList.remove('hidden');
-
-          // "Select All" toggle
-          const selectAllDiv = document.createElement('div');
-          selectAllDiv.className = 'project-check-item';
-          selectAllDiv.style.borderBottom = '1px solid #e5e7eb';
-          selectAllDiv.style.paddingBottom = '6px';
-          selectAllDiv.style.marginBottom = '4px';
-          const selectAllCb = document.createElement('input');
-          selectAllCb.type = 'checkbox';
-          selectAllCb.id = 'project-select-all';
-          const selectAllLabel = document.createElement('div');
-          selectAllLabel.innerHTML = '<span class="project-check-name" style="color:#2563eb;">Select All Projects</span>';
-          selectAllCb.addEventListener('change', function () {
-            checkboxes.querySelectorAll('input[type="checkbox"]:not(#project-select-all)').forEach(function (cb) { cb.checked = selectAllCb.checked; });
-          });
-          selectAllDiv.appendChild(selectAllCb);
-          selectAllDiv.appendChild(selectAllLabel);
-          checkboxes.appendChild(selectAllDiv);
-
-          projects.forEach(p => {
-            const div = document.createElement('div');
-            div.className = 'project-check-item';
-            const cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.dataset.projectId = p.id;
-            cb.dataset.projectName = p.name;
-            cb.dataset.projectDesc = p.description || '';
-            cb.dataset.projectTech = Array.isArray(p.technologies) ? p.technologies.join(', ') : '';
-            cb.dataset.projectOutcome = p.outcome || '';
-            if (p.is_featured) cb.checked = true; // auto-select featured
-            const label = document.createElement('div');
-            label.innerHTML = '<span class="project-check-name">' + p.name + '</span>' +
-              (p.technologies && p.technologies.length ? '<br><span class="project-check-tech">' + p.technologies.join(', ') + '</span>' : '');
-            div.appendChild(cb);
-            div.appendChild(label);
-            checkboxes.appendChild(div);
-          });
-        }
-      }
-    } catch (e) { /* ignore */ }
-
-    // Check for duplicate proposals (already submitted to this job)
-    try {
-      const pRes = await apiFetch('/api/v1/proposals?limit=100');
-      if (pRes.ok) {
-        const proposals = await pRes.json();
-        if (Array.isArray(proposals)) {
-          const currentUrl = jobData.url || '';
-          const match = proposals.find(p => p.job_url && currentUrl.includes(p.job_url.replace(/.*~/, '~')));
-          if (match) {
-            document.getElementById('duplicate-warning').classList.remove('hidden');
-          }
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
   } catch (err) {
     statusText.textContent = 'Content script not loaded. Please reload the Upwork page.';
     console.error('[Popup] init error:', err);
   }
+}
+
+async function loadBootstrapData() {
+  try {
+    let data = await getBootstrapCache();
+    if (data) return data;
+
+    const res = await apiFetch('/api/v1/bootstrap');
+    if (res.ok) {
+      data = await res.json();
+      setBootstrapCache(data);
+      return data;
+    }
+  } catch (e) {
+    console.warn('[Popup] Bootstrap fetch failed:', e);
+  }
+  return null;
 }
 
 // ---- Event listeners ----

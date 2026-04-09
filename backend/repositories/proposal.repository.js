@@ -175,6 +175,14 @@ export async function update(id, data, userId = null) {
   return rows[0] || null;
 }
 
+export async function findRecentUrls(userId, limit = 100) {
+  const { rows } = await pool.query(
+    `SELECT job_url FROM proposals WHERE user_id = $1 AND status = 'sent' ORDER BY created_at DESC LIMIT $2`,
+    [userId, limit]
+  );
+  return rows.map(r => r.job_url).filter(Boolean);
+}
+
 export async function remove(id, userId = null) {
   if (userId) {
     const { rowCount } = await pool.query('DELETE FROM proposals WHERE id = $1 AND user_id = $2', [id, userId]);

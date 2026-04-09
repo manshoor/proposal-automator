@@ -44,6 +44,7 @@ export async function createProject(data, userId = null) {
   if (!name) throw new ValidationError('name is required');
   const result = await projectRepo.create(data, userId);
   await cacheDel(`projects:${userId || 'global'}:all:all`);
+  await cacheDel(`bootstrap:${userId || 'global'}`);
   return result;
 }
 
@@ -59,6 +60,7 @@ export async function updateProject(id, data, userId = null) {
   const updated = await projectRepo.update(id, data, userId);
   if (!updated) throw new NotFoundError('Project');
   await cacheDel(`projects:${userId || 'global'}:all:all`);
+  await cacheDel(`bootstrap:${userId || 'global'}`);
   return updated;
 }
 
@@ -73,4 +75,5 @@ export async function deleteProject(id, userId = null) {
   const deleted = await projectRepo.remove(id, userId);
   if (!deleted) throw new NotFoundError('Project');
   await cacheDel(`projects:${userId || 'global'}:all:all`);
+  await cacheDel(`bootstrap:${userId || 'global'}`);
 }

@@ -58,6 +58,7 @@ export async function createTemplate(data, userId = null) {
   const variables = extractVariables(content);
   const result = await templateRepo.create({ name, content, variables, is_default: is_default ?? false }, userId);
   await cacheDel('templates:' + (userId || 'global'));
+  await cacheDel('bootstrap:' + (userId || 'global'));
   return result;
 }
 
@@ -86,6 +87,7 @@ export async function updateTemplate(id, data, userId = null) {
   }, userId);
 
   await cacheDel('templates:' + (userId || 'global'));
+  await cacheDel('bootstrap:' + (userId || 'global'));
   return updated;
 }
 
@@ -100,4 +102,5 @@ export async function deleteTemplate(id, userId = null) {
   const deleted = await templateRepo.remove(id, userId);
   if (!deleted) throw new NotFoundError('Template');
   await cacheDel('templates:' + (userId || 'global'));
+  await cacheDel('bootstrap:' + (userId || 'global'));
 }
