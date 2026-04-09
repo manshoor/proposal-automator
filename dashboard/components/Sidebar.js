@@ -71,7 +71,9 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
       {/* Brand */}
       <div className="px-5 py-6 relative">
-        <h1 className="text-lg font-extrabold tracking-tight bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">Proposal Automator</h1>
+        <Link href="/">
+          <h1 className="text-lg font-extrabold tracking-tight bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent hover:from-blue-100 hover:to-white transition-all cursor-pointer">Proposal Automator</h1>
+        </Link>
         <p className="text-xs text-gray-400 mt-0.5 font-medium">Upwork Dashboard</p>
         <div className="mt-4 h-px bg-gradient-to-r from-blue-500/50 via-purple-500/30 to-transparent" />
       </div>
