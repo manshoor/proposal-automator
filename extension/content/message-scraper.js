@@ -272,3 +272,63 @@ function findComposeField() {
 
   return null;
 }
+
+/**
+ * Scan the messages page for conversation threads and send them to the
+ * service worker for matching against stored proposals.
+ */
+function detectProposalResponses() {
+  try {
+    var threadEls = msgQueryAll([
+      '[data-test="room-list-item"]',
+      '.room-list-item',
+      '.thread-list-item',
+      '.air3-conversation-list-item',
+      '[data-cy="conversation-item"]',
+      '.conversations-list li',
+    ]);
+
+    if (threadEls.length === 0) return;
+
+    var threads = [];
+    for (var i = 0; i < threadEls.length; i++) {
+      var threadEl = threadEls[i];
+      var titleEl = msgQueryFirst([
+        '[data-test="room-title"]',
+        '.room-title',
+        '.thread-title',
+        'h4', 'h3', 'span.title',
+      ], threadEl);
+      var clientEl = msgQueryFirst([
+        '[data-test="participant-name"]',
+        '.participant-name',
+        '.client-name',
+        'span.name',
+      ], threadEl);
+      var unreadEl = threadEl.querySelector('.unread-badge, [data-test="unread-count"], .badge');
+      var hasUnread = !!(unreadEl && msgGetText(unreadEl));
+
+      if (titleEl) {
+        threads.push({
+          title: msgGetText(titleEl),
+          client: clientEl ? msgGetText(clientEl) : '',
+          hasUnread: hasUnread,
+        });
+      }
+    }
+
+    if (threads.length > 0) {
+      chrome.runtime.sendMessage({
+        type: 'CHECK_PROPOSAL_RESPONSES',
+        threads: threads,
+      });
+    }
+  } catch (e) {
+    console.warn('[message-scraper] detectProposalResponses error:', e);
+  }
+}
+
+// Auto-run detection when on the messages page
+if (window.location.href.includes('/messages') || window.location.href.includes('/nx/messages')) {
+  setTimeout(detectProposalResponses, 3000);
+}

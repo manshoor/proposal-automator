@@ -307,6 +307,58 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     // ------------------------------------------------------------------
+    case 'CHECK_PROPOSAL_RESPONSES': {
+      (async () => {
+        try {
+          const settings = await getSettings();
+          if (!settings.accessToken) {
+            sendResponse({ success: false, error: 'Not logged in' });
+            return;
+          }
+          // Fetch recent sent proposals
+          const res = await apiFetch('/api/v1/proposals?status=sent&limit=50');
+          if (!res.ok) {
+            sendResponse({ success: false, error: 'Failed to fetch proposals' });
+            return;
+          }
+          const proposals = await res.json();
+          const threads = message.threads || [];
+
+          // Match threads against proposals by job title similarity
+          const matches = [];
+          for (const thread of threads) {
+            if (!thread.hasUnread) continue;
+            const threadTitle = (thread.title || '').toLowerCase();
+            for (const prop of proposals) {
+              const jobTitle = (prop.job_title || '').toLowerCase();
+              // Fuzzy match: thread title contains significant part of job title or vice versa
+              if (jobTitle.length > 5 && (threadTitle.includes(jobTitle) || jobTitle.includes(threadTitle))) {
+                matches.push({ proposalId: prop.id, jobTitle: prop.job_title, client: thread.client });
+                break;
+              }
+            }
+          }
+
+          // Notify for matches (max 3)
+          for (const match of matches.slice(0, 3)) {
+            chrome.notifications.create('response-' + match.proposalId, {
+              type: 'basic',
+              iconUrl: 'icons/icon128.png',
+              title: 'Client Responded!',
+              message: `${match.client || 'A client'} responded to "${match.jobTitle}"`,
+              priority: 2,
+            });
+          }
+
+          sendResponse({ success: true, data: { matched: matches.length } });
+        } catch (err) {
+          sendResponse({ success: false, error: err.message });
+        }
+      })();
+      return true;
+    }
+
+    // ------------------------------------------------------------------
     case 'RELAY_TO_CONTENT': {
       (async () => {
         try {

@@ -113,7 +113,7 @@ export async function create(data, userId = null) {
 }
 
 export async function update(id, data, userId = null) {
-  const { status, earnings } = data;
+  const { status, earnings, response_type, responded_at, decline_reason, client_feedback } = data;
 
   const sets = [];
   const values = [];
@@ -127,6 +127,26 @@ export async function update(id, data, userId = null) {
   if (earnings !== undefined && earnings !== null) {
     sets.push(`earnings = $${idx++}`);
     values.push(earnings);
+  }
+
+  if (response_type !== undefined) {
+    sets.push(`response_type = $${idx++}`);
+    values.push(response_type);
+  }
+
+  if (responded_at !== undefined) {
+    sets.push(`responded_at = $${idx++}`);
+    values.push(responded_at);
+  }
+
+  if (decline_reason !== undefined) {
+    sets.push(`decline_reason = $${idx++}`);
+    values.push(decline_reason);
+  }
+
+  if (client_feedback !== undefined) {
+    sets.push(`client_feedback = $${idx++}`);
+    values.push(client_feedback);
   }
 
   if (sets.length === 0) {

@@ -19,13 +19,47 @@ const STAT_ICONS = {
 export default function AnalyticsPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [insights, setInsights] = useState([]);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeMessage, setAnalyzeMessage] = useState('');
+
+  const fetchInsights = () =>
+    api.get('/analytics/insights').then(setInsights).catch(() => {});
 
   useEffect(() => {
-    api.get('/analytics')
-      .then(setData)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.all([
+      api.get('/analytics').then(setData).catch(() => {}),
+      fetchInsights(),
+    ]).finally(() => setLoading(false));
   }, []);
+
+  const toggleInsight = async (insight) => {
+    try {
+      const updated = await api.put(`/analytics/insights/${insight.id}`, { is_active: !insight.is_active });
+      setInsights(insights.map(i => i.id === insight.id ? { ...i, ...updated } : i));
+    } catch {
+      alert('Failed to update insight');
+    }
+  };
+
+  const getLLMConfig = () => ({
+    provider: localStorage.getItem('llm_provider') || 'anthropic',
+    apiKey: localStorage.getItem('llm_api_key') || '',
+  });
+
+  const analyzePatterns = async () => {
+    setAnalyzing(true);
+    setAnalyzeMessage('');
+    try {
+      const result = await api.post('/analytics/learn', getLLMConfig());
+      setAnalyzeMessage(result.message || 'Analysis complete.');
+      await fetchInsights();
+    } catch (err) {
+      setAnalyzeMessage('Analysis failed. Please try again.');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   if (loading) return (
     <div className="page-container">
@@ -66,6 +100,74 @@ export default function AnalyticsPage() {
       </div>
 
       <Charts data={data} />
+
+      {/* Proposal Insights */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Proposal Insights</h2>
+            <p className="text-xs text-gray-500 mt-0.5">AI-derived patterns from your proposal history</p>
+          </div>
+          <button
+            onClick={analyzePatterns}
+            disabled={analyzing}
+            className="btn-primary text-sm px-4 py-2"
+          >
+            {analyzing ? 'Analyzing…' : 'Analyze My Patterns'}
+          </button>
+        </div>
+
+        {analyzeMessage && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-blue-50 border border-blue-200/60 text-sm text-blue-800">
+            {analyzeMessage}
+          </div>
+        )}
+
+        {insights.length === 0 ? (
+          <div className="card p-8 text-center text-gray-500 text-sm">
+            No insights yet. Click "Analyze My Patterns" to generate them.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {insights.map((insight) => (
+              <div key={insight.id} className="card">
+                <div className="card-body flex items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      {insight.category && (
+                        <span className="badge-blue capitalize">{insight.category}</span>
+                      )}
+                      {insight.confidence_score != null && (
+                        <span className="badge-purple">
+                          {Math.round(insight.confidence_score * 100)}% confidence
+                        </span>
+                      )}
+                    </div>
+                    <p className={`text-sm ${insight.is_active ? 'text-gray-800' : 'text-gray-400'}`}>
+                      {insight.insight_text}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => toggleInsight(insight)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+                      insight.is_active ? 'bg-blue-600' : 'bg-gray-200'
+                    }`}
+                    role="switch"
+                    aria-checked={insight.is_active}
+                    title={insight.is_active ? 'Disable insight' : 'Enable insight'}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
+                        insight.is_active ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -126,6 +126,7 @@ export default function ProposalsPage() {
                       setProposals(proposals.map(x => x.id === p.id ? updated : x));
                     }).catch(() => alert('Failed to save earnings'));
                   }}
+                  onUpdate={(updated) => setProposals(proposals.map(x => x.id === p.id ? updated : x))}
                   formatDate={formatDate}
                   formatBudget={formatBudget}
                 />
@@ -139,8 +140,42 @@ export default function ProposalsPage() {
   );
 }
 
-function Row({ proposal, expanded, onToggle, onStatusChange, onDelete, onEarningsUpdate, formatDate, formatBudget }) {
+const RESPONSE_TYPE_COLORS = {
+  interview: 'badge-blue',
+  hired: 'badge-purple',
+  rejected: 'bg-red-100 text-red-700 text-xs font-medium px-2 py-0.5 rounded-full',
+  no_response: 'bg-gray-100 text-gray-500 text-xs font-medium px-2 py-0.5 rounded-full',
+};
+
+const today = () => new Date().toISOString().split('T')[0];
+
+function Row({ proposal, expanded, onToggle, onStatusChange, onDelete, onEarningsUpdate, onUpdate, formatDate, formatBudget }) {
   const p = proposal;
+
+  const [responseType, setResponseType] = useState(p.response_type || '');
+  const [respondedAt, setRespondedAt] = useState(p.responded_at ? p.responded_at.split('T')[0] : today());
+  const [declineReason, setDeclineReason] = useState(p.decline_reason || '');
+  const [clientFeedback, setClientFeedback] = useState(p.client_feedback || '');
+  const [savingOutcome, setSavingOutcome] = useState(false);
+
+  const saveOutcome = async (e) => {
+    e.stopPropagation();
+    setSavingOutcome(true);
+    try {
+      const updated = await api.put(`/proposals/${p.id}`, {
+        response_type: responseType || null,
+        responded_at: respondedAt || null,
+        decline_reason: responseType === 'rejected' ? declineReason : null,
+        client_feedback: clientFeedback || null,
+      });
+      onUpdate(updated);
+    } catch {
+      alert('Failed to save outcome');
+    } finally {
+      setSavingOutcome(false);
+    }
+  };
+
   return (
     <>
       <tr onClick={onToggle} className="cursor-pointer">
@@ -151,7 +186,16 @@ function Row({ proposal, expanded, onToggle, onStatusChange, onDelete, onEarning
         </td>
         <td className="px-4 py-3 text-gray-500">{p.client_location || '—'}</td>
         <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatBudget(p)}</td>
-        <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <StatusBadge status={p.status} />
+            {p.response_type && (
+              <span className={RESPONSE_TYPE_COLORS[p.response_type] || 'badge-blue'}>
+                {p.response_type.replace('_', ' ')}
+              </span>
+            )}
+          </div>
+        </td>
         <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{p.hourly_rate ? `$${p.hourly_rate}` : '—'}</td>
       </tr>
       {expanded && (
@@ -187,6 +231,66 @@ function Row({ proposal, expanded, onToggle, onStatusChange, onDelete, onEarning
                     <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                   ))}
                 </select>
+
+                <h4 className="text-xs font-medium text-gray-500 uppercase mt-4 mb-2">Outcome Tracking</h4>
+                <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
+                  <div>
+                    <label className="label">Response Type</label>
+                    <select
+                      value={responseType}
+                      onChange={(e) => setResponseType(e.target.value)}
+                      className="input py-1.5 bg-white"
+                    >
+                      <option value="">— Not set —</option>
+                      <option value="interview">Interview</option>
+                      <option value="hired">Hired</option>
+                      <option value="rejected">Rejected</option>
+                      <option value="no_response">No Response</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="label">Responded At</label>
+                    <input
+                      type="date"
+                      value={respondedAt}
+                      onChange={(e) => setRespondedAt(e.target.value)}
+                      className="input py-1.5 bg-white"
+                    />
+                  </div>
+
+                  {responseType === 'rejected' && (
+                    <div>
+                      <label className="label">Decline Reason</label>
+                      <input
+                        type="text"
+                        value={declineReason}
+                        onChange={(e) => setDeclineReason(e.target.value)}
+                        placeholder="e.g. Budget mismatch, went with another freelancer"
+                        className="input py-1.5"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="label">Client Feedback <span className="text-gray-400 font-normal normal-case">(optional)</span></label>
+                    <textarea
+                      value={clientFeedback}
+                      onChange={(e) => setClientFeedback(e.target.value)}
+                      placeholder="Any feedback or notes from the client..."
+                      rows={2}
+                      className="input py-1.5 resize-none"
+                    />
+                  </div>
+
+                  <button
+                    onClick={saveOutcome}
+                    disabled={savingOutcome}
+                    className="btn-secondary text-xs px-3 py-1.5"
+                  >
+                    {savingOutcome ? 'Saving…' : 'Save Outcome'}
+                  </button>
+                </div>
 
                 {p.connect_cost > 0 && (
                   <div className="mt-3 text-sm text-gray-500">

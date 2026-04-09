@@ -1,6 +1,7 @@
 import * as proposalRepo from '../repositories/proposal.repository.js';
 import * as promptRepo from '../repositories/prompt.repository.js';
 import * as projectRepo from '../repositories/project.repository.js';
+import * as insightRepo from '../repositories/insight.repository.js';
 import { getProfileOrDefault } from './profile.service.js';
 import { resolveLLMConfig, callLLM } from './llm.service.js';
 import { buildSystemPrompt, buildUserPrompt, buildAnalysisPrompt, injectProfileData } from '../prompts/proposal.js';
@@ -99,7 +100,7 @@ export async function createProposal(data, userId = null) {
  * @returns {Promise<object>}
  */
 export async function updateProposal(id, data, userId = null) {
-  const { status, earnings } = data;
+  const { status, earnings, response_type, responded_at, decline_reason, client_feedback } = data;
 
   if (status !== undefined && status !== null && !ALLOWED_STATUSES.has(status)) {
     throw new ValidationError(`status must be one of: ${[...ALLOWED_STATUSES].join(', ')}`);
@@ -113,8 +114,12 @@ export async function updateProposal(id, data, userId = null) {
     data = { ...data, earnings: amt };
   }
 
-  if (status === undefined && earnings === undefined) {
-    throw new ValidationError('Nothing to update. Send status or earnings.');
+  const hasUpdate = status !== undefined || earnings !== undefined
+    || response_type !== undefined || responded_at !== undefined
+    || decline_reason !== undefined || client_feedback !== undefined;
+
+  if (!hasUpdate) {
+    throw new ValidationError('Nothing to update.');
   }
 
   const updated = await proposalRepo.update(id, data, userId);
@@ -223,6 +228,17 @@ export async function generateProposal(input, logger = null, userId = null) {
     systemPrompt += '\n\n--- CUSTOM INSTRUCTIONS ---\n' + customPrompt.prompt_text;
   }
 
+  // Inject learned patterns from outcome tracking
+  try {
+    const insights = await insightRepo.findActive(userId);
+    if (insights.length > 0) {
+      systemPrompt += '\n\nLEARNED PATTERNS (from your proposal history — follow these):';
+      insights.forEach((r, i) => {
+        systemPrompt += `\n${i + 1}. ${r.insight_text}`;
+      });
+    }
+  } catch { /* non-fatal */ }
+
   // 6. Build user prompt
   let userPrompt = buildUserPrompt(jobData, hiddenInstructions);
 
@@ -321,6 +337,8 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
       client_review_count: jobData.clientReviewCount || null,
       proposal_text: parsed.coverLetter,
       hourly_rate: parsed.hourlyRate,
+      proposal_length: parsed.coverLetter ? parsed.coverLetter.length : null,
+      template_used: templateContent ? 'custom' : null,
       hidden_instructions: hiddenInstructions?.text || null,
       vetting_result: jobData.vettingResult ? JSON.stringify(jobData.vettingResult) : null,
       proposal_count: jobData.proposalCount || null,

@@ -49,4 +49,8 @@ export const createProposalSchema = z.object({
 export const updateProposalSchema = z.object({
   status: z.enum(['sent', 'pending', 'hired', 'rejected', 'withdrawn']).optional(),
   earnings: z.number().min(0).optional(),
+  response_type: z.enum(['interview', 'hired', 'rejected', 'no_response']).optional(),
+  responded_at: z.string().optional(),
+  decline_reason: z.string().max(255).optional(),
+  client_feedback: z.string().optional(),
 }).passthrough();
