@@ -3,9 +3,10 @@ import { asyncHandler } from '../middleware/async-handler.js';
 import { authenticate } from '../middleware/auth.js';
 import { authLimiter } from '../middleware/rate-limiter.js';
 import { validate } from '../middleware/validate.js';
-import { registerSchema, loginSchema, refreshSchema } from '../schemas/auth.schema.js';
+import { registerSchema, loginSchema } from '../schemas/auth.schema.js';
 import * as authService from '../services/auth.service.js';
 import { setAuthCookies, clearAuthCookies } from '../lib/cookies.js';
+import { ValidationError } from '../lib/errors.js';
 
 const router = Router();
 
@@ -23,10 +24,11 @@ router.post('/login', authLimiter, validate(loginSchema), asyncHandler(async (re
 
 router.post('/refresh', asyncHandler(async (req, res) => {
   // Accept refresh token from body (extension) or cookie (dashboard).
-  const token = req.body?.refreshToken || req.cookies?.refreshToken;
+  const bodyToken = typeof req.body?.refreshToken === 'string' ? req.body.refreshToken : '';
+  const cookieToken = typeof req.cookies?.refreshToken === 'string' ? req.cookies.refreshToken : '';
+  const token = bodyToken || cookieToken;
   if (!token) {
-    res.status(400).json({ error: 'refreshToken is required (body or cookie)' });
-    return;
+    throw new ValidationError('refreshToken is required');
   }
   const result = await authService.refresh(token);
   setAuthCookies(res, result);
