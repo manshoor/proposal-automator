@@ -7,6 +7,7 @@ validateEnv();
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { join } from 'path';
 
 import { logger, requestLogger } from './lib/logger.js';
@@ -28,6 +29,7 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 // Middleware pipeline (order matters)
 app.use(requestId);
 app.use(requestLogger);
+app.use(cookieParser());
 app.use(helmet({
   contentSecurityPolicy: IS_PROD ? undefined : false,
   crossOriginResourcePolicy: { policy: 'cross-origin' },
