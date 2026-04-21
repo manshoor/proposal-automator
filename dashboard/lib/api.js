@@ -34,10 +34,11 @@ function authHeaders() {
   return headers;
 }
 
-async function request(method, path, body) {
+async function request(method, path, body, options = {}) {
   const opts = {
     method,
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    signal: options.signal,
   };
 
   if (body) opts.body = JSON.stringify(body);
@@ -60,11 +61,12 @@ async function request(method, path, body) {
   return res.json();
 }
 
-async function upload(path, formData) {
+async function upload(path, formData, options = {}) {
   const opts = {
     method: 'POST',
     headers: authHeaders(),
     body: formData,
+    signal: options.signal,
   };
 
   let res = await fetch(`${BASE}${path}`, opts);
@@ -85,9 +87,9 @@ async function upload(path, formData) {
 }
 
 export const api = {
-  get: (path) => request('GET', path),
-  post: (path, body) => request('POST', path, body),
-  put: (path, body) => request('PUT', path, body),
-  del: (path) => request('DELETE', path),
-  upload: (path, formData) => upload(path, formData),
+  get: (path, options) => request('GET', path, undefined, options),
+  post: (path, body, options) => request('POST', path, body, options),
+  put: (path, body, options) => request('PUT', path, body, options),
+  del: (path, options) => request('DELETE', path, undefined, options),
+  upload: (path, formData, options) => upload(path, formData, options),
 };

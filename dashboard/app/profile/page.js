@@ -68,28 +68,8 @@ export default function ProfilePage() {
     setToast({ message: 'Parsing your resume with AI...', type: 'success' });
 
     try {
-      // Get LLM settings from the extension's storage endpoint
-      // Since dashboard can't access chrome.storage, we'll use localStorage or prompt
-      let provider = localStorage.getItem('llm_provider') || 'anthropic';
-      let apiKey = localStorage.getItem('llm_api_key') || '';
-
-      // If no key stored, prompt the user
-      if (!apiKey) {
-        apiKey = prompt('Enter your LLM API key (Anthropic or OpenAI) to parse the resume:');
-        if (!apiKey) {
-          setParsing(false);
-          return;
-        }
-        const providerChoice = prompt('Which provider? Type "anthropic" or "openai":', 'anthropic');
-        provider = providerChoice === 'openai' ? 'openai' : 'anthropic';
-        localStorage.setItem('llm_provider', provider);
-        localStorage.setItem('llm_api_key', apiKey);
-      }
-
       const formData = new FormData();
       formData.append('resume', file);
-      formData.append('provider', provider);
-      formData.append('apiKey', apiKey);
       formData.append('autoSave', 'true');
 
       const data = await api.upload('/parse-resume', formData);
@@ -178,11 +158,15 @@ export default function ProfilePage() {
       </div>
 
       {/* Hook Generator */}
-      <HookGenerator profileTitle={form.title} onApply={(hook) => {
-        const current = form.summary || '';
-        setForm({...form, summary: hook + (current ? '\n\n' + current : '')});
-        setToast({ message: 'Hook applied as the opening of your summary!', type: 'success' });
-      }} />
+      <HookGenerator
+        profileTitle={form.title}
+        onApply={(hook) => {
+          const current = form.summary || '';
+          setForm({...form, summary: hook + (current ? '\n\n' + current : '')});
+          setToast({ message: 'Hook applied as the opening of your summary!', type: 'success' });
+        }}
+        onError={(message) => setToast({ message, type: 'error' })}
+      />
 
       {/* Profile Form */}
       <div className="card card-body max-w-3xl">
@@ -226,17 +210,7 @@ export default function ProfilePage() {
                 setAnalyzing(true);
                 setAnalysis(null);
                 try {
-                  let provider = localStorage.getItem('llm_provider') || 'anthropic';
-                  let apiKey = localStorage.getItem('llm_api_key') || '';
-                  if (!apiKey) {
-                    apiKey = prompt('Enter your LLM API key to analyze profile:');
-                    if (!apiKey) { setAnalyzing(false); return; }
-                    const choice = prompt('Provider? "anthropic" or "openai":', 'anthropic');
-                    provider = choice === 'openai' ? 'openai' : 'anthropic';
-                    localStorage.setItem('llm_provider', provider);
-                    localStorage.setItem('llm_api_key', apiKey);
-                  }
-                  const data = await api.post('/analyze-profile', { provider, apiKey, profileDescription: form.summary });
+                  const data = await api.post('/analyze-profile', { profileDescription: form.summary });
                   setAnalysis(data);
                   setToast({ message: `Profile scored ${data.score}/100`, type: data.score >= 70 ? 'success' : 'error' });
                 } catch (err) {
@@ -529,7 +503,7 @@ export default function ProfilePage() {
   );
 }
 
-function HookGenerator({ profileTitle, onApply }) {
+function HookGenerator({ profileTitle, onApply, onError }) {
   const [hooks, setHooks] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [niche, setNiche] = useState('');
@@ -540,20 +514,10 @@ function HookGenerator({ profileTitle, onApply }) {
     setGenerating(true);
     setHooks(null);
     try {
-      let provider = localStorage.getItem('llm_provider') || 'anthropic';
-      let apiKey = localStorage.getItem('llm_api_key') || '';
-      if (!apiKey) {
-        apiKey = prompt('Enter your LLM API key:');
-        if (!apiKey) { setGenerating(false); return; }
-        const choice = prompt('Provider? "anthropic" or "openai":', 'anthropic');
-        provider = choice === 'openai' ? 'openai' : 'anthropic';
-        localStorage.setItem('llm_provider', provider);
-        localStorage.setItem('llm_api_key', apiKey);
-      }
-      const data = await api.post('/generate-hooks', { provider, apiKey, profileTitle: title, niche: niche || title });
+      const data = await api.post('/generate-hooks', { profileTitle: title, niche: niche || title });
       setHooks(data);
     } catch (err) {
-      alert(err.message);
+      if (onError) onError(err.message || 'Failed to generate hooks');
     }
     setGenerating(false);
   };

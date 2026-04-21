@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
 import dynamic from 'next/dynamic';
+import Toast from '../../components/Toast';
 
 const Charts = dynamic(() => import('../../components/AnalyticsCharts'), { ssr: false });
 
@@ -22,6 +23,7 @@ export default function AnalyticsPage() {
   const [insights, setInsights] = useState([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeMessage, setAnalyzeMessage] = useState('');
+  const [toast, setToast] = useState(null);
 
   const fetchInsights = () =>
     api.get('/analytics/insights').then(setInsights).catch(() => {});
@@ -38,20 +40,15 @@ export default function AnalyticsPage() {
       const updated = await api.put(`/analytics/insights/${insight.id}`, { is_active: !insight.is_active });
       setInsights(insights.map(i => i.id === insight.id ? { ...i, ...updated } : i));
     } catch {
-      alert('Failed to update insight');
+      setToast({ message: 'Failed to update insight', type: 'error' });
     }
   };
-
-  const getLLMConfig = () => ({
-    provider: localStorage.getItem('llm_provider') || 'anthropic',
-    apiKey: localStorage.getItem('llm_api_key') || '',
-  });
 
   const analyzePatterns = async () => {
     setAnalyzing(true);
     setAnalyzeMessage('');
     try {
-      const result = await api.post('/analytics/learn', getLLMConfig());
+      const result = await api.post('/analytics/learn', {});
       setAnalyzeMessage(result.message || 'Analysis complete.');
       await fetchInsights();
     } catch (err) {
@@ -168,6 +165,7 @@ export default function AnalyticsPage() {
           </div>
         )}
       </div>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

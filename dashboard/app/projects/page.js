@@ -33,22 +33,8 @@ export default function ProjectsPage() {
     setToast({ message: 'Parsing projects with AI...', type: 'success' });
 
     try {
-      let provider = localStorage.getItem('llm_provider') || 'anthropic';
-      let apiKey = localStorage.getItem('llm_api_key') || '';
-
-      if (!apiKey) {
-        apiKey = prompt('Enter your LLM API key to parse projects:');
-        if (!apiKey) { setImporting(false); return; }
-        const choice = prompt('Provider? "anthropic" or "openai":', 'anthropic');
-        provider = choice === 'openai' ? 'openai' : 'anthropic';
-        localStorage.setItem('llm_provider', provider);
-        localStorage.setItem('llm_api_key', apiKey);
-      }
-
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('provider', provider);
-      formData.append('apiKey', apiKey);
 
       const data = await api.upload('/parse-projects', formData);
       setToast({ message: `Imported ${data.inserted} projects from ${data.parsed} found!`, type: 'success' });
@@ -127,15 +113,10 @@ export default function ProjectsPage() {
     }
   };
 
-  const getLLMConfig = () => ({
-    provider: localStorage.getItem('llm_provider') || 'anthropic',
-    apiKey: localStorage.getItem('llm_api_key') || '',
-  });
-
   const handleEnhance = async (id) => {
     setEnhancing(prev => ({ ...prev, [id]: true }));
     try {
-      const data = await api.post(`/projects/${id}/enhance`, getLLMConfig());
+      const data = await api.post(`/projects/${id}/enhance`, {});
       setEnhanced(prev => ({ ...prev, [id]: data }));
     } catch (err) {
       setToast({ message: err.message || 'Enhancement failed', type: 'error' });
@@ -352,7 +333,9 @@ export default function ProjectsPage() {
                 <div className="space-y-2 mb-3">
                   {form.screenshots.map((src, i) => (
                     <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-xl p-2">
-                      <img src={src} alt="" className="w-12 h-12 object-cover rounded border border-gray-200"
+                      <img src={src} alt={`${form.name || 'Project'} screenshot ${i + 1}`}
+                        loading="lazy" decoding="async"
+                        className="w-12 h-12 object-cover rounded border border-gray-200"
                         onError={(e) => { e.target.style.display = 'none'; }} />
                       <input type="text" value={src} readOnly
                         className="flex-1 text-xs text-gray-500 bg-transparent border-none truncate" />
@@ -427,7 +410,9 @@ export default function ProjectsPage() {
               {p.screenshots && p.screenshots.length > 0 && (
                 <div className="flex gap-2 mb-2 overflow-x-auto">
                   {p.screenshots.slice(0, 4).map((src, i) => (
-                    <img key={i} src={src} alt="" className="w-16 h-16 object-cover rounded border border-gray-200 flex-shrink-0" />
+                    <img key={i} src={src} alt={`${p.name} screenshot ${i + 1}`}
+                      loading="lazy" decoding="async"
+                      className="w-16 h-16 object-cover rounded border border-gray-200 flex-shrink-0" />
                   ))}
                   {p.screenshots.length > 4 && (
                     <div className="w-16 h-16 bg-gray-100 rounded border border-gray-200 flex items-center justify-center text-xs text-gray-500 flex-shrink-0">

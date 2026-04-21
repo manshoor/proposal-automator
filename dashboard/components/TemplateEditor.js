@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function TemplateEditor({ template, onSave, onClose }) {
   const [name, setName] = useState('');
   const [content, setContent] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const dialogRef = useRef(null);
+  const previouslyFocused = useRef(null);
 
   useEffect(() => {
     if (template) {
@@ -14,6 +16,40 @@ export default function TemplateEditor({ template, onSave, onClose }) {
       setContent(template.content || '');
     }
   }, [template]);
+
+  // Focus management: remember where focus was, move focus into the dialog,
+  // trap Tab within the dialog, and restore focus on close.
+  useEffect(() => {
+    previouslyFocused.current = document.activeElement;
+    const first = dialogRef.current?.querySelector(
+      'input, textarea, button, [href], [tabindex]:not([tabindex="-1"])'
+    );
+    first?.focus();
+
+    function handleKey(e) {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab' || !dialogRef.current) return;
+      const focusables = dialogRef.current.querySelectorAll(
+        'input, textarea, button, [href], [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusables.length === 0) return;
+      const firstEl = focusables[0];
+      const lastEl = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === firstEl) {
+        e.preventDefault();
+        lastEl.focus();
+      } else if (!e.shiftKey && document.activeElement === lastEl) {
+        e.preventDefault();
+        firstEl.focus();
+      }
+    }
+
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      previouslyFocused.current?.focus?.();
+    };
+  }, [onClose]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -43,14 +79,18 @@ export default function TemplateEditor({ template, onSave, onClose }) {
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="template-editor-title"
     >
       <div
+        ref={dialogRef}
         className="relative w-full max-w-2xl bg-white rounded-lg shadow-xl p-6
                    transition-all duration-200 ease-out"
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 id="template-editor-title" className="text-lg font-semibold text-gray-900">
             {template ? 'Edit Template' : 'Create Template'}
           </h2>
           <button

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { api } from '../lib/api';
 
 const NAV = [
   { href: '/profile', label: 'Profile', icon: (
@@ -38,17 +39,13 @@ export default function Sidebar({ mobileOpen, onClose }) {
   const [userRole, setUserRole] = useState('');
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // Decode JWT to get email and role
-      const token = localStorage.getItem('accessToken');
-      if (token) {
-        try {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          setUserEmail(payload.email || '');
-          setUserRole(payload.role || '');
-        } catch { /* ignore */ }
-      }
-    }
+    let cancelled = false;
+    api.get('/auth/me').then((me) => {
+      if (cancelled) return;
+      setUserEmail(me.email || '');
+      setUserRole(me.role || '');
+    }).catch(() => { /* ignore — auth errors are handled by AuthLayout redirect */ });
+    return () => { cancelled = true; };
   }, []);
 
   return (
@@ -138,7 +135,8 @@ export default function Sidebar({ mobileOpen, onClose }) {
           </div>
         )}
         <button
-          onClick={() => {
+          onClick={async () => {
+            try { await api.post('/auth/logout', {}); } catch { /* best-effort */ }
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
             window.location.href = '/login';

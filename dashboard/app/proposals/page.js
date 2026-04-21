@@ -3,22 +3,46 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
 import StatusBadge from '../../components/StatusBadge';
+import Toast from '../../components/Toast';
 
 const STATUSES = ['all', 'sent', 'hired', 'rejected', 'pending', 'withdrawn'];
+const PAGE_SIZE = 25;
 
 export default function ProposalsPage() {
   const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState(null);
   const [details, setDetails] = useState({});
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    api.get('/proposals?limit=100&sort=created_at&order=desc')
-      .then((data) => { setProposals(Array.isArray(data) ? data : []); setLoading(false); })
+    api.get(`/proposals?limit=${PAGE_SIZE}&offset=0&sort=created_at&order=desc`)
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setProposals(list);
+        setHasMore(list.length === PAGE_SIZE);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, []);
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const data = await api.get(`/proposals?limit=${PAGE_SIZE}&offset=${proposals.length}&sort=created_at&order=desc`);
+      const list = Array.isArray(data) ? data : [];
+      setProposals((prev) => [...prev, ...list]);
+      setHasMore(list.length === PAGE_SIZE);
+    } catch {
+      setToast({ message: 'Failed to load more proposals', type: 'error' });
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const filtered = proposals.filter((p) => {
     if (filter !== 'all' && p.status !== filter) return false;
@@ -31,7 +55,7 @@ export default function ProposalsPage() {
       await api.put(`/proposals/${id}`, { status });
       setProposals(proposals.map(p => p.id === id ? { ...p, status } : p));
     } catch (err) {
-      alert('Failed to update status');
+      setToast({ message: 'Failed to update status', type: 'error' });
     }
   };
 
@@ -42,7 +66,7 @@ export default function ProposalsPage() {
       setProposals(proposals.filter(p => p.id !== id));
       setExpandedId(null);
     } catch (err) {
-      alert('Failed to delete proposal');
+      setToast({ message: 'Failed to delete proposal', type: 'error' });
     }
   };
 
@@ -134,9 +158,10 @@ export default function ProposalsPage() {
                   onEarningsUpdate={(earnings) => {
                     api.put(`/proposals/${p.id}`, { earnings }).then((updated) => {
                       setProposals(proposals.map(x => x.id === p.id ? updated : x));
-                    }).catch(() => alert('Failed to save earnings'));
+                    }).catch(() => setToast({ message: 'Failed to save earnings', type: 'error' }));
                   }}
                   onUpdate={(updated) => setProposals(proposals.map(x => x.id === p.id ? updated : x))}
+                  onToast={setToast}
                   formatDate={formatDate}
                   formatBudget={formatBudget}
                 />
@@ -144,8 +169,21 @@ export default function ProposalsPage() {
             </tbody>
           </table>
           </div>
+          {hasMore && (
+            <div className="flex justify-center py-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="btn-secondary text-xs px-4 py-2"
+              >
+                {loadingMore ? 'Loading...' : 'Load more'}
+              </button>
+            </div>
+          )}
         </div>
       )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }
@@ -159,7 +197,7 @@ const RESPONSE_TYPE_COLORS = {
 
 const today = () => new Date().toISOString().split('T')[0];
 
-function Row({ proposal, expanded, onToggle, onStatusChange, onDelete, onEarningsUpdate, onUpdate, formatDate, formatBudget }) {
+function Row({ proposal, expanded, onToggle, onStatusChange, onDelete, onEarningsUpdate, onUpdate, onToast, formatDate, formatBudget }) {
   const p = proposal;
 
   const [responseType, setResponseType] = useState(p.response_type || '');
@@ -180,7 +218,7 @@ function Row({ proposal, expanded, onToggle, onStatusChange, onDelete, onEarning
       });
       onUpdate(updated);
     } catch {
-      alert('Failed to save outcome');
+      if (onToast) onToast({ message: 'Failed to save outcome', type: 'error' });
     } finally {
       setSavingOutcome(false);
     }

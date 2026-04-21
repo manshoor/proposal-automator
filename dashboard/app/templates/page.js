@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../lib/api';
 import PageHeader from '../../components/PageHeader';
 import TemplateEditor from '../../components/TemplateEditor';
+import Toast from '../../components/Toast';
 
 function formatDate(dateString) {
   if (!dateString) return '';
@@ -30,6 +31,7 @@ export default function TemplatesPage() {
   const [editorOpen, setEditorOpen] = useState(false);
 
   const [deletingId, setDeletingId] = useState(null);
+  const [toast, setToast] = useState(null);
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
@@ -87,7 +89,7 @@ export default function TemplatesPage() {
       await api.del('/templates/' + id);
       setTemplates((prev) => prev.filter((t) => t.id !== id));
     } catch (err) {
-      alert(err.message || 'Failed to delete template. Please try again.');
+      setToast({ message: err.message || 'Failed to delete template. Please try again.', type: 'error' });
     } finally {
       setDeletingId(null);
     }
@@ -245,6 +247,8 @@ export default function TemplatesPage() {
           onClose={closeEditor}
         />
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

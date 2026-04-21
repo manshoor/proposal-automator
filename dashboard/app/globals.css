@@ -15,6 +15,25 @@ body {
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
+/* Keyboard-only focus ring. Mouse clicks won't show the ring (per :focus-visible semantics),
+   but Tab navigation will, so keyboard users always see where focus is. */
+:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible,
+[role="switch"]:focus-visible,
+[role="tab"]:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
 @layer components {
   /* ---- Page Layout ---- */
   .page-container {
