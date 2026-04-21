@@ -9,3 +9,4 @@ data/
 backend/uploads/
 .playwright-mcp/
 .claude/settings.local.json
+.worktrees/
