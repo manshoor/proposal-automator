@@ -411,27 +411,42 @@
   // ---- SPA re-init on navigation ----
 
   var _lastMsgHref = window.location.href;
-  var _navObserverMsg = new MutationObserver(function () {
-    if (window.location.href !== _lastMsgHref) {
-      _lastMsgHref = window.location.href;
+  var _navObserverMsg = null;
 
-      // Remove existing panel + button so they can be re-injected
-      var oldPanel = document.getElementById(PANEL_ID);
-      var oldBtn = document.getElementById(BTN_ID);
-      if (oldPanel) oldPanel.remove();
-      if (oldBtn) oldBtn.remove();
-
-      // Remove Q&A injection markers so they can be re-applied
-      var injected = document.querySelectorAll('[data-upa-qa-injected]');
-      for (var i = 0; i < injected.length; i++) {
-        delete injected[i].dataset.upaQaInjected;
-      }
-
-      setTimeout(function () { waitForComposeThenInit(); }, 800);
+  function _startNavWatch() {
+    // Disconnect any previous observer to prevent duplicates
+    if (_navObserverMsg) {
+      _navObserverMsg.disconnect();
+      _navObserverMsg = null;
     }
-  });
+    _navObserverMsg = new MutationObserver(function () {
+      if (window.location.href !== _lastMsgHref) {
+        _lastMsgHref = window.location.href;
 
-  _navObserverMsg.observe(document.body, { childList: true, subtree: true });
+        // Remove existing panel + button so they can be re-injected
+        var oldPanel = document.getElementById(PANEL_ID);
+        var oldBtn = document.getElementById(BTN_ID);
+        if (oldPanel) oldPanel.remove();
+        if (oldBtn) oldBtn.remove();
+
+        // Remove Q&A injection markers so they can be re-applied
+        var injected = document.querySelectorAll('[data-upa-qa-injected]');
+        for (var i = 0; i < injected.length; i++) {
+          delete injected[i].dataset.upaQaInjected;
+        }
+
+        // 800ms: Upwork's message SPA route change triggers a remount of the
+        // compose textarea. Re-initializing synchronously binds to the stale
+        // element. waitForComposeThenInit() observes for the new field, but
+        // starting the observer before React clears the old one sometimes
+        // resolves against the outgoing node.
+        setTimeout(function () { waitForComposeThenInit(); }, 800);
+      }
+    });
+    _navObserverMsg.observe(document.body, { childList: true, subtree: true });
+  }
+
+  _startNavWatch();
 
   // Kick off on initial page load
   waitForComposeThenInit();

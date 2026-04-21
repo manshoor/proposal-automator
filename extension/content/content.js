@@ -10,17 +10,25 @@
 
   // ---- SPA navigation detection ----
   var _lastHref = window.location.href;
+  var _navObserver = null;
 
-  var _navObserver = new MutationObserver(function () {
-    if (window.location.href !== _lastHref) {
-      _lastHref = window.location.href;
-      if (typeof clearScraperCache === 'function') {
-        clearScraperCache();
-      }
+  function _startContentNavWatch() {
+    if (_navObserver) {
+      _navObserver.disconnect();
+      _navObserver = null;
     }
-  });
+    _navObserver = new MutationObserver(function () {
+      if (window.location.href !== _lastHref) {
+        _lastHref = window.location.href;
+        if (typeof clearScraperCache === 'function') {
+          clearScraperCache();
+        }
+      }
+    });
+    _navObserver.observe(document.body, { childList: true, subtree: true });
+  }
 
-  _navObserver.observe(document.body, { childList: true, subtree: true });
+  _startContentNavWatch();
 
   console.log('[Upwork Proposal Automator] Content script loaded on:', window.location.href);
 

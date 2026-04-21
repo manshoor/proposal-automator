@@ -45,8 +45,23 @@ async function checkForNewJobs() {
       active: false
     });
 
-    // Wait for page to load
-    await new Promise(r => setTimeout(r, 10000));
+    // Wait for page to fully load (instead of arbitrary timeout)
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        chrome.tabs.onUpdated.removeListener(listener);
+        reject(new Error('Tab load timed out after 30s'));
+      }, 30000);
+
+      function listener(tabId, info) {
+        if (tabId === tab.id && info.status === 'complete') {
+          chrome.tabs.onUpdated.removeListener(listener);
+          clearTimeout(timeout);
+          // Brief delay for JS frameworks to render content
+          setTimeout(resolve, 2000);
+        }
+      }
+      chrome.tabs.onUpdated.addListener(listener);
+    });
 
     // Inject scraper and get jobs
     const results = await chrome.scripting.executeScript({

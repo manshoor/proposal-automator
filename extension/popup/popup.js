@@ -346,7 +346,21 @@ function populateVetting(vetting) {
     redFlagsList.innerHTML = '';
     for (const flag of flags) {
       const li = document.createElement('li');
-      li.innerHTML = `<span class="rf-severity rf-${flag.severity}"></span><span class="rf-text"><span class="rf-flag-name">${flag.flag}</span> — <span class="rf-detail">${flag.detail}</span></span>`;
+      const severitySpan = document.createElement('span');
+      severitySpan.className = 'rf-severity rf-' + (flag.severity || 'low');
+      const textSpan = document.createElement('span');
+      textSpan.className = 'rf-text';
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'rf-flag-name';
+      nameSpan.textContent = flag.flag;
+      const detailSpan = document.createElement('span');
+      detailSpan.className = 'rf-detail';
+      detailSpan.textContent = flag.detail;
+      textSpan.appendChild(nameSpan);
+      textSpan.appendChild(document.createTextNode(' — '));
+      textSpan.appendChild(detailSpan);
+      li.appendChild(severitySpan);
+      li.appendChild(textSpan);
       redFlagsList.appendChild(li);
     }
   } else {
@@ -593,8 +607,17 @@ async function init() {
           cb.dataset.projectOutcome = p.outcome || '';
           if (p.is_featured) cb.checked = true;
           const label = document.createElement('div');
-          label.innerHTML = '<span class="project-check-name">' + p.name + '</span>' +
-            (p.technologies && p.technologies.length ? '<br><span class="project-check-tech">' + p.technologies.join(', ') + '</span>' : '');
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'project-check-name';
+          nameSpan.textContent = p.name;
+          label.appendChild(nameSpan);
+          if (p.technologies && p.technologies.length) {
+            label.appendChild(document.createElement('br'));
+            const techSpan = document.createElement('span');
+            techSpan.className = 'project-check-tech';
+            techSpan.textContent = p.technologies.join(', ');
+            label.appendChild(techSpan);
+          }
           div.appendChild(cb);
           div.appendChild(label);
           checkboxes.appendChild(div);
@@ -972,8 +995,19 @@ document.getElementById('btn-analyze').addEventListener('click', async () => {
     // Improvements
     if (a.improvements && a.improvements.length > 0) {
       const impEl = document.getElementById('analysis-improvements');
-      impEl.innerHTML = '<strong style="font-size:11px;color:#6b7280;">Improvements:</strong><ol>' +
-        a.improvements.map(i => '<li>' + i + '</li>').join('') + '</ol>';
+      impEl.textContent = '';
+      const heading = document.createElement('strong');
+      heading.style.fontSize = '11px';
+      heading.style.color = '#6b7280';
+      heading.textContent = 'Improvements:';
+      const ol = document.createElement('ol');
+      a.improvements.forEach(function (item) {
+        const li = document.createElement('li');
+        li.textContent = item;
+        ol.appendChild(li);
+      });
+      impEl.appendChild(heading);
+      impEl.appendChild(ol);
     }
 
     panel.classList.remove('hidden');

@@ -107,22 +107,64 @@ function extractJobUid() {
 
 // ---- Client data caching across pages (job detail → proposal page) ----
 
+// Uses chrome.storage.local (MV3) — isolated from the page context so same-origin
+// scripts on upwork.com cannot read cached client data. Unlike sessionStorage
+// (which was page-context accessible), this lives in the extension's isolated world.
+// Entries are tagged with a timestamp and expire after 24h to avoid unbounded growth.
+
+var _CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+function _hasChromeStorage() {
+  return typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;
+}
+
+function _setCache(key, value) {
+  if (!_hasChromeStorage()) return Promise.resolve();
+  var entry = {};
+  entry[key] = { value: value, ts: Date.now() };
+  return new Promise(function (resolve) {
+    try {
+      chrome.storage.local.set(entry, function () { resolve(); });
+    } catch (e) { resolve(); }
+  });
+}
+
+function _getCache(key) {
+  if (!_hasChromeStorage()) return Promise.resolve(null);
+  return new Promise(function (resolve) {
+    try {
+      chrome.storage.local.get([key], function (result) {
+        var rec = result && result[key];
+        if (!rec || typeof rec.ts !== 'number') { resolve(null); return; }
+        if (Date.now() - rec.ts > _CACHE_TTL_MS) {
+          try { chrome.storage.local.remove(key); } catch (e) {}
+          resolve(null);
+          return;
+        }
+        resolve(rec.value);
+      });
+    } catch (e) { resolve(null); }
+  });
+}
+
 function cacheClientData(jobUid, clientData) {
-  if (!jobUid || !clientData) return;
-  try {
-    var key = 'clientCache_' + jobUid;
-    var data = JSON.stringify(clientData);
-    sessionStorage.setItem(key, data);
-  } catch (e) { /* ignore quota errors */ }
+  if (!jobUid || !clientData) return Promise.resolve();
+  return _setCache('clientCache_' + jobUid, clientData);
 }
 
 function getCachedClientData(jobUid) {
-  if (!jobUid) return null;
-  try {
-    var key = 'clientCache_' + jobUid;
-    var data = sessionStorage.getItem(key);
-    return data ? JSON.parse(data) : null;
-  } catch (e) { return null; }
+  if (!jobUid) return Promise.resolve(null);
+  return _getCache('clientCache_' + jobUid);
+}
+
+function cacheProposalCount(jobUid, count) {
+  if (!jobUid) return Promise.resolve();
+  return _setCache('proposalCount_' + jobUid, count);
+}
+
+function getCachedProposalCount(jobUid) {
+  if (!jobUid) return Promise.resolve(null);
+  return _getCache('proposalCount_' + jobUid);
 }
 
 // ---- Title extraction ----
@@ -511,7 +553,7 @@ async function scrapeJobPage() {
 
     // On proposal page, client selectors often missing — use cached data from job detail page
     if (onProposalPage && client.totalSpent === 0 && !client.location && jobUid) {
-      var cached = getCachedClientData(jobUid);
+      var cached = await getCachedClientData(jobUid);
       if (cached) {
         console.log('[Upwork Scraper] Using cached client data from job detail page');
         client = cached;
@@ -520,16 +562,14 @@ async function scrapeJobPage() {
 
     // On job detail page, cache client data + proposal count for later use on proposal page
     if (!onProposalPage && jobUid && (client.location || client.totalSpent > 0)) {
-      cacheClientData(jobUid, client);
-      try { sessionStorage.setItem('proposalCount_' + jobUid, String(proposalCount)); } catch (e) {}
+      await cacheClientData(jobUid, client);
+      await cacheProposalCount(jobUid, proposalCount);
     }
 
     // On proposal page, also restore proposal count if missing
     if (onProposalPage && !proposalCount && jobUid) {
-      try {
-        var cachedCount = sessionStorage.getItem('proposalCount_' + jobUid);
-        if (cachedCount) proposalCount = parseInt(cachedCount, 10) || 0;
-      } catch (e) {}
+      var cachedCount = await getCachedProposalCount(jobUid);
+      if (cachedCount != null) proposalCount = parseInt(cachedCount, 10) || 0;
     }
 
     // ---- Connect cost (proposal pages show "Send a proposal for: X Connects") ----

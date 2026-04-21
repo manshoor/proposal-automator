@@ -429,12 +429,20 @@
    * Re-initialises the toolbar and reapplies filters after navigation.
    */
   var _watchNavigation = function () {
+    // Disconnect any previous nav observer to prevent duplicates
+    if (_state.navObserver) {
+      _state.navObserver.disconnect();
+      _state.navObserver = null;
+    }
     _state.navObserver = new MutationObserver(function () {
       var current = window.location.href;
       if (current !== _state.lastHref) {
         _state.lastHref = current;
         console.log('[FeedUI] SPA navigation detected, reinitialising on:', current);
-        // Give the new page's DOM time to render
+        // 1.5s delay: React commits the new route asynchronously, and the feed's
+        // initial card render is gated on a GraphQL response (~800ms on cached,
+        // longer on cold). Initializing too early injects the toolbar before
+        // there are cards to filter.
         setTimeout(_init, 1500);
       }
     });
@@ -466,7 +474,11 @@
       // Build + inject toolbar
       _buildAndInjectToolbar();
 
-      // Apply filters to existing cards (with delays to catch late-loading cards)
+      // Apply filters to existing cards, then re-apply twice to catch late-loading
+      // cards. Upwork's feed hydrates in phases: the first few cards appear ~1s
+      // after navigation, then lazy-loaded batches roll in. 2s catches the
+      // initial hydration; 5s catches the slower "Best Matches" sorting pass.
+      // If Upwork changes their load timing, these numbers may need tuning.
       _applyFiltersToAll();
       setTimeout(_applyFiltersToAll, 2000);
       setTimeout(_applyFiltersToAll, 5000);

@@ -1,16 +1,41 @@
 // Allowed client locations for targeting
 var ALLOWED_LOCATIONS = [
-  'United Kingdom',
+  // North America
   'United States',
   'Canada',
-  'Singapore',
-  'Malaysia',
+  // Europe
+  'United Kingdom',
+  'Germany',
+  'France',
+  'Netherlands',
+  'Switzerland',
+  'Sweden',
+  'Norway',
+  'Denmark',
+  'Finland',
+  'Ireland',
+  'Belgium',
+  'Austria',
+  'Luxembourg',
+  'Italy',
+  'Spain',
+  // Middle East
   'United Arab Emirates',
   'Abu Dhabi',
   'Dubai',
   'Saudi Arabia',
   'Qatar',
-  'Bahrain'
+  'Bahrain',
+  'Kuwait',
+  'Oman',
+  'Israel',
+  // Asia-Pacific
+  'Singapore',
+  'Malaysia',
+  'Australia',
+  'New Zealand',
+  'Japan',
+  'South Korea'
 ];
 
 // Vetting thresholds
@@ -113,3 +138,15 @@ var HIDDEN_INSTRUCTION_PATTERNS = [
   /the\s+(secret|magic|hidden)\s+(word|code|phrase)\s+is\s+["']?(.+?)["']?/gi,
   /type\s+["']?(.+?)["']?\s+(at\s+the\s+beginning|first|to\s+prove)/gi
 ];
+
+// Expose under single namespace to reduce global pollution
+// (Globals are preserved for backward compatibility with existing scripts.)
+(function () {
+  var g = (typeof window !== 'undefined') ? window : self;
+  if (!g.__UPA) g.__UPA = {};
+  g.__UPA.ALLOWED_LOCATIONS = ALLOWED_LOCATIONS;
+  g.__UPA.VETTING_THRESHOLDS = VETTING_THRESHOLDS;
+  g.__UPA.BACKEND_URL_DEFAULT = BACKEND_URL_DEFAULT;
+  g.__UPA.SELECTORS = SELECTORS;
+  g.__UPA.HIDDEN_INSTRUCTION_PATTERNS = HIDDEN_INSTRUCTION_PATTERNS;
+})();

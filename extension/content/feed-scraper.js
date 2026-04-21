@@ -50,18 +50,18 @@ var _feedParseProposals = function (str) {
 var _findFeedCards = function () {
   // Feed page (My Feed / Best Matches)
   var cards = document.querySelectorAll('section[data-ev-sublocation="job_feed_tile"]');
-  if (cards.length > 0) return Array.prototype.slice.call(cards);
+  if (cards.length > 0) return Array.from(cards);
 
   // Search results page (/nx/search/jobs/)
   cards = document.querySelectorAll('article[data-test="JobTile"]');
-  if (cards.length > 0) return Array.prototype.slice.call(cards);
+  if (cards.length > 0) return Array.from(cards);
 
   // Older feed format
   cards = document.querySelectorAll('section[data-test="job-tile"]');
-  if (cards.length > 0) return Array.prototype.slice.call(cards);
+  if (cards.length > 0) return Array.from(cards);
 
   cards = document.querySelectorAll('section.air3-card-section.air3-card-hover');
-  if (cards.length > 0) return Array.prototype.slice.call(cards);
+  if (cards.length > 0) return Array.from(cards);
 
   return [];
 };
