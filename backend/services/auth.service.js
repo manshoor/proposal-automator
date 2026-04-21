@@ -114,8 +114,8 @@ export async function refresh(token) {
     throw new AuthenticationError('Account is deactivated');
   }
 
-  // Rotate: delete old token, issue new pair
-  await refreshTokenRepo.deleteByUserId(record.user_id);
+  // Rotate: delete only the presented token (preserves other device sessions)
+  await refreshTokenRepo.deleteByHash(hashToken(token));
 
   const user = { id: record.user_id, email: record.email, role: record.role || 'user' };
   const { accessToken, refreshToken } = generateTokens(user);

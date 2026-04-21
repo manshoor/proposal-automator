@@ -1,6 +1,12 @@
 import 'dotenv/config';
+import { validateEnv } from './lib/env.js';
+
+// Fail fast if required env vars are missing or invalid
+validateEnv();
+
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { join } from 'path';
 
 import { logger, requestLogger } from './lib/logger.js';
@@ -22,9 +28,16 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 // Middleware pipeline (order matters)
 app.use(requestId);
 app.use(requestLogger);
+app.use(helmet({
+  contentSecurityPolicy: IS_PROD ? undefined : false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
+    : ['http://localhost:3003'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
 }));
 app.use(express.json({ limit: '50kb' }));
 app.use(globalLimiter);
@@ -32,7 +45,7 @@ app.use(metricsMiddleware);
 
 // Health check (before routes, no auth needed)
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', version: '2.0.0', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Prometheus metrics endpoint
@@ -54,7 +67,9 @@ app.use(['/api/v1/settings', '/api/settings'], (req, res, next) => {
   next();
 });
 
-// API routes — v1 and backward-compatible unversioned
+// API routes. /api/v1 is canonical; /api is a legacy alias kept for older
+// extension builds that hardcoded the unversioned path. Remove once those
+// clients have upgraded, or introduce a deprecation header here.
 app.use('/api/v1', v1Router);
 app.use('/api', v1Router);
 
@@ -89,7 +104,10 @@ async function start() {
         closeQueues().then(() => logger.info('Job queues closed')),
         pool.end().then(() => logger.info('Database pool closed')),
         disconnectRedis().then(() => logger.info('Redis disconnected')),
-      ]).then(() => process.exit(0)).catch(() => process.exit(0));
+      ]).then(() => process.exit(0)).catch((err) => {
+        logger.error({ err }, 'Error during graceful shutdown');
+        process.exit(1);
+      });
     });
 
     setTimeout(() => {

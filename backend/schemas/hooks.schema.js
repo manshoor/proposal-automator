@@ -5,4 +5,4 @@ export const generateHooksSchema = z.object({
   niche: z.string().optional(),
   provider: z.string().optional(),
   apiKey: z.string().optional(),
-}).passthrough();
+});

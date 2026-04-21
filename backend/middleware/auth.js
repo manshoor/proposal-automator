@@ -29,32 +29,9 @@ export function authenticate(req, _res, next) {
   next();
 }
 
-/**
- * Authentication middleware.
- * If JWT present → authenticates. Otherwise → returns 401.
- */
-export function optionalAuth(req, _res, next) {
-  const authHeader = req.headers.authorization;
-
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.slice(7);
-    try {
-      const payload = verifyAccessToken(token);
-      req.user = extractUser(payload);
-      return next();
-    } catch (err) {
-      if (err.name === 'TokenExpiredError') {
-        throw new AuthenticationError('Access token expired. Please refresh.');
-      }
-      throw new AuthenticationError('Invalid access token.');
-    }
-  }
-
-  throw new AuthenticationError('Authentication required. Please login in the extension settings or dashboard.');
-}
 
 /**
- * Admin authorization middleware. Must run after authenticate/optionalAuth.
+ * Admin authorization middleware. Must run after authenticate.
  * Checks req.user.role === 'admin'.
  */
 export function requireAdmin(req, _res, next) {

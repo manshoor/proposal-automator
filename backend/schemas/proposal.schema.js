@@ -2,35 +2,38 @@ import { z } from 'zod';
 
 export const generateProposalSchema = z.object({
   jobData: z.object({
-    title: z.string().min(1, 'Job title is required'),
-    description: z.string().min(1, 'Job description is required'),
-    url: z.string().optional(),
-    budgetType: z.string().optional().nullable(),
-    budgetMin: z.number().optional().nullable(),
-    budgetMax: z.number().optional().nullable(),
-    budgetAmount: z.number().optional().nullable(),
-    skills: z.array(z.string()).optional(),
-    clientLocation: z.string().optional().nullable(),
-    clientTotalSpent: z.string().optional().nullable(),
-    clientHireRate: z.string().optional().nullable(),
-    clientReviewCount: z.number().optional().nullable(),
-    proposalCount: z.string().optional().nullable(),
-    connectCost: z.number().optional().nullable(),
-  }).passthrough(),
-  hiddenInstructions: z.any().optional().nullable(),
-  templateContent: z.string().optional().nullable(),
-  extraInstruction: z.string().optional().nullable(),
-  existingProposal: z.string().optional().nullable(),
+    title: z.string().min(1, 'Job title is required').max(500),
+    description: z.string().min(1, 'Job description is required').max(50000),
+    url: z.string().url().optional().or(z.literal('')),
+    budgetType: z.string().max(50).optional().nullable(),
+    budgetMin: z.number().min(0).optional().nullable(),
+    budgetMax: z.number().min(0).optional().nullable(),
+    budgetAmount: z.number().min(0).optional().nullable(),
+    skills: z.array(z.string().max(100)).max(50).optional(),
+    clientLocation: z.string().max(200).optional().nullable(),
+    clientTotalSpent: z.string().max(100).optional().nullable(),
+    clientHireRate: z.string().max(100).optional().nullable(),
+    clientReviewCount: z.number().min(0).optional().nullable(),
+    proposalCount: z.string().max(100).optional().nullable(),
+    connectCost: z.number().min(0).optional().nullable(),
+  }),
+  hiddenInstructions: z.object({
+    found: z.boolean(),
+    instructions: z.array(z.string().max(500)).max(20),
+  }).optional().nullable(),
+  templateContent: z.string().max(50000).optional().nullable(),
+  extraInstruction: z.string().max(5000).optional().nullable(),
+  existingProposal: z.string().max(50000).optional().nullable(),
   selectedProjects: z.array(z.object({
-    name: z.string(),
-    technologies: z.string().optional(),
-    description: z.string().optional(),
-    outcome: z.string().optional(),
-  }).passthrough()).optional().nullable(),
-  platform: z.string().optional(),
-  provider: z.string().optional(),
-  apiKey: z.string().optional(),
-}).passthrough();
+    name: z.string().max(255),
+    technologies: z.string().max(1000).optional(),
+    description: z.string().max(5000).optional(),
+    outcome: z.string().max(2000).optional(),
+  })).max(20).optional().nullable(),
+  platform: z.enum(['upwork', 'fiverr']).optional(),
+  provider: z.string().max(50).optional(),
+  apiKey: z.string().max(500).optional(),
+});
 
 export const listProposalsSchema = z.object({
   status: z.enum(['sent', 'pending', 'hired', 'rejected', 'withdrawn']).optional(),
@@ -38,13 +41,13 @@ export const listProposalsSchema = z.object({
   offset: z.string().regex(/^\d+$/).optional(),
   sort: z.enum(['created_at', 'updated_at', 'job_title', 'status', 'hourly_rate']).optional(),
   order: z.enum(['asc', 'desc']).optional(),
-}).passthrough();
+});
 
 export const createProposalSchema = z.object({
   job_url: z.string().min(1, 'job_url is required'),
   job_title: z.string().min(1, 'job_title is required'),
   proposal_text: z.string().min(1, 'proposal_text is required'),
-}).passthrough();
+});
 
 export const updateProposalSchema = z.object({
   status: z.enum(['sent', 'pending', 'hired', 'rejected', 'withdrawn']).optional(),
@@ -53,4 +56,4 @@ export const updateProposalSchema = z.object({
   responded_at: z.string().optional(),
   decline_reason: z.string().max(255).optional(),
   client_feedback: z.string().optional(),
-}).passthrough();
+});

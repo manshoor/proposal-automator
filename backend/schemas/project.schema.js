@@ -11,7 +11,7 @@ export const createProjectSchema = z.object({
   duration: z.string().max(100).optional().default(''),
   outcome: z.string().optional().default(''),
   is_featured: z.boolean().optional().default(false),
-}).passthrough();
+});
 
 export const updateProjectSchema = z.object({
   name: z.string().max(255).optional(),
@@ -25,4 +25,4 @@ export const updateProjectSchema = z.object({
   outcome: z.string().optional(),
   is_featured: z.boolean().optional(),
   screenshots: z.array(z.string()).optional(),
-}).passthrough();
+});

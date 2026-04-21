@@ -28,4 +28,12 @@ router.post('/logout', authenticate, asyncHandler(async (req, res) => {
   res.json({ success: true });
 }));
 
+router.get('/me', authenticate, asyncHandler(async (req, res) => {
+  res.json({
+    id: req.user.id,
+    email: req.user.email,
+    role: req.user.role,
+  });
+}));
+
 export default router;

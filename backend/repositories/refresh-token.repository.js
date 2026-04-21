@@ -24,6 +24,14 @@ export async function deleteByUserId(userId) {
   await pool.query('DELETE FROM refresh_tokens WHERE user_id = $1', [userId]);
 }
 
+export async function deleteByHash(tokenHash) {
+  const { rowCount } = await pool.query(
+    'DELETE FROM refresh_tokens WHERE token_hash = $1',
+    [tokenHash]
+  );
+  return rowCount;
+}
+
 export async function deleteExpired() {
   const { rowCount } = await pool.query('DELETE FROM refresh_tokens WHERE expires_at <= NOW()');
   return rowCount;

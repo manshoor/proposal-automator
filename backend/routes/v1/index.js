@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { optionalAuth, requireAdmin } from '../../middleware/auth.js';
+import { authenticate, requireAdmin } from '../../middleware/auth.js';
 import authRouter from '../../api/auth.js';
 import adminRouter from '../../api/admin.js';
 import bootstrapRouter from '../../api/bootstrap.js';
@@ -25,8 +25,8 @@ const router = Router();
 // Auth routes (no auth middleware needed)
 router.use('/auth', authRouter);
 
-// All other routes use optionalAuth (JWT or legacy apiKey fallback)
-router.use(optionalAuth);
+// All other routes require authentication
+router.use(authenticate);
 
 router.use('/generate-proposal', generateProposalRouter);
 router.use('/generate-message', generateMessageRouter);

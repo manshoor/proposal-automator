@@ -12,4 +12,4 @@ export const updatePromptSchema = z.object({
   platform: z.string().max(50).optional(),
   prompt_text: z.string().optional(),
   is_active: z.boolean().optional(),
-}).passthrough();
+});
