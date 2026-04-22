@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '../../lib/api';
 import Toast from '../../components/Toast';
 
@@ -12,6 +13,7 @@ const EMPTY_PROJECT = {
 const CATEGORIES = ['Web Development', 'Mobile App', 'E-commerce', 'UI/UX Design', 'API/Backend', 'WordPress/CMS', 'Data/Automation', 'Other'];
 
 export default function ProjectsClient({ initialProjects }) {
+  const router = useRouter();
   const [projects, setProjects] = useState(initialProjects);
   const [editing, setEditing] = useState(null); // null or project object
   const [form, setForm] = useState(EMPTY_PROJECT);
@@ -92,6 +94,7 @@ export default function ProjectsClient({ initialProjects }) {
       }
       setEditing(null);
       setToast({ message: 'Project saved', type: 'success' });
+      router.refresh();
     } catch (err) {
       setToast({ message: 'Failed to save', type: 'error' });
     }
@@ -104,6 +107,7 @@ export default function ProjectsClient({ initialProjects }) {
       await api.del(`/projects/${id}`);
       setProjects(projects.filter(p => p.id !== id));
       setToast({ message: 'Project deleted', type: 'success' });
+      router.refresh();
     } catch (err) {
       setToast({ message: 'Failed to delete', type: 'error' });
     }
@@ -128,6 +132,7 @@ export default function ProjectsClient({ initialProjects }) {
       setProjects(projects.map(p => p.id === id ? updated : p));
       setEnhanced(prev => { const next = { ...prev }; delete next[id]; return next; });
       setToast({ message: 'Enhancement applied!', type: 'success' });
+      router.refresh();
     } catch (err) {
       setToast({ message: 'Failed to save enhancement', type: 'error' });
     }
@@ -141,7 +146,7 @@ export default function ProjectsClient({ initialProjects }) {
     setBulkEnhancing(true);
     setToast({ message: 'Enhancing all projects with AI...', type: 'success' });
     try {
-      const data = await api.post('/projects/enhance-all', getLLMConfig());
+      const data = await api.post('/projects/enhance-all', {});
       if (data.projects.length === 0) {
         setToast({ message: 'All projects already have strong outcomes!', type: 'success' });
       } else {
@@ -159,6 +164,7 @@ export default function ProjectsClient({ initialProjects }) {
       await api.put(`/projects/${item.id}`, { outcome: item.enhancedOutcome, description: item.enhancedDescription });
       setBulkResults(prev => prev.filter(r => r.id !== item.id));
       fetchProjects();
+      router.refresh();
       setToast({ message: `Updated "${item.name}"`, type: 'success' });
     } catch (err) {
       setToast({ message: `Failed to update "${item.name}"`, type: 'error' });
