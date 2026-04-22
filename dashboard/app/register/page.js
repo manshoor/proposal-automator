@@ -18,6 +18,7 @@ export default function RegisterPage() {
       const res = await fetch('/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(form),
       });
       const data = await res.json();
@@ -26,8 +27,7 @@ export default function RegisterPage() {
         setLoading(false);
         return;
       }
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
+      // Tokens are set as HttpOnly cookies by the server. No client storage needed.
       router.push('/');
     } catch {
       setError('Network error. Please try again.');

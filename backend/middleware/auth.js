@@ -10,12 +10,19 @@ function extractUser(payload) {
  * Extracts JWT from Authorization header, verifies it, sets req.user.
  */
 export function authenticate(req, _res, next) {
+  let token = null;
+
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new AuthenticationError('Authentication required. Send Bearer token in Authorization header.');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7);
+  } else if (req.cookies && req.cookies.accessToken) {
+    token = req.cookies.accessToken;
   }
 
-  const token = authHeader.slice(7);
+  if (!token) {
+    throw new AuthenticationError('Authentication required. Send Bearer token in Authorization header or accessToken cookie.');
+  }
+
   try {
     const payload = verifyAccessToken(token);
     req.user = extractUser(payload);

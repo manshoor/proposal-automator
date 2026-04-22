@@ -1,55 +1,33 @@
 const BASE = '/api/v1';
 
-function getToken() {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('accessToken');
-  }
-  return null;
-}
-
 async function refreshAccessToken() {
-  const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
-  if (!refreshToken) return false;
-
   try {
     const res = await fetch(`${BASE}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      credentials: 'include',
+      body: '{}',
     });
-    if (!res.ok) return false;
-    const data = await res.json();
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
-    return true;
+    return res.ok;
   } catch {
     return false;
   }
 }
 
-function authHeaders() {
-  const headers = {};
-  const token = getToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  return headers;
-}
-
 async function request(method, path, body, options = {}) {
   const opts = {
     method,
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     signal: options.signal,
   };
-
   if (body) opts.body = JSON.stringify(body);
 
   let res = await fetch(`${BASE}${path}`, opts);
 
-  // Auto-refresh on 401
-  if (res.status === 401 && getToken()) {
+  if (res.status === 401) {
     const refreshed = await refreshAccessToken();
     if (refreshed) {
-      opts.headers['Authorization'] = `Bearer ${getToken()}`;
       res = await fetch(`${BASE}${path}`, opts);
     }
   }
@@ -64,17 +42,16 @@ async function request(method, path, body, options = {}) {
 async function upload(path, formData, options = {}) {
   const opts = {
     method: 'POST',
-    headers: authHeaders(),
     body: formData,
+    credentials: 'include',
     signal: options.signal,
   };
 
   let res = await fetch(`${BASE}${path}`, opts);
 
-  if (res.status === 401 && getToken()) {
+  if (res.status === 401) {
     const refreshed = await refreshAccessToken();
     if (refreshed) {
-      opts.headers['Authorization'] = `Bearer ${getToken()}`;
       res = await fetch(`${BASE}${path}`, opts);
     }
   }

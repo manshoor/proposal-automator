@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 
 const NAV = [
@@ -33,20 +32,10 @@ const SHIELD_ICON = (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
 );
 
-export default function Sidebar({ mobileOpen, onClose }) {
+export default function Sidebar({ mobileOpen, onClose, session }) {
   const pathname = usePathname();
-  const [userEmail, setUserEmail] = useState('');
-  const [userRole, setUserRole] = useState('');
-
-  useEffect(() => {
-    let cancelled = false;
-    api.get('/auth/me').then((me) => {
-      if (cancelled) return;
-      setUserEmail(me.email || '');
-      setUserRole(me.role || '');
-    }).catch(() => { /* ignore — auth errors are handled by AuthLayout redirect */ });
-    return () => { cancelled = true; };
-  }, []);
+  const userEmail = session?.email || '';
+  const userRole = session?.role || '';
 
   return (
     <aside className={`
@@ -137,8 +126,6 @@ export default function Sidebar({ mobileOpen, onClose }) {
         <button
           onClick={async () => {
             try { await api.post('/auth/logout', {}); } catch { /* best-effort */ }
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
             window.location.href = '/login';
           }}
           className="flex items-center gap-2 text-sm text-gray-500 hover:text-white transition-colors w-full"

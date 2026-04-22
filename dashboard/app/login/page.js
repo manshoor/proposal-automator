@@ -19,6 +19,7 @@ export default function LoginPage() {
       const res = await fetch('/api/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
@@ -27,8 +28,7 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
+      // Tokens are set as HttpOnly cookies by the server. No client storage needed.
       router.push('/');
     } catch {
       setError('Network error. Please try again.');
