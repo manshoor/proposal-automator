@@ -1,13 +1,47 @@
 import crypto from 'crypto';
 import pool from '../db/pool.js';
 
+// ---- Public types ----
+
+export interface ClientFields {
+  location?: string;
+  totalSpent?: number | string;
+  paymentVerified?: boolean;
+}
+
+export interface JobDataForHash {
+  client?: ClientFields;
+}
+
+export interface PastProposal {
+  id: number;
+  jobTitle: string;
+  status: string;
+  sentAt: Date | string;
+  daysSince: number;
+  outcomes: string[];
+}
+
+export interface ClientHistory {
+  hash: string | null;
+  pastProposals: PastProposal[];
+}
+
+interface ProposalHistoryRow {
+  id: number;
+  job_title: string;
+  status: string;
+  created_at: Date | string;
+  outcome_events: string[] | null;
+}
+
 /**
  * Deterministic client identity hash.
  * Inputs: location + total-spent bucket + payment-verified flag.
  * Coarse on purpose — false positives only surface OTHER proposals from the
  * same user, no privacy concern.
  */
-export function computeClientIdentityHash(jobData) {
+export function computeClientIdentityHash(jobData: JobDataForHash | null | undefined): string {
   const client = jobData?.client || {};
   const location = String(client.location || '').trim().toLowerCase();
   const totalSpent = Number(client.totalSpent) || 0;
@@ -23,12 +57,17 @@ export function computeClientIdentityHash(jobData) {
   return crypto.createHash('sha256').update(composite).digest('hex').slice(0, 32);
 }
 
-export async function lookupHistory(jobData, userId) {
+export async function lookupHistory(
+  jobData: JobDataForHash | null | undefined,
+  userId: string,
+): Promise<ClientHistory> {
   const hash = computeClientIdentityHash(jobData);
   if (!hash) return { hash: null, pastProposals: [] };
 
-  // Fetch past proposals from same user with same hash, plus any outcomes
-  const { rows } = await pool.query(
+  // Fetch past proposals from same user with same hash, plus any outcomes.
+  // pool.query is wrapped in db/pool.js so its return type is widened to any —
+  // cast the rows back to the expected shape here.
+  const result = await pool.query(
     `SELECT p.id, p.job_title, p.status, p.created_at,
             COALESCE(json_agg(DISTINCT po.event_type) FILTER (WHERE po.event_type IS NOT NULL), '[]'::json) AS outcome_events
      FROM proposals p
@@ -39,11 +78,12 @@ export async function lookupHistory(jobData, userId) {
      LIMIT 10`,
     [userId, hash]
   );
+  const rows = result.rows as ProposalHistoryRow[];
 
   const now = Date.now();
   return {
     hash,
-    pastProposals: rows.map((r) => ({
+    pastProposals: rows.map((r: ProposalHistoryRow) => ({
       id: r.id,
       jobTitle: r.job_title,
       status: r.status,

@@ -7,12 +7,25 @@
  * inside "compassion for".
  */
 
+export type Severity = 'block' | 'warn';
+
+export interface BannedPhrase {
+  phrase: string;
+  severity?: Severity;
+}
+
+export interface BannedPhraseHit {
+  phrase: string;
+  severity: Severity;
+  index: number | undefined;
+}
+
 /**
  * Build a case-insensitive regex for one banned phrase, with word boundaries
  * applied only at edges that are word characters. Phrases that start or end with
  * punctuation (e.g., "I'd…", "…me!") rely on the punctuation itself for separation.
  */
-function buildPhraseRegex(phrase) {
+function buildPhraseRegex(phrase: string): RegExp {
   const escaped = phrase.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
   const startBound = /^\w/.test(phrase) ? '\\b' : '';
   const endBound = /\w$/.test(phrase) ? '\\b' : '';
@@ -21,15 +34,14 @@ function buildPhraseRegex(phrase) {
 
 /**
  * Find banned-phrase hits in a text. Word-boundary aware, case-insensitive.
- *
- * @param {string} text
- * @param {Array<{phrase: string, severity: 'block'|'warn'}>} phrases
- * @returns {Array<{phrase: string, severity: 'block'|'warn', index: number}>}
  */
-export function findBannedPhrases(text, phrases) {
+export function findBannedPhrases(
+  text: string | null | undefined,
+  phrases: BannedPhrase[] | null | undefined,
+): BannedPhraseHit[] {
   if (!text || typeof text !== 'string') return [];
   if (!Array.isArray(phrases) || phrases.length === 0) return [];
-  const hits = [];
+  const hits: BannedPhraseHit[] = [];
   for (const p of phrases) {
     const needle = (p.phrase || '').trim();
     if (!needle) continue;
@@ -37,7 +49,7 @@ export function findBannedPhrases(text, phrases) {
       const re = buildPhraseRegex(needle);
       const match = text.match(re);
       if (match) {
-        hits.push({ phrase: p.phrase, severity: p.severity || 'warn', index: match.index });
+        hits.push({ phrase: p.phrase, severity: (p.severity ?? 'warn') as Severity, index: match.index });
       }
     } catch {
       // Malformed regex — skip this phrase rather than throwing
@@ -47,9 +59,8 @@ export function findBannedPhrases(text, phrases) {
 }
 
 /**
- * @param {Array<{severity: string}>} hits
- * @returns {boolean} true if any hit has severity 'block'
+ * Returns true if any hit has severity 'block'.
  */
-export function hasBlocker(hits) {
-  return Array.isArray(hits) && hits.some(h => h.severity === 'block');
+export function hasBlocker(hits: { severity?: string }[] | null | undefined): boolean {
+  return Array.isArray(hits) && hits.some((h) => h.severity === 'block');
 }

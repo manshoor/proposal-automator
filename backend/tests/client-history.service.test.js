@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeClientIdentityHash } from '../services/client-history.service.js';
+import { computeClientIdentityHash } from '../services/client-history.service.ts';
 
 describe('client-history.service.computeClientIdentityHash', () => {
   it('produces a deterministic 32-char hash', () => {

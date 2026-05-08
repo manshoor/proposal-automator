@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isRateNegotiationContext } from '../prompts/message.js';
+import { isRateNegotiationContext } from '../prompts/message.ts';
 
 describe('isRateNegotiationContext', () => {
   it('detects clear rate-negotiation language', () => {

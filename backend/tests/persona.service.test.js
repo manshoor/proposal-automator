@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classify, classifyNiche } from '../services/persona.service.js';
+import { classify, classifyNiche } from '../services/persona.service.ts';
 
 describe('persona.service.classify', () => {
   it('flags unverified low-spend client as risky', () => {

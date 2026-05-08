@@ -2,6 +2,34 @@
  * Prompt builders for the AI Message Copilot.
  */
 
+// ---- Public types ----
+
+export type MessageTone = 'professional' | 'friendly' | 'brief' | 'rate-negotiation';
+
+export interface ProfileForPrompt {
+  full_name?: string;
+  title?: string;
+  skills?: string[] | string;
+  default_hourly_rate?: number | string;
+}
+
+export interface ConversationMessage {
+  sender: 'me' | 'client' | string;
+  text?: string;
+}
+
+export interface RateNegotiationPromptOptions {
+  message: string;
+  jobContext?: string;
+  profile?: ProfileForPrompt;
+  tone?: MessageTone;
+}
+
+export interface SystemUserPrompt {
+  system: string;
+  user: string;
+}
+
 // ---- Rate-negotiation detection ----
 
 const RATE_KEYWORDS = [
@@ -12,10 +40,8 @@ const RATE_KEYWORDS = [
 
 /**
  * Returns true when the message text contains rate/budget-related language.
- * @param {string} messageText
- * @returns {boolean}
  */
-export function isRateNegotiationContext(messageText) {
+export function isRateNegotiationContext(messageText: unknown): boolean {
   if (!messageText || typeof messageText !== 'string') return false;
   const lower = messageText.toLowerCase();
   return RATE_KEYWORDS.some((kw) => lower.includes(kw));
@@ -25,15 +51,13 @@ export function isRateNegotiationContext(messageText) {
  * Builds system + user prompts for a rate-negotiation reply.
  * The return shape mirrors how the service consumes buildMessageSystemPrompt /
  * buildMessageUserPrompt: a { system, user } object of plain strings.
- *
- * @param {object} options
- * @param {string} options.message         - The latest client message text
- * @param {string} [options.jobContext]    - Job title or context string
- * @param {object} [options.profile]       - Freelancer profile object
- * @param {string} [options.tone]          - 'professional' | 'friendly' | 'brief' | 'rate-negotiation'
- * @returns {{ system: string, user: string }}
  */
-export function buildRateNegotiationPrompt({ message, jobContext, profile, tone = 'professional' }) {
+export function buildRateNegotiationPrompt({
+  message,
+  jobContext,
+  profile,
+  tone = 'professional',
+}: RateNegotiationPromptOptions): SystemUserPrompt {
   const system = `You are an expert Upwork freelancer responding to a client who is pushing back on rate or budget.
 Your goal: HOLD your rate while staying warm and collaborative. Never apologize for your price.
 
@@ -49,13 +73,14 @@ DO NOT:
 - Sound defensive or apologetic.
 - Use phrases like "happy to negotiate", "let me know what you can afford", "willing to lower".`;
 
+  const profileRate = profile && profile.default_hourly_rate ? profile.default_hourly_rate : '50';
   const user = `Client message:
 """
 ${message}
 """
 
 Job context: ${jobContext || '(not provided)'}
-Your profile rate: $${(profile && profile.default_hourly_rate) ? profile.default_hourly_rate : '50'}/hr
+Your profile rate: $${profileRate}/hr
 Tone preference: ${tone}
 
 Draft a reply that holds the rate while offering a constructive path forward.
@@ -68,10 +93,8 @@ REPLY:
 
 /**
  * Builds the system prompt using the freelancer's profile.
- * @param {object} profile
- * @returns {string}
  */
-export function buildMessageSystemPrompt(profile) {
+export function buildMessageSystemPrompt(profile: ProfileForPrompt): string {
   const skills = Array.isArray(profile.skills) ? profile.skills.join(', ') : (profile.skills || '');
 
   return `You are a freelancer communication assistant on Upwork. Write professional client messages that are:
@@ -86,28 +109,29 @@ Freelancer profile:
 - Skills: ${skills}`;
 }
 
+const TONE_GUIDE_REPLY: Record<Exclude<MessageTone, 'rate-negotiation'>, string> = {
+  professional: 'a professional tone. Keep it concise (3-6 sentences).',
+  friendly: 'a friendly, warm tone. Keep it concise (2-5 sentences).',
+  brief: 'a brief, direct tone. Keep it very short (2-4 sentences).',
+};
+
 /**
  * Builds the user prompt for generating a reply message.
- * @param {Array<{sender: string, text: string}>} conversationHistory
- * @param {string} jobTitle
- * @param {string} tone  'professional' | 'friendly' | 'brief'
- * @returns {string}
  */
-export function buildMessageUserPrompt(conversationHistory, jobTitle, tone) {
+export function buildMessageUserPrompt(
+  conversationHistory: ConversationMessage[] | null | undefined,
+  jobTitle: string | null | undefined,
+  tone: MessageTone | string,
+): string {
   const formattedMessages = (conversationHistory || [])
-    .map(function (msg) {
-      var label = msg.sender === 'me' ? 'Me' : 'Client';
+    .map((msg) => {
+      const label = msg.sender === 'me' ? 'Me' : 'Client';
       return label + ': ' + (msg.text || '').trim();
     })
     .join('\n\n');
 
-  const toneGuide = {
-    professional: 'a professional tone. Keep it concise (3-6 sentences).',
-    friendly: 'a friendly, warm tone. Keep it concise (2-5 sentences).',
-    brief: 'a brief, direct tone. Keep it very short (2-4 sentences).',
-  };
-
-  const toneInstruction = toneGuide[tone] || toneGuide['professional'];
+  const toneInstruction =
+    (tone in TONE_GUIDE_REPLY ? TONE_GUIDE_REPLY[tone as keyof typeof TONE_GUIDE_REPLY] : TONE_GUIDE_REPLY.professional);
   const jobLine = jobTitle ? `\nJob: ${jobTitle}` : '';
 
   return `Here is the conversation history:
@@ -121,21 +145,22 @@ REPLY:
 [your reply text]`;
 }
 
+const TONE_GUIDE_QUESTION: Record<Exclude<MessageTone, 'rate-negotiation'>, string> = {
+  professional: 'a professional tone. Be specific and concise (2-4 sentences).',
+  friendly: 'a friendly, approachable tone. Be specific and concise (2-4 sentences).',
+  brief: 'a brief, direct tone. Answer in 1-3 sentences maximum.',
+};
+
 /**
  * Builds the user prompt for answering a single screening question.
- * @param {string} question
- * @param {string} jobTitle
- * @param {string} tone
- * @returns {string}
  */
-export function buildQuestionUserPrompt(question, jobTitle, tone) {
-  const toneGuide = {
-    professional: 'a professional tone. Be specific and concise (2-4 sentences).',
-    friendly: 'a friendly, approachable tone. Be specific and concise (2-4 sentences).',
-    brief: 'a brief, direct tone. Answer in 1-3 sentences maximum.',
-  };
-
-  const toneInstruction = toneGuide[tone] || toneGuide['professional'];
+export function buildQuestionUserPrompt(
+  question: string,
+  jobTitle: string | null | undefined,
+  tone: MessageTone | string,
+): string {
+  const toneInstruction =
+    (tone in TONE_GUIDE_QUESTION ? TONE_GUIDE_QUESTION[tone as keyof typeof TONE_GUIDE_QUESTION] : TONE_GUIDE_QUESTION.professional);
   const jobLine = jobTitle ? `\nJob: ${jobTitle}` : '';
 
   return `Answer the following screening question for an Upwork proposal.${jobLine}

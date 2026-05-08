@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findBannedPhrases, hasBlocker } from '../lib/banned-phrases.js';
+import { findBannedPhrases, hasBlocker } from '../lib/banned-phrases.ts';
 
 describe('lib/banned-phrases.findBannedPhrases', () => {
   const phrases = [

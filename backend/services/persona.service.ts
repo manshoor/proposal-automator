@@ -6,15 +6,48 @@
 
 const US_LIKE = /\b(united\s+states|usa|u\.s\.a?\.?|america)\b/i;
 
+// ---- Public types ----
+
+export interface ClientSignals {
+  totalSpent?: number | string;
+  hireRate?: number | string;
+  reviewCount?: number | string;
+  paymentVerified?: boolean;
+  location?: string;
+}
+
+export interface JobSignals {
+  budget?: { amount?: number; max?: number };
+  budgetAmount?: number;
+  budgetMax?: number;
+  skills?: string[];
+  title?: string;
+}
+
+export type PersonaId =
+  | 'enterprise-us-high-spend'
+  | 'agency-mid-spend'
+  | 'new-startup'
+  | 'low-budget-shopper'
+  | 'unverified-risky';
+
+export type Confidence = 'low' | 'medium' | 'high';
+
+export interface Persona {
+  id: PersonaId;
+  label: string;
+  confidence: Confidence;
+}
+
+export type NicheId =
+  | 'mobile' | 'shopify' | 'wordpress' | 'fullstack' | 'data-ml'
+  | 'devops' | 'web-frontend' | 'web-backend' | 'design' | 'writing'
+  | 'automation' | 'general';
+
 /**
- * Classify a client into one of: enterprise-us-high-spend, agency-mid-spend,
- * new-startup, low-budget-shopper, unverified-risky.
- *
- * @param {object} client    - jobData.client: { totalSpent, hireRate, reviewCount, paymentVerified, location }
- * @param {object} job       - jobData (for budget signals)
- * @returns {{ id: string, label: string, confidence: 'low'|'medium'|'high' }}
+ * Classify a client into one of the 5 personas defined above.
  */
-export function classify(client, job) {
+export function classify(client: ClientSignals | null | undefined, job: JobSignals | null | undefined): Persona {
   const c = client || {};
   const j = job || {};
 
@@ -62,18 +95,21 @@ export function classify(client, job) {
   return persona('new-startup', 'low');
 }
 
-function persona(id, confidence) {
-  const labels = {
-    'enterprise-us-high-spend': 'Enterprise US (high spend)',
-    'agency-mid-spend':         'Agency / mid-spend',
-    'new-startup':              'New startup / first-timer',
-    'low-budget-shopper':       'Low-budget shopper',
-    'unverified-risky':         'Unverified / risky',
-  };
-  return { id, label: labels[id] || id, confidence };
+const PERSONA_LABELS: Record<PersonaId, string> = {
+  'enterprise-us-high-spend': 'Enterprise US (high spend)',
+  'agency-mid-spend':         'Agency / mid-spend',
+  'new-startup':              'New startup / first-timer',
+  'low-budget-shopper':       'Low-budget shopper',
+  'unverified-risky':         'Unverified / risky',
+};
+
+function persona(id: PersonaId, confidence: Confidence): Persona {
+  return { id, label: PERSONA_LABELS[id] ?? id, confidence };
 }
 
-function num(v, fallback) {
+function num(v: unknown, fallback: number): number;
+function num(v: unknown, fallback: null): number | null;
+function num(v: unknown, fallback: number | null): number | null {
   const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
 }
@@ -82,14 +118,14 @@ function num(v, fallback) {
  * Derive a coarse "niche" key from job skills + title for pattern bucketing.
  * Falls back to 'general' when nothing useful is found.
  */
-export function classifyNiche(jobData) {
+export function classifyNiche(jobData: JobSignals | null | undefined): NicheId {
   const skills = Array.isArray(jobData?.skills) ? jobData.skills.map((s) => String(s).toLowerCase()) : [];
   const title = (jobData?.title || '').toLowerCase();
 
   // Top-level niche buckets — chosen for typical Upwork freelancer specializations.
   // Order matters: more specific buckets come first so that e.g. "React Native"
   // matches `mobile` before `web-frontend`'s broader `react` substring match fires.
-  const buckets = [
+  const buckets: { id: NicheId; match: string[] }[] = [
     { id: 'mobile',       match: ['react native', 'ios', 'android', 'flutter', 'mobile app'] },
     { id: 'shopify',      match: ['shopify', 'liquid'] },
     { id: 'wordpress',    match: ['wordpress', 'wp', 'woocommerce', 'elementor'] },
