@@ -1382,3 +1382,37 @@ main {
   outline-offset: -1px;
   background: rgba(255, 255, 255, 0.9);
 }
+
+/* ----- Loom Record button row ----- */
+
+.loom-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.loom-input-row #loom-url-input {
+  flex: 1;
+}
+
+.loom-record-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.loom-record-icon {
+  color: #dc2626;
+  font-size: 10px;
+  vertical-align: middle;
+}
+
+.loom-record-btn:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+#loom-url-input.loom-just-recorded {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 2px #dcfce7;
+  transition: border-color .3s, box-shadow .3s;
+}

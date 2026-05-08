@@ -54,6 +54,19 @@ const templateDropdown = document.getElementById('template-dropdown');
 
 const loomUrlInput = document.getElementById('loom-url-input');
 
+// ---- Record button — open record page in a new tab ----
+const btnLoomRecord = document.getElementById('btn-loom-record');
+if (btnLoomRecord) {
+  btnLoomRecord.addEventListener('click', async () => {
+    try {
+      const url = chrome.runtime.getURL('record/record.html');
+      await chrome.tabs.create({ url, active: true });
+    } catch (err) {
+      alert('Could not open recorder: ' + (err && err.message ? err.message : 'unknown error'));
+    }
+  });
+}
+
 const btnAbTest       = document.getElementById('btn-ab-test');
 const abComparison    = document.getElementById('ab-comparison');
 
@@ -1466,6 +1479,23 @@ if (btnAgRewrite) {
 // ---- Phase 4: Follow-up scheduler button listeners ----
 document.querySelectorAll('#fu-actions .fu-btn').forEach((btn) => {
   btn.addEventListener('click', () => handleFollowUpClick(btn));
+});
+
+// ---- Listen for LOOM_RECORDED messages from the record page ----
+// Note: this listener only fires while the popup is open. If the user closes the popup
+// before the recording finishes the message is silently dropped — the recording page's
+// own success screen displays the URL so the user can paste it manually (v1 trade-off).
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg && msg.type === 'LOOM_RECORDED' && typeof msg.url === 'string') {
+    if (loomUrlInput) {
+      loomUrlInput.value = msg.url;
+      loomUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
+      loomUrlInput.classList.add('loom-just-recorded');
+      setTimeout(() => loomUrlInput.classList.remove('loom-just-recorded'), 2500);
+    }
+    sendResponse({ ok: true });
+  }
+  return true;
 });
 
 // ---- Boot ----
