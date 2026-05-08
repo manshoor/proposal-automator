@@ -9,4 +9,10 @@ router.post('/analyze', asyncHandler(async (req, res) => {
   res.json(result);
 }));
 
+router.get('/history', asyncHandler(async (req, res) => {
+  const limit = parseInt(req.query.limit, 10) || 10;
+  const history = await profileCoachService.listHistory(req.user.id, limit);
+  res.json(history);
+}));
+
 export default router;

@@ -600,6 +600,18 @@ async function scrapeJobPage() {
     _cachedJobData = jobData;
     _cachedUrl = currentUrl;
 
+    // Pipe Connect balance back to backend (best-effort; ignore failures)
+    if (typeof availableConnects === 'number' && availableConnects >= 0) {
+      try {
+        if (typeof window.apiFetch === 'function') {
+          window.apiFetch('/api/v1/connects/balance', {
+            method: 'PUT',
+            body: JSON.stringify({ balance: availableConnects }),
+          }).catch(function () {});  // non-fatal
+        }
+      } catch (e) { /* never throw out of scraper */ }
+    }
+
     console.log('[Upwork Scraper] Scraped data:', JSON.stringify(jobData, null, 2));
     return jobData;
 

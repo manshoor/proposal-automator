@@ -177,3 +177,19 @@ function saveFilters(filters) {
     });
   });
 }
+
+/**
+ * Score a job for "Connect-frugality" preference. Higher = prefer.
+ * Caller decides whether to actually use this; the existing filter logic is unchanged.
+ * @param {Object} jobCard
+ * @param {number|null} userBalance — current Connect balance, or null if unknown
+ * @returns {number} 0-1, higher = more frugal-friendly
+ */
+function connectFrugalityScore(jobCard, userBalance) {
+  if (typeof userBalance !== 'number' || userBalance >= 30) return 0.5;  // not budget-stressed
+  var cost = (jobCard && typeof jobCard.connectCost === 'number') ? jobCard.connectCost : 6;
+  if (cost === 0) return 1.0;
+  if (cost <= 6) return 0.8;
+  if (cost <= 12) return 0.4;
+  return 0.1;
+}

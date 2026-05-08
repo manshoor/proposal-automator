@@ -24,6 +24,7 @@ import bannedPhrasesRouter from '../../api/banned-phrases.js';
 import followUpsRouter from '../../api/follow-ups.js';
 import outcomesRouter from '../../api/outcomes.js';
 import insightsRouter from '../../api/insights.js';
+import connectsRouter from '../../api/connects.js';
 import profileCoachRouter from '../../api/profile-coach.js';
 
 const router = Router();
@@ -55,6 +56,7 @@ router.use('/banned-phrases', bannedPhrasesRouter);
 router.use('/follow-ups', followUpsRouter);
 router.use('/outcomes', outcomesRouter);
 router.use('/insights', insightsRouter);
+router.use('/connects', connectsRouter);
 router.use('/profile-coach', profileCoachRouter);
 router.use('/bootstrap', bootstrapRouter);
 router.use('/admin', requireAdmin, adminRouter);

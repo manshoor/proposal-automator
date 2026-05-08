@@ -82,12 +82,63 @@ function TagList({ items, color }) {
   );
 }
 
+// ─── trend section ────────────────────────────────────────────────────────────
+
+function TrendSection({ history }) {
+  if (!history || history.length < 2) return null;
+
+  const latest = history[0];
+  const previous = history[1];
+  const delta = (latest.overallScore || 0) - (previous.overallScore || 0);
+
+  // Tiny inline sparkline using SVG — overall scores reversed (oldest left → newest right)
+  const points = [...history].reverse();
+  const maxScore = 100;
+  const minScore = 0;
+  const w = 200;
+  const h = 40;
+  const xStep = points.length > 1 ? w / (points.length - 1) : 0;
+  const sparkPath = points.map((p, i) => {
+    const x = i * xStep;
+    const y = h - ((p.overallScore || 0) - minScore) / (maxScore - minScore) * h;
+    return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
+  }).join(' ');
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 flex items-center gap-6">
+      <div>
+        <div className="text-xs uppercase text-gray-500 font-semibold tracking-wide">Trend</div>
+        <div className="flex items-baseline gap-2 mt-1">
+          <span className="text-2xl font-bold">{latest.overallScore ?? '—'}</span>
+          <span className={`text-sm font-medium ${
+            delta > 0 ? 'text-green-600' : delta < 0 ? 'text-red-600' : 'text-gray-500'
+          }`}>
+            {delta > 0 ? '↑' : delta < 0 ? '↓' : '·'} {Math.abs(delta)} from last
+          </span>
+        </div>
+        <div className="text-xs text-gray-500 mt-1">
+          {history.length} analysis{history.length === 1 ? '' : 'es'} on file
+        </div>
+      </div>
+      <svg width={w} height={h} className="text-blue-500">
+        <path d={sparkPath} stroke="currentColor" strokeWidth="2" fill="none" />
+        {points.map((p, i) => {
+          const x = i * xStep;
+          const y = h - ((p.overallScore || 0) - minScore) / (maxScore - minScore) * h;
+          return <circle key={p.id} cx={x} cy={y} r="2" fill="currentColor" />;
+        })}
+      </svg>
+    </div>
+  );
+}
+
 // ─── main component ───────────────────────────────────────────────────────────
 
-export default function ProfileCoachClient() {
+export default function ProfileCoachClient({ initialHistory = [] }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null); // { code, message }
+  const [history, setHistory] = useState(initialHistory);
 
   async function runAnalysis() {
     setLoading(true);
@@ -96,6 +147,11 @@ export default function ProfileCoachClient() {
     try {
       const data = await api.post('/profile-coach/analyze', {});
       setResult(data);
+      // Refresh history so the new entry appears in the trend section
+      try {
+        const updated = await api.get('/profile-coach/history?limit=10');
+        setHistory(updated);
+      } catch { /* non-fatal */ }
     } catch (err) {
       setError(parseApiError(err));
     } finally {
@@ -115,6 +171,9 @@ export default function ProfileCoachClient() {
           Get an LLM-powered audit of your Upwork profile with concrete, copy-pasteable rewrites.
         </p>
       </div>
+
+      {/* Trend section — visible whenever history has >= 2 entries */}
+      <TrendSection history={history} />
 
       {/* Trigger card */}
       {!result && (

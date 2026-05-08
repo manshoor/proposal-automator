@@ -497,6 +497,87 @@ function showAIGeneric(aiGeneric) {
   else actionsEl.classList.add('hidden');
 }
 
+// ---- Connect Balance Chip ----
+
+async function loadConnectsChip() {
+  try {
+    const data = await apiFetch('/api/v1/connects');
+    const chip = document.getElementById('connects-chip');
+    const balanceEl = document.getElementById('connects-balance');
+    if (!chip || !balanceEl) return;
+    if (data.balance == null) {
+      chip.classList.add('hidden');
+      return;
+    }
+    balanceEl.textContent = String(data.balance);
+    chip.classList.remove('hidden', 'connects-low', 'connects-critical');
+    if (data.balance < 10) chip.classList.add('connects-critical');
+    else if (data.balance < 30) chip.classList.add('connects-low');
+  } catch { /* non-fatal */ }
+}
+
+// ---- Bid Recommendation ----
+
+function showRecommendation(rec) {
+  const container = document.getElementById('recommendation');
+  if (!container) return;
+  if (!rec || (!rec.hourly && !rec.milestones)) { container.classList.add('hidden'); return; }
+  container.classList.remove('hidden');
+  const body = document.getElementById('rec-body');
+  while (body.firstChild) body.removeChild(body.firstChild);
+
+  if (rec.hourly) {
+    const range = document.createElement('div');
+    range.className = 'rec-range';
+    range.textContent = `$${rec.hourly.min}–$${rec.hourly.max}/hr (suggested $${rec.hourly.suggested})`;
+    body.appendChild(range);
+    if (rec.hourly.reason) {
+      const reason = document.createElement('div');
+      reason.className = 'rec-reason';
+      reason.textContent = rec.hourly.reason;
+      body.appendChild(reason);
+    }
+  } else if (rec.milestones && rec.milestones.length > 0) {
+    const total = rec.milestones.reduce((s, m) => s + m.amount, 0);
+    const summary = document.createElement('div');
+    summary.className = 'rec-range';
+    summary.textContent = `${rec.milestones.length}-milestone breakdown ($${total} total)`;
+    body.appendChild(summary);
+    const ol = document.createElement('ol');
+    ol.className = 'rec-milestone-list';
+    for (const m of rec.milestones) {
+      const li = document.createElement('li');
+      li.textContent = `${m.description} — $${m.amount}`;
+      ol.appendChild(li);
+    }
+    body.appendChild(ol);
+    if (rec.milestones[0]?.reason) {
+      const reason = document.createElement('div');
+      reason.className = 'rec-reason';
+      reason.textContent = rec.milestones[0].reason;
+      body.appendChild(reason);
+    }
+  }
+}
+
+// ---- Repeat-client history ----
+
+function showRepeatClient(history) {
+  const container = document.getElementById('vetting-repeat-client');
+  if (!container) return;
+  if (!history || !Array.isArray(history.pastProposals) || history.pastProposals.length === 0) {
+    container.classList.add('hidden');
+    return;
+  }
+  container.classList.remove('hidden');
+  const detail = document.getElementById('vetting-repeat-detail');
+  const past = history.pastProposals;
+  const mostRecent = past[0];
+  const outcomes = past.flatMap(p => p.outcomes || []);
+  const outcomeSummary = outcomes.length === 0 ? 'no recorded outcomes' : `${outcomes.length} outcome events recorded`;
+  detail.textContent = `${past.length} past bid${past.length === 1 ? '' : 's'} (last ${mostRecent.daysSince}d ago, ${outcomeSummary})`;
+}
+
 // ---- UI state transitions ----
 
 function showNotUpwork() {
@@ -705,6 +786,8 @@ function showProposalPreview(proposal) {
   showPhase2Metrics(proposal.alignment, proposal.boostDecision);
   showPreflight(proposal.preflight);
   showAIGeneric(proposal.aiGeneric);
+  showRecommendation(proposal.recommendation);
+  showRepeatClient(proposal.clientHistory);
   showFollowUpSection(proposal);
 
   proposalPreview.classList.remove('hidden');
@@ -781,6 +864,9 @@ async function init() {
 
   // Sync the outcome-tracking flag (non-blocking — content scripts pick up next page load)
   syncOutcomeTrackingFlag();
+
+  // Load Connect balance chip (non-blocking — displays account-level balance)
+  loadConnectsChip();
 
   // Find the active tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });

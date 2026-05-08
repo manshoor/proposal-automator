@@ -4,16 +4,106 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '../../lib/api';
 
+const STAGES = [
+  { key: 'sent',      label: 'Sent',      color: 'bg-blue-500' },
+  { key: 'viewed',    label: 'Viewed',    color: 'bg-cyan-500' },
+  { key: 'replied',   label: 'Replied',   color: 'bg-teal-500' },
+  { key: 'interview', label: 'Interview', color: 'bg-emerald-500' },
+  { key: 'hired',     label: 'Hired',     color: 'bg-green-600' },
+];
+
+function FunnelCard({ funnel }) {
+  if (!funnel || funnel.sent === 0) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">Conversion Funnel</h2>
+        <p className="text-sm text-gray-600">
+          No proposals yet in the last 90 days. Submit a proposal and mark its outcomes (or enable tracking) to see your funnel.
+        </p>
+      </div>
+    );
+  }
+
+  const max = funnel.sent || 1;
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-900">Conversion Funnel</h2>
+        <span className="text-xs text-gray-500">Last 90 days</span>
+      </div>
+      <div className="space-y-2">
+        {STAGES.map((stage, i) => {
+          const count = funnel[stage.key] ?? 0;
+          const widthPct = (count / max) * 100;
+          const conversionKey = i === 0 ? null
+            : i === 1 ? 'sent_to_viewed'
+            : i === 2 ? 'viewed_to_replied'
+            : i === 3 ? 'replied_to_interview'
+            : 'interview_to_hired';
+          const conversion = conversionKey ? funnel.conversion?.[conversionKey] : null;
+          return (
+            <div key={stage.key} className="flex items-center gap-3">
+              <div className="w-20 text-sm text-gray-700 font-medium">{stage.label}</div>
+              <div className="flex-1 relative h-8 bg-gray-100 rounded-md overflow-hidden">
+                <div
+                  className={`h-full ${stage.color} transition-all`}
+                  style={{ width: `${Math.max(widthPct, count > 0 ? 4 : 0)}%` }}
+                />
+                <span className="absolute inset-0 flex items-center px-3 text-sm font-medium text-gray-900">
+                  {count}
+                </span>
+              </div>
+              <div className="w-20 text-right text-xs text-gray-500">
+                {conversion != null
+                  ? `${Math.round(conversion * 100)}%`
+                  : ''}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-xs text-gray-500 mt-4">
+        Drop-off rates between adjacent stages on the right.
+      </p>
+    </div>
+  );
+}
+
+function ConnectsCard({ connects }) {
+  if (!connects || connects.balance == null) return null;
+  const isLow = connects.balance < 30;
+  const isCritical = connects.balance < 10;
+  return (
+    <div className={`inline-flex items-center gap-3 px-4 py-2 rounded-lg border ${
+      isCritical ? 'bg-red-50 border-red-200 text-red-800' :
+      isLow ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
+      'bg-blue-50 border-blue-200 text-blue-800'
+    }`}>
+      <span className="font-bold text-lg">{connects.balance}</span>
+      <div className="text-xs leading-tight">
+        <div>Connects</div>
+        {connects.weeklySpend > 0 && (
+          <div className="opacity-75">
+            ~{connects.weeklySpend}/wk
+            {connects.runwayWeeks != null && ` · ${connects.runwayWeeks}w runway`}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const DIMENSIONS = [
   { key: 'byHookStyle', label: 'By Hook Style', dim: 'hook_style' },
   { key: 'byPersona',   label: 'By Client Persona', dim: 'persona' },
   { key: 'byNiche',     label: 'By Niche', dim: 'niche' },
 ];
 
-export default function InsightsClient({ initialTracking, initialInsights }) {
+export default function InsightsClient({ initialTracking, initialInsights, initialConnects }) {
   const router = useRouter();
   const [tracking, setTracking] = useState(initialTracking || { enabled: false });
   const [insights, setInsights] = useState(initialInsights || null);
+  const [connects] = useState(initialConnects || null);
   const [recomputing, setRecomputing] = useState(false);
   const [pendingToggle, setPendingToggle] = useState(false);
   const [, startTransition] = useTransition();
@@ -80,12 +170,13 @@ export default function InsightsClient({ initialTracking, initialInsights }) {
         </button>
       </div>
 
-      {/* Recompute */}
-      <div className="flex justify-end mb-3">
+      {/* Recompute + Connects */}
+      <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+        <ConnectsCard connects={connects} />
         <button
           onClick={recompute}
           disabled={recomputing}
-          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 ml-auto"
         >
           {recomputing ? 'Recomputing…' : 'Recompute patterns'}
         </button>
@@ -96,6 +187,9 @@ export default function InsightsClient({ initialTracking, initialInsights }) {
           {error}
         </div>
       )}
+
+      {/* Funnel */}
+      <FunnelCard funnel={insights?.funnel} />
 
       {/* Empty state */}
       {(!insights || (

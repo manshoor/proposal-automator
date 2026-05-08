@@ -1,6 +1,7 @@
 import { getProfileOrDefault } from './profile.service.js';
 import { resolveLLMConfig, callLLM } from './llm.service.js';
 import { ValidationError, AppError } from '../lib/errors.js';
+import pool from '../db/pool.js';
 
 const SYSTEM_PROMPT = `You are an Upwork profile coach reviewing a freelancer's profile to maximize their hire rate. Score each dimension 0-100 and give concrete, copy-pasteable improvements. Be brutally honest. Return ONLY valid JSON.`;
 
@@ -94,26 +95,71 @@ export async function analyzeProfile(userId, logger) {
     maxTokens: 2048,
   });
 
+  let result;
   try {
-    return parseJSON(rawFirst);
+    result = parseJSON(rawFirst);
   } catch {
     logger?.warn('profile-coach: first parse failed, retrying with stricter prompt');
   }
 
   // 5. Retry with a stricter prompt
-  const retryPrompt = buildRetryUserPrompt(profile);
-  const rawRetry = await callLLM({
-    provider,
-    apiKey,
-    systemPrompt: SYSTEM_PROMPT,
-    userPrompt: retryPrompt,
-    maxTokens: 2048,
-  });
+  if (!result) {
+    const retryPrompt = buildRetryUserPrompt(profile);
+    const rawRetry = await callLLM({
+      provider,
+      apiKey,
+      systemPrompt: SYSTEM_PROMPT,
+      userPrompt: retryPrompt,
+      maxTokens: 2048,
+    });
 
-  try {
-    return parseJSON(rawRetry);
-  } catch {
-    logger?.error('profile-coach: retry parse also failed');
-    throw new AppError('Profile analysis failed: LLM returned unparseable output.', 502, 'PROFILE_ANALYSIS_FAILED');
+    try {
+      result = parseJSON(rawRetry);
+    } catch {
+      logger?.error('profile-coach: retry parse also failed');
+      throw new AppError('Profile analysis failed: LLM returned unparseable output.', 502, 'PROFILE_ANALYSIS_FAILED');
+    }
   }
+
+  // Phase 6: persist for longitudinal tracking
+  try {
+    await pool.query(
+      `INSERT INTO profile_analyses
+         (user_id, overall_score, headline_score, summary_score, skills_score, rate_score, result)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        userId,
+        result.overallScore ?? null,
+        result.headline?.score ?? null,
+        result.summary?.score ?? null,
+        result.skills?.score ?? null,
+        result.rate?.score ?? null,
+        JSON.stringify(result),
+      ]
+    );
+  } catch (err) {
+    logger?.warn?.({ err: err?.message }, 'profile analysis persist failed (non-fatal)');
+  }
+
+  return result;
+}
+
+export async function listHistory(userId, limit = 10) {
+  const { rows } = await pool.query(
+    `SELECT id, overall_score, headline_score, summary_score, skills_score, rate_score, created_at
+     FROM profile_analyses
+     WHERE user_id = $1
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [userId, Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100)]
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    overallScore: r.overall_score,
+    headlineScore: r.headline_score,
+    summaryScore: r.summary_score,
+    skillsScore: r.skills_score,
+    rateScore: r.rate_score,
+    createdAt: r.created_at,
+  }));
 }

@@ -57,6 +57,11 @@
         <span id="job-budget-text" class="meta-chip">—</span>
         <span id="job-proposals-text" class="meta-chip">—</span>
         <span id="job-connects-text" class="meta-chip hidden">—</span>
+        <span id="connects-chip" class="meta-chip connects-chip hidden">
+          <span class="connects-icon">&#9889;</span>
+          <span id="connects-balance">—</span>
+          <span class="connects-label">Connects</span>
+        </span>
       </div>
     </div>
 
@@ -96,6 +101,11 @@
           <span id="msg-activity" class="vetting-msg">Checking activity...</span>
         </li>
       </ul>
+      <div id="vetting-repeat-client" class="vetting-row hidden">
+        <span class="vetting-icon">&#x1F501;</span>
+        <span class="vetting-label">Repeat client</span>
+        <span id="vetting-repeat-detail" class="vetting-detail"></span>
+      </div>
     </div>
 
     <!-- Preferred Qualifications -->
@@ -339,6 +349,14 @@
         <div id="screening-answers" class="screening-answers hidden">
           <div class="sa-header"><span class="sa-title">Screening Question Answers</span></div>
           <ol id="sa-list" class="sa-list"></ol>
+        </div>
+
+        <!-- Bid Recommendation -->
+        <div id="recommendation" class="recommendation hidden">
+          <div class="rec-header">
+            <span class="rec-title">Suggested bid</span>
+          </div>
+          <div id="rec-body" class="rec-body"></div>
         </div>
 
         <!-- Budget Warning -->

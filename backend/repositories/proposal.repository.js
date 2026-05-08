@@ -33,6 +33,7 @@ export async function findAll({ status, limit = 20, offset = 0, sort = 'created_
            job_budget_type, job_budget_amount, job_budget_min, job_budget_max,
            connect_cost, earnings, proposal_count, proposal_length, template_used,
            responded_at, decline_reason, payment_verified, loom_url, variant_chosen,
+           client_identity_hash,
            created_at, updated_at
     FROM proposals
     ${whereClause}
@@ -77,6 +78,7 @@ export async function create(data, userId = null) {
     hook_style,
     payment_verified,
     loom_url,
+    client_identity_hash,
   } = data;
 
   const columns = [
@@ -85,7 +87,7 @@ export async function create(data, userId = null) {
     'job_skills', 'client_location', 'client_total_spent', 'client_hire_rate',
     'client_review_count', 'proposal_text', 'hourly_rate',
     'hidden_instructions', 'vetting_result', 'proposal_count', 'connect_cost',
-    'hook_style', 'payment_verified', 'loom_url',
+    'hook_style', 'payment_verified', 'loom_url', 'client_identity_hash',
   ];
   const values = [
     job_url,
@@ -109,6 +111,7 @@ export async function create(data, userId = null) {
     hook_style ?? null,
     payment_verified ?? null,
     loom_url ?? null,
+    client_identity_hash ?? null,
   ];
 
   if (userId) {

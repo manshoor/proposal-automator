@@ -1,3 +1,4 @@
+import pool from '../db/pool.js';
 import * as outcomeRepo from '../repositories/outcome.repository.js';
 import * as patternsRepo from '../repositories/user-patterns.repository.js';
 import * as personaService from './persona.service.js';
@@ -243,6 +244,88 @@ async function findBestHookStyleForContext(userId, contextDim, contextKey) {
   }
 
   return best;
+}
+
+/**
+ * Compute a conversion funnel for a user's proposals over the given window.
+ *
+ * Runs as a single SQL query (no per-row loops) to avoid N+1 performance issues.
+ * Division-by-zero is handled explicitly so all conversion rates are safe floats.
+ *
+ * @param {string} userId
+ * @param {number} [daysBack=90]
+ * @returns {Promise<{
+ *   sent: number,
+ *   viewed: number,
+ *   replied: number,
+ *   interview: number,
+ *   hired: number,
+ *   conversion: {
+ *     sent_to_viewed: number,
+ *     viewed_to_replied: number,
+ *     replied_to_interview: number,
+ *     interview_to_hired: number,
+ *   }
+ * }>}
+ */
+export async function computeFunnel(userId, daysBack = 90) {
+  const { rows } = await pool.query(
+    `SELECT
+       COUNT(*)::int AS sent,
+       COUNT(*) FILTER (
+         WHERE EXISTS (
+           SELECT 1 FROM proposal_outcomes po
+           WHERE po.proposal_id = p.id
+             AND po.event_type IN ('viewed', 'message_thread_opened')
+         )
+       )::int AS viewed,
+       COUNT(*) FILTER (
+         WHERE EXISTS (
+           SELECT 1 FROM proposal_outcomes po
+           WHERE po.proposal_id = p.id
+             AND po.event_type IN ('replied', 'message_thread_opened')
+         )
+       )::int AS replied,
+       COUNT(*) FILTER (
+         WHERE EXISTS (
+           SELECT 1 FROM proposal_outcomes po
+           WHERE po.proposal_id = p.id
+             AND po.event_type = 'interview'
+         )
+       )::int AS interview,
+       COUNT(*) FILTER (
+         WHERE p.status = 'hired'
+           OR EXISTS (
+             SELECT 1 FROM proposal_outcomes po
+             WHERE po.proposal_id = p.id
+               AND po.event_type = 'hired'
+           )
+       )::int AS hired
+     FROM proposals p
+     WHERE p.user_id = $1
+       AND p.created_at > NOW() - ($2 || ' days')::interval`,
+    [userId, daysBack],
+  );
+
+  const row = rows[0] ?? { sent: 0, viewed: 0, replied: 0, interview: 0, hired: 0 };
+  const { sent, viewed, replied, interview, hired } = row;
+
+  const rate = (num, den) =>
+    den > 0 ? Math.round((num / den) * 10000) / 10000 : 0;
+
+  return {
+    sent,
+    viewed,
+    replied,
+    interview,
+    hired,
+    conversion: {
+      sent_to_viewed: rate(viewed, sent),
+      viewed_to_replied: rate(replied, viewed),
+      replied_to_interview: rate(interview, replied),
+      interview_to_hired: rate(hired, interview),
+    },
+  };
 }
 
 // ---- helpers ----

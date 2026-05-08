@@ -1,0 +1,2 @@
+ALTER TABLE users ADD COLUMN IF NOT EXISTS connects_balance INTEGER;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS connects_balance_updated_at TIMESTAMPTZ;

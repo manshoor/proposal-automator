@@ -21,6 +21,8 @@ import * as aiGenericDetector from './ai-generic-detector.service.js';
 import * as preflightService from './preflight.service.js';
 import * as learningService from './learning.service.js';
 import * as personaService from './persona.service.js';
+import * as bidRecommendService from './bid-recommend.service.js';
+import * as clientHistoryService from './client-history.service.js';
 
 const ALLOWED_STATUSES = new Set(['sent', 'pending', 'hired', 'rejected', 'withdrawn']);
 
@@ -376,6 +378,17 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
   const alignment = alignmentService.score(profile, jobData);
   const boostDecision = boostROIService.calc(jobData, profile, alignment);
 
+  // Phase 6 Feature B: bid amount recommendation (deterministic, no LLM)
+  const recommendation = bidRecommendService.recommend(jobData, profile, alignment, boostDecision);
+
+  // Phase 6 Feature C: repeat-client intelligence
+  let clientHistory = { hash: null, pastProposals: [] };
+  try {
+    clientHistory = await clientHistoryService.lookupHistory(jobData, userId);
+  } catch (err) {
+    logger?.warn?.({ err: err?.message }, 'client history lookup failed (non-fatal)');
+  }
+
   // 8c. Phase 2: AI-generic detection (LLM-as-judge + optional rewrite suggestion)
   let aiGeneric = null;
   try {
@@ -426,6 +439,7 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
       hook_style: hookStyle || null,
       payment_verified: jobData.client?.paymentVerified ?? null,
       loom_url: loomUrl || null,
+      client_identity_hash: clientHistory.hash,
     }, userId);
     proposalId = row?.id || null;
     await cacheDel('analytics:' + (userId || 'global'));
@@ -453,6 +467,8 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
     aiGeneric,
     preflight,
     loomUrl: loomUrl || null,
+    recommendation,
+    clientHistory,
   };
 }
 
