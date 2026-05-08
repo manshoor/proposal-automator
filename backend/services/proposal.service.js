@@ -19,6 +19,7 @@ import * as alignmentService from './alignment.service.js';
 import * as boostROIService from './boost-roi.service.js';
 import * as aiGenericDetector from './ai-generic-detector.service.js';
 import * as preflightService from './preflight.service.js';
+import * as learningService from './learning.service.js';
 
 const ALLOWED_STATUSES = new Set(['sent', 'pending', 'hired', 'rejected', 'withdrawn']);
 
@@ -188,7 +189,7 @@ export async function generateProposal(input, logger = null, userId = null) {
     existingProposal,
     selectedProjects,
     platform,
-    hookStyle,
+    hookStyle: requestedHookStyle,
   } = input;
 
   // 1. Resolve LLM config
@@ -215,6 +216,22 @@ export async function generateProposal(input, logger = null, userId = null) {
       'Please fill out your profile (title, summary, and skills) in the dashboard before generating proposals.'
     );
   }
+
+  // 3c. Phase 3 calibration: when user didn't specify a hookStyle, query learned patterns
+  // for their best-performing style. Falls back to null when no confident bucket exists.
+  let calibration = null;
+  if (!requestedHookStyle) {
+    try {
+      const recommendation = await learningService.recommendHookStyle(userId);
+      if (recommendation && recommendation.confidence === 'confident') {
+        calibration = recommendation;
+        logger?.info?.({ recommendation }, 'Using calibrated hook style from learned patterns');
+      }
+    } catch (err) {
+      logger?.warn?.({ err: err?.message }, 'Hook style calibration lookup failed (non-fatal)');
+    }
+  }
+  const hookStyle = requestedHookStyle || calibration?.hookStyle || null;
 
   // 4. Pre-generation job analysis (mandatory; retry once on failure)
   const jobAnalysis = await extractJobAnalysisOrThrow({ provider, apiKey, jobData, profile, logger });
@@ -408,6 +425,8 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
     proposalId,
     hookValidation: validation,
     hookStyle: hookStyle || null,
+    hookStyleSource: calibration ? 'calibrated' : (requestedHookStyle ? 'explicit' : 'default'),
+    calibration,
     alignment,
     boostDecision,
     aiGeneric,
