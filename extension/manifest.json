@@ -8,7 +8,8 @@
     "activeTab",
     "scripting",
     "notifications",
-    "alarms"
+    "alarms",
+    "tabCapture"
   ],
   "host_permissions": [
     "https://www.upwork.com/*",
@@ -112,5 +113,11 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["record/record.html"],
+      "matches": ["https://www.upwork.com/*"]
+    }
+  ]
 }

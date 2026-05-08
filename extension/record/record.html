@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Record Intro Video</title>
+  <link rel="stylesheet" href="record.css">
+</head>
+<body>
+
+  <!-- ======================== SETUP SCREEN ======================== -->
+  <div id="screen-setup" class="screen" role="main" aria-labelledby="setup-title">
+    <div class="card">
+      <div class="card-logo">
+        <img src="../icons/icon128.png" alt="Upwork Proposal Automator" width="48" height="48">
+      </div>
+
+      <h1 id="setup-title" class="card-title">Record a Loom-style intro for your proposal</h1>
+      <p class="card-subtitle">Up to 5 minutes — screen + mic. Helps response rate ~3&times;.</p>
+
+      <div class="options-group" role="group" aria-label="Recording options">
+        <label class="checkbox-label">
+          <input type="checkbox" id="opt-screen-audio">
+          <span>Include screen audio (optional)</span>
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="opt-mic-only">
+          <span>Mic only (no screen)</span>
+        </label>
+      </div>
+
+      <p class="mic-status" id="mic-status" aria-live="polite">Mic: <span id="mic-status-text">checking…</span></p>
+
+      <div id="setup-error" class="error-banner" hidden aria-live="assertive">
+        <span id="setup-error-text"></span>
+        <button id="btn-retry" class="btn btn-secondary btn-sm" type="button">Try again</button>
+      </div>
+
+      <div class="btn-row">
+        <button id="btn-start" class="btn btn-primary start-btn" type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+          </svg>
+          Start recording
+        </button>
+        <a id="btn-cancel-setup" class="cancel-link" href="#" role="button">Cancel</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== RECORDING SCREEN ======================== -->
+  <div id="screen-recording" class="screen" hidden role="main" aria-labelledby="rec-title">
+    <div class="card">
+      <div class="rec-indicator" aria-hidden="true">
+        <span class="rec-dot"></span>
+      </div>
+      <h2 id="rec-title" class="rec-label">Recording</h2>
+
+      <div class="time-row" aria-live="polite" aria-atomic="true">
+        <span id="elapsed-time" class="elapsed-time">0:00</span>
+        <span class="time-sep">/</span>
+        <span id="remaining-time" class="remaining-time">5:00 left</span>
+      </div>
+
+      <div class="btn-row btn-row-recording">
+        <button id="btn-stop" class="btn btn-stop stop-btn" type="button">
+          Stop &amp; upload
+        </button>
+        <button id="btn-cancel-rec" class="btn btn-ghost" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== UPLOAD / DONE SCREEN ======================== -->
+  <div id="screen-upload" class="screen" hidden role="main" aria-labelledby="upload-title">
+    <div class="card">
+      <div id="upload-icon-area" class="upload-icon-area" aria-hidden="true">
+        <div id="upload-spinner" class="upload-spinner"></div>
+        <svg id="upload-check" class="upload-check" hidden width="56" height="56" viewBox="0 0 56 56" fill="none">
+          <circle cx="28" cy="28" r="28" fill="#22c55e"/>
+          <path d="M16 28l9 9 16-16" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+
+      <h2 id="upload-title" class="card-title">Uploading…</h2>
+      <p id="upload-status" class="upload-status" aria-live="polite" aria-atomic="true">Preparing…</p>
+
+      <div id="result-section" hidden>
+        <label for="result-url" class="result-label">Video URL</label>
+        <div class="url-row">
+          <input type="text" id="result-url" class="url-input" readonly placeholder="https://…" aria-label="Recorded video URL">
+          <button id="btn-copy-url" class="btn btn-secondary btn-sm" type="button" aria-label="Copy URL">Copy</button>
+        </div>
+        <p class="auto-close-note" id="auto-close-note">Returning to popup in <span id="countdown">3</span>s…</p>
+        <button id="btn-open-popup" class="btn btn-primary" type="button">Open in popup now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load shared libs first, then page script -->
+  <script src="../lib/constants.js"></script>
+  <script src="../lib/storage.js"></script>
+  <script src="../lib/api.js"></script>
+  <script src="record.js"></script>
+</body>
+</html>
