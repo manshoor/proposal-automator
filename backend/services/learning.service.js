@@ -105,30 +105,144 @@ export async function readPatterns(userId) {
 
 /**
  * Pick the recommended hook_style for the user given a current persona+niche context.
- * Falls back to null when there's no confident bucket — caller should use defaults.
+ * Uses a cascading single-dimension lookup:
+ *
+ *   1. If `persona` is provided and has enough coverage: find the best hook_style
+ *      from proposals classified to that persona.
+ *   2. Else if `niche` is provided and has enough coverage: same for niche slice.
+ *   3. Else fall back to the global hook_style aggregate (original V1 behaviour).
+ *   4. If nothing confident found: return null — caller uses defaults.
+ *
+ * This avoids a true joint (hook_style × persona × niche) which requires ≥100 outcomes
+ * per joint bucket to be reliable. Single-dimension cascading is "good enough" until
+ * per-user data volume grows large enough to justify a pre-aggregated joint table.
+ *
+ * @param {string} userId
+ * @param {{ persona?: string, niche?: string }} [context]
+ * @returns {Promise<{hookStyle, sampleSize, responseRate, confidence, contextDim, contextKey, contextPersona, contextNiche}|null>}
  */
 export async function recommendHookStyle(userId, { persona, niche } = {}) {
-  // Strategy: check niche-specific top, then persona-specific top, then global hook_style top.
-  // (V1 implementation — single-dimension lookup. Multi-dimensional joint recommendation is a future enhancement.)
-  //
-  // TODO: joint multi-dimensional lookup (hook_style × persona × niche).
-  // The user_patterns table is already keyed by (user_id, dimension, key) so it can store
-  // composite-dimension rows once we encode them (e.g. dimension="hook_style:persona:niche",
-  // key="story:whale:saas"). Defer until we have ≥100 outcomes per joint bucket — below that
-  // threshold the confidence intervals are too wide to be actionable.
-  const candidates = await Promise.all([
-    patternsRepo.findTopKey(userId, 'hook_style', MIN_CONFIDENCE_SAMPLE),
-  ]);
-  const top = candidates.find(Boolean);
+  // Attempt 1: persona-specific lookup
+  if (persona) {
+    const result = await findBestHookStyleForContext(userId, 'persona', persona);
+    if (result) {
+      return {
+        hookStyle: result.key,
+        sampleSize: result.sample_size,
+        responseRate: Number(result.response_rate),
+        confidence: 'confident',
+        contextDim: 'persona',
+        contextKey: persona,
+        contextPersona: persona,
+        contextNiche: niche || null,
+      };
+    }
+  }
+
+  // Attempt 2: niche-specific lookup
+  if (niche) {
+    const result = await findBestHookStyleForContext(userId, 'niche', niche);
+    if (result) {
+      return {
+        hookStyle: result.key,
+        sampleSize: result.sample_size,
+        responseRate: Number(result.response_rate),
+        confidence: 'confident',
+        contextDim: 'niche',
+        contextKey: niche,
+        contextPersona: persona || null,
+        contextNiche: niche,
+      };
+    }
+  }
+
+  // Attempt 3: global hook_style aggregate (original V1 behaviour)
+  const top = await patternsRepo.findTopKey(userId, 'hook_style', MIN_CONFIDENCE_SAMPLE);
   if (!top) return null;
   return {
     hookStyle: top.key,
     sampleSize: top.sample_size,
     responseRate: Number(top.response_rate),
     confidence: top.sample_size >= MIN_CONFIDENCE_SAMPLE ? 'confident' : 'low',
+    contextDim: 'global',
+    contextKey: null,
     contextPersona: persona || null,
     contextNiche: niche || null,
   };
+}
+
+/**
+ * Inner helper: compute the best hook_style for proposals that match a given
+ * context dimension + key. Walks raw outcome rows and re-classifies each one
+ * using the persona/niche classifier so we can filter without a joint table.
+ *
+ * Returns null if:
+ *   - The context key has no coverage in the pre-aggregated patterns (fast exit).
+ *   - After filtering to the context slice, fewer than MIN_CONFIDENCE_SAMPLE proposals
+ *     remain per hook_style bucket.
+ *
+ * Scalability note: fetches all raw proposal signal rows for the user (last 90 days)
+ * and classifies each in-process. Acceptable up to ~500 proposals per user.
+ *
+ * @param {string} userId
+ * @param {'persona'|'niche'} contextDim
+ * @param {string} contextKey
+ * @returns {Promise<{key, sample_size, response_rate}|null>}
+ */
+async function findBestHookStyleForContext(userId, contextDim, contextKey) {
+  // Fast-exit: if the user hasn't accumulated enough outcomes for this context key
+  // in the pre-aggregated patterns table, skip the expensive raw-row pass.
+  const hasCoverage = await patternsRepo.hasContextCoverage(userId, contextDim, contextKey, MIN_CONFIDENCE_SAMPLE);
+  if (!hasCoverage) return null;
+
+  // Fetch raw per-proposal rows (hook_style + client signals + outcome flags).
+  const rawRows = await patternsRepo.fetchRawProposalSignals(userId, 90);
+  if (!rawRows.length) return null;
+
+  // Filter to rows that classify to contextKey, accumulate hook_style win counts.
+  const hookBuckets = new Map(); // hook_style → { sampleSize, winCount }
+
+  for (const row of rawRows) {
+    let classifiedKey;
+    if (contextDim === 'persona') {
+      const p = personaService.classify(
+        {
+          totalSpent: row.client_total_spent,
+          hireRate: row.client_hire_rate,
+          reviewCount: row.client_review_count,
+          location: row.client_location,
+          // payment_verified is not persisted on proposals (see recomputePatterns comment)
+          paymentVerified: undefined,
+        },
+        { skills: [] },
+      );
+      classifiedKey = p.id;
+    } else {
+      classifiedKey = personaService.classifyNiche({ skills: row.job_skills, title: '' });
+    }
+
+    if (classifiedKey !== contextKey) continue;
+
+    const style = row.hook_style;
+    const cur = hookBuckets.get(style) || { sampleSize: 0, winCount: 0 };
+    cur.sampleSize += 1;
+    if (row.has_win) cur.winCount += 1;
+    hookBuckets.set(style, cur);
+  }
+
+  if (!hookBuckets.size) return null;
+
+  // Find the best hook_style bucket with enough sample size.
+  let best = null;
+  for (const [style, counts] of hookBuckets) {
+    if (counts.sampleSize < MIN_CONFIDENCE_SAMPLE) continue;
+    const rate = counts.winCount / counts.sampleSize;
+    if (!best || rate > best.response_rate || (rate === best.response_rate && counts.sampleSize > best.sample_size)) {
+      best = { key: style, sample_size: counts.sampleSize, response_rate: rate };
+    }
+  }
+
+  return best;
 }
 
 // ---- helpers ----

@@ -20,6 +20,7 @@ import * as boostROIService from './boost-roi.service.js';
 import * as aiGenericDetector from './ai-generic-detector.service.js';
 import * as preflightService from './preflight.service.js';
 import * as learningService from './learning.service.js';
+import * as personaService from './persona.service.js';
 
 const ALLOWED_STATUSES = new Set(['sent', 'pending', 'hired', 'rejected', 'withdrawn']);
 
@@ -122,7 +123,7 @@ export async function createProposal(data, userId = null) {
  * @returns {Promise<object>}
  */
 export async function updateProposal(id, data, userId = null) {
-  const { status, earnings, response_type, responded_at, decline_reason, client_feedback, loom_url } = data;
+  const { status, earnings, response_type, responded_at, decline_reason, client_feedback, loom_url, variantChosen } = data;
 
   if (status !== undefined && status !== null && !ALLOWED_STATUSES.has(status)) {
     throw new ValidationError(`status must be one of: ${[...ALLOWED_STATUSES].join(', ')}`);
@@ -139,13 +140,20 @@ export async function updateProposal(id, data, userId = null) {
   const hasUpdate = status !== undefined || earnings !== undefined
     || response_type !== undefined || responded_at !== undefined
     || decline_reason !== undefined || client_feedback !== undefined
-    || loom_url !== undefined;
+    || loom_url !== undefined || variantChosen !== undefined;
 
   if (!hasUpdate) {
     throw new ValidationError('Nothing to update.');
   }
 
-  const updated = await proposalRepo.update(id, data, userId);
+  // Translate camelCase API field to snake_case column name for the repository layer
+  const repoData = { ...data };
+  if (variantChosen !== undefined) {
+    repoData.variant_chosen = variantChosen;
+    delete repoData.variantChosen;
+  }
+
+  const updated = await proposalRepo.update(id, repoData, userId);
   if (!updated) throw new NotFoundError('Proposal');
   await cacheDel('analytics:' + (userId || 'global'));
   await cacheDelPrefix('proposals:' + (userId || 'global'));
@@ -222,11 +230,17 @@ export async function generateProposal(input, logger = null, userId = null) {
   }
 
   // 3c. Phase 3 calibration: when user didn't specify a hookStyle, query learned patterns
-  // for their best-performing style. Falls back to null when no confident bucket exists.
+  // for their best-performing style. Cascades: persona-specific → niche-specific → global.
+  // Falls back to null when no confident bucket exists.
   let calibration = null;
   if (!requestedHookStyle) {
     try {
-      const recommendation = await learningService.recommendHookStyle(userId);
+      const persona = personaService.classify(jobData.client || {}, jobData);
+      const niche = personaService.classifyNiche(jobData);
+      const recommendation = await learningService.recommendHookStyle(userId, {
+        persona: persona.id,
+        niche,
+      });
       if (recommendation && recommendation.confidence === 'confident') {
         calibration = recommendation;
         logger?.info?.({ recommendation }, 'Using calibrated hook style from learned patterns');

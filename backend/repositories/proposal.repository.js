@@ -32,7 +32,7 @@ export async function findAll({ status, limit = 20, offset = 0, sort = 'created_
            client_location, client_total_spent, client_hire_rate, client_review_count,
            job_budget_type, job_budget_amount, job_budget_min, job_budget_max,
            connect_cost, earnings, proposal_count, proposal_length, template_used,
-           responded_at, decline_reason, payment_verified, loom_url,
+           responded_at, decline_reason, payment_verified, loom_url, variant_chosen,
            created_at, updated_at
     FROM proposals
     ${whereClause}
@@ -126,7 +126,7 @@ export async function create(data, userId = null) {
 }
 
 export async function update(id, data, userId = null) {
-  const { status, earnings, response_type, responded_at, decline_reason, client_feedback, loom_url } = data;
+  const { status, earnings, response_type, responded_at, decline_reason, client_feedback, loom_url, variant_chosen } = data;
 
   const sets = [];
   const values = [];
@@ -165,6 +165,11 @@ export async function update(id, data, userId = null) {
   if (loom_url !== undefined) {
     sets.push(`loom_url = $${idx++}`);
     values.push(loom_url);
+  }
+
+  if (variant_chosen !== undefined) {
+    sets.push(`variant_chosen = $${idx++}`);
+    values.push(variant_chosen);
   }
 
   if (sets.length === 0) {

@@ -67,6 +67,9 @@ let _currentVetting  = null;
 let _activeTabId     = null;
 let _generatedProposal = null;
 let _profileSkills   = [];
+// A/B variant tracking — set when user picks a variant card; cleared on new generation
+let _chosenVariant   = null;  // 'A' | 'B' | null
+let _chosenProposalId = null; // proposalId of the chosen variant row
 
 // ---- Helpers ----
 
@@ -995,6 +998,10 @@ btnGenerate.addEventListener('click', async () => {
   const loomUrl = readLoomUrl();
   if (loomUrl === undefined) return; // user cancelled the invalid-URL dialog
 
+  // Regular generation — clear any stale A/B tracking state
+  _chosenVariant = null;
+  _chosenProposalId = null;
+
   btnGenerate.disabled = true;
   loadingSpinner.classList.remove('hidden');
   proposalPreview.classList.add('hidden');
@@ -1147,6 +1154,19 @@ btnAutofill.addEventListener('click', async () => {
       if (results.coverLetter) messages.push(results.coverLetter.message);
       if (results.hourlyRate)   messages.push(results.hourlyRate.message);
       if (messages.length) alert(messages.join('\n'));
+
+      // A/B tracking: mark the chosen variant row so the learning loop knows which won
+      if (_chosenVariant && _chosenProposalId) {
+        try {
+          await apiFetch('/api/v1/proposals/' + _chosenProposalId, {
+            method: 'PATCH',
+            body: JSON.stringify({ variantChosen: _chosenVariant })
+          });
+        } catch (patchErr) {
+          // Non-fatal — tracking failure must not block the user
+          console.warn('[A/B tracking] Failed to mark chosen variant:', patchErr.message);
+        }
+      }
     } else {
       alert(`Auto-fill failed: ${(response && response.error) || 'Unknown error'}`);
     }
@@ -1201,6 +1221,10 @@ btnAbTest.addEventListener('click', async () => {
   const loomUrl = readLoomUrl();
   if (loomUrl === undefined) return; // user cancelled the invalid-URL dialog
 
+  // Reset A/B tracking state for this new run
+  _chosenVariant = null;
+  _chosenProposalId = null;
+
   btnAbTest.disabled = true;
   btnGenerate.disabled = true;
   loadingSpinner.classList.remove('hidden');
@@ -1244,6 +1268,10 @@ btnAbTest.addEventListener('click', async () => {
       const chosen = variant === 'A' ? data.variantA : data.variantB;
       cardA.classList.toggle('ab-selected', variant === 'A');
       cardB.classList.toggle('ab-selected', variant === 'B');
+
+      // Track which variant the user picked so btnAutofill can PATCH the chosen row
+      _chosenVariant = variant;
+      _chosenProposalId = chosen.proposalId || null;
 
       // Show the selected variant in the proposal preview
       showProposalPreview(chosen);

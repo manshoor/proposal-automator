@@ -67,4 +67,5 @@ export const updateProposalSchema = z.object({
   decline_reason: z.string().max(255).optional(),
   client_feedback: z.string().optional(),
   loom_url: z.string().url().optional().nullable(),
+  variantChosen: z.enum(['A', 'B']).optional().nullable(),
 });
