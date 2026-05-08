@@ -193,3 +193,8 @@ function connectFrugalityScore(jobCard, userBalance) {
   if (cost <= 12) return 0.4;
   return 0.1;
 }
+
+// Expose for feed-ui.js (loaded after this file via manifest)
+if (typeof window !== 'undefined') {
+  window.connectFrugalityScore = connectFrugalityScore;
+}

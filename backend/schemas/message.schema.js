@@ -7,7 +7,7 @@ export const generateMessageSchema = z.object({
   })).max(100).optional(),
   jobTitle: z.string().max(500).optional(),
   question: z.string().max(5000).optional(),
-  tone: z.enum(['professional', 'friendly', 'brief']).optional().default('professional'),
+  tone: z.enum(['professional', 'friendly', 'brief', 'rate-negotiation']).optional().default('professional'),
   provider: z.string().max(50).optional(),
   apiKey: z.string().max(500).optional(),
 });

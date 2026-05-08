@@ -311,6 +311,21 @@
   box-shadow: 0 0 6px rgba(239, 68, 68, 0.3);
 }
 
+/* ---- First-Mover badge ---- */
+
+.upa-first-mover-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #f97316 0%, #ef4444 100%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+
 /* ---- Responsive tweaks ---- */
 
 @media (max-width: 640px) {

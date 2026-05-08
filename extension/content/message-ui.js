@@ -111,6 +111,7 @@
             '<button class="upa-tone-btn upa-tone-active" data-tone="professional">Professional</button>',
             '<button class="upa-tone-btn" data-tone="friendly">Friendly</button>',
             '<button class="upa-tone-btn" data-tone="brief">Brief</button>',
+            '<button class="upa-tone-btn" data-tone="rate-negotiation">Rate Neg.</button>',
           '</div>',
         '</div>',
         '<button class="upa-generate-btn">',

@@ -1,6 +1,12 @@
 import { getProfileOrDefault } from './profile.service.js';
 import { resolveLLMConfig, callLLM } from './llm.service.js';
-import { buildMessageSystemPrompt, buildMessageUserPrompt, buildQuestionUserPrompt } from '../prompts/message.js';
+import {
+  buildMessageSystemPrompt,
+  buildMessageUserPrompt,
+  buildQuestionUserPrompt,
+  buildRateNegotiationPrompt,
+  isRateNegotiationContext,
+} from '../prompts/message.js';
 import { ValidationError } from '../lib/errors.js';
 
 /**
@@ -30,17 +36,43 @@ export async function generateMessage(input, userId = null) {
   // 3. Fetch profile (non-fatal — falls back to default)
   const profile = await getProfileOrDefault(userId);
 
-  const resolvedTone = tone && ['professional', 'friendly', 'brief'].includes(tone)
+  const STANDARD_TONES = ['professional', 'friendly', 'brief'];
+  const resolvedTone = tone && [...STANDARD_TONES, 'rate-negotiation'].includes(tone)
     ? tone
     : 'professional';
 
-  // 4. Build prompts — screening question vs. conversation reply
-  const systemPrompt = buildMessageSystemPrompt(profile);
+  // 4. Build prompts — rate-negotiation, screening question, or conversation reply
+  //    Rate-neg is triggered explicitly via tone OR automatically when the
+  //    incoming message contains rate/budget keywords (soft auto-detect).
+  let systemPrompt;
   let userPrompt;
 
-  if (question) {
-    userPrompt = buildQuestionUserPrompt(question, jobTitle || '', resolvedTone);
+  // Determine the last client message text for keyword detection
+  const lastClientText = (() => {
+    if (question) return question;
+    const history = conversationHistory || [];
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i].sender === 'client') return history[i].text || '';
+    }
+    return '';
+  })();
+
+  const useRateNeg = resolvedTone === 'rate-negotiation' || isRateNegotiationContext(lastClientText);
+
+  if (!question && useRateNeg) {
+    const built = buildRateNegotiationPrompt({
+      message: lastClientText,
+      jobContext: jobTitle || '',
+      profile,
+      tone: resolvedTone,
+    });
+    systemPrompt = built.system;
+    userPrompt = built.user;
+  } else if (question) {
+    systemPrompt = buildMessageSystemPrompt(profile);
+    userPrompt = buildQuestionUserPrompt(question, jobTitle || '', resolvedTone !== 'rate-negotiation' ? resolvedTone : 'professional');
   } else {
+    systemPrompt = buildMessageSystemPrompt(profile);
     userPrompt = buildMessageUserPrompt(conversationHistory || [], jobTitle || '', resolvedTone);
   }
 

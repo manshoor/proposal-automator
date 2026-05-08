@@ -32,6 +32,69 @@
   var DOT_CLASS = 'upa-match-dot';
   var STORAGE_KEY_NOTIFICATIONS = 'notificationsEnabled';
 
+  // ---- Connects balance (used by frugality sort) ----
+  var _userConnectsBalance = null;
+
+  var _fetchConnectsBalance = function () {
+    if (typeof window.apiFetch !== 'function') return;
+    window.apiFetch('/api/v1/connects')
+      .then(function (data) {
+        if (data && typeof data.balance === 'number') {
+          _userConnectsBalance = data.balance;
+        }
+      })
+      .catch(function () { /* non-fatal */ });
+  };
+
+  // ---- First-Mover badge helpers ----
+
+  var _shouldShowFirstMover = function (jobCard) {
+    if (typeof jobCard.proposalCount !== 'number' || jobCard.proposalCount >= 5) return false;
+    var posted = (jobCard.postedText || '').toLowerCase();
+    if (/minute/.test(posted)) return true;
+    if (/less\s+than\s+(an?\s+)?hour/.test(posted)) return true;
+    if (/^1\s+hour\s+ago/.test(posted)) return true;
+    return false;
+  };
+
+  var _applyFirstMoverBadge = function (cardData) {
+    if (!cardData || !cardData.element) return;
+    if (!_shouldShowFirstMover(cardData)) return;
+    // Don't double-decorate
+    if (cardData.element.querySelector('.upa-first-mover-badge')) return;
+    var badge = document.createElement('span');
+    badge.className = 'upa-first-mover-badge';
+    badge.textContent = '🚀 First 5';
+    var titleEl = cardData.element.querySelector('h3, h4, [data-test="job-tile-title"]') ||
+                  cardData.element.firstElementChild;
+    if (titleEl && titleEl.parentNode) {
+      titleEl.parentNode.insertBefore(badge, titleEl.nextSibling);
+    } else {
+      cardData.element.insertBefore(badge, cardData.element.firstChild);
+    }
+  };
+
+  // ---- Frugality sort helpers ----
+
+  var _sortByFrugality = function (cards) {
+    if (typeof _userConnectsBalance !== 'number' || _userConnectsBalance >= 30) return cards;
+    if (typeof window.connectFrugalityScore !== 'function') return cards;
+    return cards.slice().sort(function (a, b) {
+      var sa = window.connectFrugalityScore(a, _userConnectsBalance);
+      var sb = window.connectFrugalityScore(b, _userConnectsBalance);
+      return sb - sa;  // higher score first
+    });
+  };
+
+  var _applyDomOrder = function (sortedCards) {
+    if (!sortedCards.length) return;
+    var parent = sortedCards[0].element.parentNode;
+    if (!parent) return;
+    for (var i = 0; i < sortedCards.length; i++) {
+      parent.appendChild(sortedCards[i].element);  // moves existing nodes in-place
+    }
+  };
+
   // ---- DOM helpers ----
 
   var _el = function (tag, attrs, children) {
@@ -107,7 +170,8 @@
 
   /**
    * Apply filter result to a single job card element.
-   * Adds/removes the dim class and injects a colored dot next to the title.
+   * Adds/removes the dim class, injects a colored dot next to the title,
+   * and applies the First-Mover badge when eligible.
    */
   var _applyCardVisual = function (cardData, passes) {
     var el = cardData.element;
@@ -124,17 +188,25 @@
     if (existingDot) existingDot.parentNode.removeChild(existingDot);
 
     // Only inject the dot if filters are active
-    if (!_state.filters || !_state.filters.enabled) return;
+    if (!_state.filters || !_state.filters.enabled) {
+      // Filters off — still apply badge decoration
+      _applyFirstMoverBadge(cardData);
+      return;
+    }
 
     var dot = _el('span', { class: DOT_CLASS + (passes ? ' upa-match-dot--green' : ' upa-match-dot--red') });
     var titleAnchor = el.querySelector('a[data-test="job-title"]');
     if (titleAnchor && titleAnchor.parentNode) {
       titleAnchor.parentNode.insertBefore(dot, titleAnchor);
     }
+
+    // Badge decoration — applied regardless of filter pass/fail
+    _applyFirstMoverBadge(cardData);
   };
 
   /**
-   * Apply filter to all currently scraped cards.
+   * Apply filter to all currently scraped cards, then re-sort by frugality
+   * score when the user's Connect balance is stressed (< 30).
    */
   var _applyFiltersToAll = function () {
     var cards = scrapeJobCards();
@@ -143,6 +215,13 @@
     for (var i = 0; i < cards.length; i++) {
       var passes = matchesFilters(cards[i], filters);
       _applyCardVisual(cards[i], passes);
+    }
+
+    // Frugality sort: re-order DOM when balance is low (< 30 Connects)
+    var sorted = _sortByFrugality(cards);
+    if (sorted !== cards) {
+      // _sortByFrugality returns a new array only when a sort was applied
+      _applyDomOrder(sorted);
     }
 
     console.log('[FeedUI] Applied filters to', cards.length, 'cards');
@@ -462,6 +541,9 @@
       _state.cardObserver.disconnect();
       _state.cardObserver = null;
     }
+
+    // Fetch Connect balance for frugality sort (non-fatal if unavailable)
+    _fetchConnectsBalance();
 
     // Load notification pref and filters in parallel
     Promise.all([loadFilters(), _loadNotificationPref()]).then(function (results) {
