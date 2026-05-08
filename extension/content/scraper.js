@@ -600,14 +600,29 @@ async function scrapeJobPage() {
     _cachedJobData = jobData;
     _cachedUrl = currentUrl;
 
-    // Pipe Connect balance back to backend (best-effort; ignore failures)
+    // Pipe Connect balance back to backend (best-effort; skip when balance unchanged).
     if (typeof availableConnects === 'number' && availableConnects >= 0) {
       try {
-        if (typeof window.apiFetch === 'function') {
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.get('lastConnectsBalance', function (result) {
+            var last = typeof result.lastConnectsBalance === 'number' ? result.lastConnectsBalance : null;
+            if (last !== null && last === availableConnects) return; // no change, skip PUT
+
+            if (typeof window.apiFetch === 'function') {
+              window.apiFetch('/api/v1/connects/balance', {
+                method: 'PUT',
+                body: JSON.stringify({ balance: availableConnects }),
+              }).then(function () {
+                chrome.storage.local.set({ lastConnectsBalance: availableConnects });
+              }).catch(function () { /* non-fatal */ });
+            }
+          });
+        } else if (typeof window.apiFetch === 'function') {
+          // chrome.storage unavailable — fall back to always sending (original behavior)
           window.apiFetch('/api/v1/connects/balance', {
             method: 'PUT',
             body: JSON.stringify({ balance: availableConnects }),
-          }).catch(function () {});  // non-fatal
+          }).catch(function () {});
         }
       } catch (e) { /* never throw out of scraper */ }
     }

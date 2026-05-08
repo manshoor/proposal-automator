@@ -22,7 +22,6 @@
     lastUrl: window.location.href,
     seenThreadIds: new Set(),         // raw message-thread IDs (used in scanMessageThread)
     seenProposalListKeys: new Set(),  // "${event}:${jobUrl||jobTitle}" dedupe strings (used in scanProposalsList)
-    pollTimer: null,
 
     // Tracks the highest event rank reached per job URL so that state transitions
     // (viewed → interview → hired) each fire exactly once per session.
@@ -52,15 +51,7 @@
   function init() {
     try {
       handleCurrentUrl();
-      // Watch SPA navigation — Upwork is a single-page app
-      if (!STATE.pollTimer) {
-        STATE.pollTimer = setInterval(() => {
-          if (window.location.href !== STATE.lastUrl) {
-            STATE.lastUrl = window.location.href;
-            handleCurrentUrl();
-          }
-        }, 1500);
-      }
+      // SPA navigations are caught by attachListObserver via DOM mutations from React; no polling needed.
     } catch (err) {
       console.warn('[outcome-detector] init failed', err);
     }
@@ -68,7 +59,6 @@
 
   function teardown() {
     if (STATE.observer) { STATE.observer.disconnect(); STATE.observer = null; }
-    if (STATE.pollTimer) { clearInterval(STATE.pollTimer); STATE.pollTimer = null; }
     STATE.seenThreadIds.clear();
     STATE.seenProposalListKeys.clear();
     STATE.highestRankByJob.clear();

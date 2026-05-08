@@ -46,6 +46,8 @@ export async function findAll({ status, limit = 20, offset = 0, sort = 'created_
 }
 
 export async function findById(id, userId = null) {
+  // Full column list intentional — this is the detail view endpoint; clients read
+  // proposal_text, vetting_result, job_skills, hidden_instructions, etc.
   if (userId) {
     const { rows } = await pool.query('SELECT * FROM proposals WHERE id = $1 AND user_id = $2', [id, userId]);
     return rows[0] || null;

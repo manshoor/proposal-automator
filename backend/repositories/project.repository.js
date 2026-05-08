@@ -1,7 +1,10 @@
 import pool from '../db/pool.js';
 
 export async function findAll({ category, featured } = {}, userId = null) {
-  let query = 'SELECT * FROM projects';
+  // Explicit column list — screenshots excluded (can be large base64/URL arrays) from list
+  // queries; available via findById for the project detail/edit view.
+  const cols = 'id, user_id, name, description, url, technologies, category, client_name, budget_range, duration, outcome, is_featured, created_at, updated_at';
+  let query = `SELECT ${cols} FROM projects`;
   const conditions = [];
   const values = [];
 
@@ -25,6 +28,7 @@ export async function findAll({ category, featured } = {}, userId = null) {
 }
 
 export async function findById(id, userId = null) {
+  // Full column list intentional — detail/edit path needs screenshots.
   if (userId) {
     const { rows } = await pool.query('SELECT * FROM projects WHERE id = $1 AND user_id = $2', [id, userId]);
     return rows[0] || null;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '../../lib/api';
 import StatusBadge from '../../components/StatusBadge';
@@ -195,42 +195,54 @@ export default function ProposalsClient({ initialProposals }) {
     }
   };
 
-  const filtered = proposals.filter((p) => {
-    if (filter !== 'all' && p.status !== filter) return false;
-    if (search && !p.job_title?.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const filtered = useMemo(() => {
+    return proposals.filter((p) => {
+      if (filter !== 'all' && p.status !== filter) return false;
+      if (search && !p.job_title?.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+  }, [proposals, filter, search]);
 
-  const updateStatus = async (id, status) => {
+  const updateStatus = useCallback(async (id, status) => {
     try {
       await api.put(`/proposals/${id}`, { status });
-      setProposals(proposals.map(p => p.id === id ? { ...p, status } : p));
+      setProposals(prev => prev.map(p => p.id === id ? { ...p, status } : p));
     } catch (err) {
       setToast({ message: 'Failed to update status', type: 'error' });
     }
-  };
+  }, []);
 
-  const handleDelete = async (id) => {
+  const handleDelete = useCallback(async (id) => {
     if (!confirm('Delete this proposal? This cannot be undone.')) return;
     try {
       await api.del(`/proposals/${id}`);
-      setProposals(proposals.filter(p => p.id !== id));
+      setProposals(prev => prev.filter(p => p.id !== id));
       setExpandedId(null);
     } catch (err) {
       setToast({ message: 'Failed to delete proposal', type: 'error' });
     }
-  };
+  }, []);
 
-  const formatDate = (d) => {
+  const handleEarningsUpdate = useCallback((id, earnings) => {
+    api.put(`/proposals/${id}`, { earnings }).then((updated) => {
+      setProposals(prev => prev.map(x => x.id === id ? updated : x));
+    }).catch(() => setToast({ message: 'Failed to save earnings', type: 'error' }));
+  }, []);
+
+  const handleUpdate = useCallback((updated) => {
+    setProposals(prev => prev.map(x => x.id === updated.id ? updated : x));
+  }, []);
+
+  const formatDate = useCallback((d) => {
     if (!d) return '—';
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+  }, []);
 
-  const formatBudget = (p) => {
+  const formatBudget = useCallback((p) => {
     if (p.job_budget_amount) return `$${p.job_budget_amount} ${p.job_budget_type || ''}`;
     if (p.job_budget_min && p.job_budget_max) return `$${p.job_budget_min}-$${p.job_budget_max}`;
     return '—';
-  };
+  }, []);
 
   return (
     <div className="page-container">
@@ -332,14 +344,10 @@ export default function ProposalsClient({ initialProposals }) {
                     }
                     setExpandedId(p.id);
                   }}
-                  onStatusChange={(s) => updateStatus(p.id, s)}
-                  onDelete={() => handleDelete(p.id)}
-                  onEarningsUpdate={(earnings) => {
-                    api.put(`/proposals/${p.id}`, { earnings }).then((updated) => {
-                      setProposals(proposals.map(x => x.id === p.id ? updated : x));
-                    }).catch(() => setToast({ message: 'Failed to save earnings', type: 'error' }));
-                  }}
-                  onUpdate={(updated) => setProposals(proposals.map(x => x.id === p.id ? updated : x))}
+                  onStatusChange={updateStatus}
+                  onDelete={handleDelete}
+                  onEarningsUpdate={handleEarningsUpdate}
+                  onUpdate={handleUpdate}
                   onToast={setToast}
                   formatDate={formatDate}
                   formatBudget={formatBudget}
@@ -385,7 +393,7 @@ const RESPONSE_TYPE_COLORS = {
 
 const today = () => new Date().toISOString().split('T')[0];
 
-function Row({ proposal, expanded, selected, onSelect, onToggle, onStatusChange, onDelete, onEarningsUpdate, onUpdate, onToast, formatDate, formatBudget }) {
+const Row = React.memo(function Row({ proposal, expanded, selected, onSelect, onToggle, onStatusChange, onDelete, onEarningsUpdate, onUpdate, onToast, formatDate, formatBudget }) {
   const p = proposal;
 
   const [responseType, setResponseType] = useState(p.response_type || '');
@@ -505,7 +513,7 @@ function Row({ proposal, expanded, selected, onSelect, onToggle, onStatusChange,
                 <h4 className="text-xs font-medium text-gray-500 uppercase mt-4 mb-2">Update Status</h4>
                 <select
                   value={p.status}
-                  onChange={(e) => { e.stopPropagation(); onStatusChange(e.target.value); }}
+                  onChange={(e) => { e.stopPropagation(); onStatusChange(p.id, e.target.value); }}
                   className="input py-1.5 bg-white"
                 >
                   {['sent', 'hired', 'rejected', 'pending', 'withdrawn'].map(s => (
@@ -591,7 +599,7 @@ function Row({ proposal, expanded, selected, onSelect, onToggle, onStatusChange,
                         onClick={(e) => e.stopPropagation()}
                         onBlur={(e) => {
                           const val = parseFloat(e.target.value);
-                          if (val > 0 && val !== parseFloat(p.earnings)) onEarningsUpdate(val);
+                          if (val > 0 && val !== parseFloat(p.earnings)) onEarningsUpdate(p.id, val);
                         }}
                         className="w-32 input py-1"
                       />
@@ -624,7 +632,7 @@ function Row({ proposal, expanded, selected, onSelect, onToggle, onStatusChange,
               >
                 {savingLoom ? 'Saving…' : (p.loom_url ? 'Edit Loom' : 'Add Loom')}
               </button>
-              <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="btn-danger text-xs px-3 py-1">
+              <button onClick={(e) => { e.stopPropagation(); onDelete(p.id); }} className="btn-danger text-xs px-3 py-1">
                 Delete Proposal
               </button>
             </div>
@@ -633,4 +641,4 @@ function Row({ proposal, expanded, selected, onSelect, onToggle, onStatusChange,
       )}
     </>
   );
-}
+});

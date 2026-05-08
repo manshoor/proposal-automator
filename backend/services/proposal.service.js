@@ -217,10 +217,14 @@ export async function generateProposal(input, logger = null, userId = null) {
     throw new ValidationError('jobData: title and description are required');
   }
 
-  // 3. Fetch profile + custom prompt in parallel (non-fatal)
+  // 3. Fetch profile + job analysis in parallel (non-fatal profile; mandatory analysis).
+  // extractJobAnalysisOrThrow only needs jobData for the analysis LLM call —
+  // profile.skills is used as context but is not required. We pass an empty-skills
+  // stub so both calls can start immediately, saving ~10s on every proposal generation.
   const targetPlatform = platform || 'upwork';
-  const [profile] = await Promise.all([
+  const [profile, jobAnalysis] = await Promise.all([
     getProfileOrDefault(userId),
+    extractJobAnalysisOrThrow({ provider, apiKey, jobData, profileSkills: [], logger }),
   ]);
 
   // 3b. Validate profile has enough data for a quality proposal
@@ -253,8 +257,7 @@ export async function generateProposal(input, logger = null, userId = null) {
   }
   const hookStyle = requestedHookStyle || calibration?.hookStyle || null;
 
-  // 4. Pre-generation job analysis (mandatory; retry once on failure)
-  const jobAnalysis = await extractJobAnalysisOrThrow({ provider, apiKey, jobData, profile, logger });
+  // 4. jobAnalysis already resolved in step 3 via parallel Promise.all.
 
   // 5. Build system prompt (3-tier resolution: user override → admin master → hardcoded)
   const [userSystemPrompt, globalSystemPrompt, customPrompt] = await Promise.all([
@@ -656,12 +659,18 @@ const MAX_GENERATION_ATTEMPTS = 3;
 /**
  * Extracts job analysis (pain point, requirements, etc) from the LLM.
  * Mandatory — retries once on failure, then throws AppError(JOB_ANALYSIS_FAILED).
+ *
+ * Accepts either a full `profile` object (legacy) or a `profileSkills` array so the
+ * call can be parallelized with getProfileOrDefault without waiting for the profile fetch.
  */
-async function extractJobAnalysisOrThrow({ provider, apiKey, jobData, profile, logger }) {
+async function extractJobAnalysisOrThrow({ provider, apiKey, jobData, profile, profileSkills, logger }) {
+  // Support both calling conventions: full profile object (legacy internal callers)
+  // and a plain skills array (parallel path from generateProposal).
+  const effectiveProfile = profile ?? { skills: profileSkills ?? [] };
   let lastErr = null;
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const analysisPrompt = buildAnalysisPrompt(jobData, profile);
+      const analysisPrompt = buildAnalysisPrompt(jobData, effectiveProfile);
       const analysisRaw = await callLLM({
         provider, apiKey,
         systemPrompt: analysisPrompt.system,

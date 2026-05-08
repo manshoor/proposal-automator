@@ -1,16 +1,20 @@
 import pool from '../db/pool.js';
 
 export async function findAll(userId = null) {
+  // Explicit column list — callers (bootstrap, listTemplates) use id/name/content/platform/
+  // created_at/updated_at only. variables + is_default excluded from list; available via findById.
+  const cols = 'id, user_id, name, content, platform, created_at, updated_at';
   if (userId) {
-    const { rows } = await pool.query('SELECT * FROM templates WHERE user_id = $1 ORDER BY created_at DESC', [userId]);
+    const { rows } = await pool.query(`SELECT ${cols} FROM templates WHERE user_id = $1 ORDER BY created_at DESC`, [userId]);
     return rows;
   } else {
-    const { rows } = await pool.query('SELECT * FROM templates ORDER BY created_at DESC');
+    const { rows } = await pool.query(`SELECT ${cols} FROM templates ORDER BY created_at DESC`);
     return rows;
   }
 }
 
 export async function findById(id, userId = null) {
+  // Full column list intentional — detail/edit path needs variables + is_default.
   if (userId) {
     const { rows } = await pool.query('SELECT * FROM templates WHERE id = $1 AND user_id = $2', [id, userId]);
     return rows[0] || null;

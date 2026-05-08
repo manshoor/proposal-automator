@@ -50,6 +50,23 @@ var _feedParseProposals = function (str) {
 };
 
 /**
+ * Debounce helper — coalesces rapid calls into one, fired after `delay` ms of
+ * quiet.  Used to throttle the MutationObserver during Upwork's infinite-scroll
+ * bursts.  Kept file-local (not exposed on window).
+ */
+var _debounce = function (fn, delay) {
+  var timer = null;
+  return function () {
+    var ctx = this;
+    var args = arguments;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(function () {
+      fn.apply(ctx, args);
+    }, delay);
+  };
+};
+
+/**
  * Find all job card elements in the feed.
  * Verified: cards are <section> with data-ev-sublocation="job_feed_tile"
  */
@@ -219,7 +236,7 @@ function observeNewCards(callback) {
                   document.querySelector('main') ||
                   document.body;
 
-  var observer = new MutationObserver(function () {
+  var debouncedScan = _debounce(function () {
     var allCards = _findFeedCards();
     var newCards = [];
     for (var i = 0; i < allCards.length; i++) {
@@ -233,8 +250,9 @@ function observeNewCards(callback) {
       console.log('[FeedScraper] New cards detected:', newCards.length);
       callback(newCards);
     }
-  });
+  }, 500);
 
+  var observer = new MutationObserver(debouncedScan);
   observer.observe(container, { childList: true, subtree: true });
   return observer;
 }

@@ -48,7 +48,7 @@ router.post('/enhance-all', llmLimiter, asyncHandler(async (req, res) => {
   const { provider, apiKey } = await resolveLLMConfig(req.body, req.user.id);
   const results = [];
 
-  for (const project of weak) {
+  await Promise.all(weak.map(async (project) => {
     const prompt = ENHANCE_PROMPT(project);
     try {
       const raw = await callLLM({ provider, apiKey, systemPrompt: prompt.system, userPrompt: prompt.user, maxTokens: 512 });
@@ -65,7 +65,7 @@ router.post('/enhance-all', llmLimiter, asyncHandler(async (req, res) => {
     } catch (err) {
       req.log?.warn({ err, projectId: project.id }, 'Failed to enhance project');
     }
-  }
+  }));
 
   res.json({ projects: results });
 }));

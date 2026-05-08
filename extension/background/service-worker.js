@@ -275,6 +275,18 @@ chrome.notifications.onButtonClicked.addListener(async (notifId, btnIdx) => {
 // ---- Feed Notification System ----
 
 async function checkForNewJobs() {
+  // Skip the hidden-tab scrape if the user has an active Upwork tab — they're seeing fresh data themselves.
+  try {
+    const upworkTabs = await chrome.tabs.query({ url: 'https://www.upwork.com/*' });
+    const recentTab = upworkTabs.find(function (t) {
+      return t.lastAccessed && (Date.now() - t.lastAccessed) < 10 * 60 * 1000;
+    });
+    if (recentTab) {
+      console.log('[checkForNewJobs] Skipping — user has active Upwork tab');
+      return;
+    }
+  } catch (_err) { /* fall through — lastAccessed may not be available; proceed with scrape */ }
+
   const { filters, notificationsEnabled } = await loadFilters();
   if (!notificationsEnabled || !filters || !filters.enabled) return;
 
@@ -382,12 +394,24 @@ async function checkForNewJobs() {
 
 // ---- Alarms ----
 
-chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'checkFeed') {
-    checkForNewJobs();
-  }
-  if (alarm.name === 'upa-followup-check') {
-    checkDueFollowUps().catch((err) => console.warn('[follow-up alarm] failed', err));
+const ALARM_NAME = 'upa-periodic';
+const FOLLOWUP_INTERVAL_MS = 55 * 60 * 1000; // skip follow-up check if last run was <55 min ago
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name !== ALARM_NAME) return;
+
+  // Always attempt the feed check (has its own active-tab throttle).
+  await checkForNewJobs();
+
+  // Follow-up check is throttled: only run if at least 55 minutes have passed.
+  try {
+    const { lastFollowupCheck } = await chrome.storage.local.get('lastFollowupCheck');
+    if (!lastFollowupCheck || Date.now() - lastFollowupCheck >= FOLLOWUP_INTERVAL_MS) {
+      await checkDueFollowUps();
+      await chrome.storage.local.set({ lastFollowupCheck: Date.now() });
+    }
+  } catch (err) {
+    console.warn('[follow-up alarm] failed', err);
   }
 });
 
@@ -421,30 +445,34 @@ chrome.notifications.onClicked.addListener(async (notificationId) => {
 // ---- Startup/Install handlers ----
 
 /**
- * Register the follow-up check alarm.
- * Uses 'create' with the same name — Chrome deduplicates by name, so calling
- * this on both onInstalled and onStartup is safe and ensures the alarm
- * survives browser restarts.
+ * Register the single unified periodic alarm.
+ * Chrome deduplicates by name, so calling this on both onInstalled and
+ * onStartup is safe and ensures the alarm survives browser restarts.
+ * Fires every 30 minutes; the handler dispatches both feed and follow-up
+ * checks (follow-ups are throttled internally to at most once per 55 min).
  */
-function _registerFollowUpAlarm() {
-  chrome.alarms.create('upa-followup-check', {
-    delayInMinutes: 1,     // first fire 1 minute after registration
-    periodInMinutes: 60    // then every 60 minutes
+function _registerPeriodicAlarm() {
+  // Clear legacy alarm names in case the extension is updating from an older version.
+  chrome.alarms.clear('upa-followup-check');
+  chrome.alarms.clear('checkFeed');
+  chrome.alarms.create(ALARM_NAME, {
+    delayInMinutes: 1,      // first fire 1 minute after registration
+    periodInMinutes: 30     // then every 30 minutes
   });
 }
 
 chrome.runtime.onStartup.addListener(() => {
   console.log('[Service Worker] Browser started — re-registering alarms');
-  _registerFollowUpAlarm();
+  _registerPeriodicAlarm();
 });
 
 chrome.runtime.onInstalled.addListener(async () => {
   console.log('[Service Worker] Extension installed/updated');
 
-  // Register the follow-up check alarm
-  _registerFollowUpAlarm();
+  // Register the single unified periodic alarm (also clears legacy alarm names).
+  _registerPeriodicAlarm();
 
-  // Resume notification alarm and sync filters if previously enabled
+  // Sync filters from backend settings if the user is already logged in.
   try {
     const settings = await getSettings();
     if (!settings.accessToken) return;
@@ -464,10 +492,9 @@ chrome.runtime.onInstalled.addListener(async () => {
         }
       });
       if (data.notification_enabled) {
-        chrome.alarms.create('checkFeed', {
-          periodInMinutes: data.notification_interval || 15
-        });
-        console.log('[Service Worker] Notification alarm resumed');
+        // Enable feed notifications via the unified alarm (already registered above).
+        await chrome.storage.sync.set({ notificationsEnabled: true });
+        console.log('[Service Worker] Feed notifications enabled (unified alarm active)');
       }
     }
   } catch (err) {
@@ -588,13 +615,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         try {
           const enabled = message.enabled;
           await chrome.storage.sync.set({ notificationsEnabled: enabled });
-          if (enabled) {
-            chrome.alarms.create('checkFeed', { periodInMinutes: message.intervalMinutes || 5 });
-            sendResponse({ success: true, data: { message: 'Feed notifications enabled' } });
-          } else {
-            chrome.alarms.clear('checkFeed');
-            sendResponse({ success: true, data: { message: 'Feed notifications disabled' } });
-          }
+          // The unified alarm (upa-periodic) is always running; toggling notifications
+          // only controls whether checkForNewJobs() acts on them (checked via notificationsEnabled).
+          sendResponse({ success: true, data: { message: enabled ? 'Feed notifications enabled' : 'Feed notifications disabled' } });
         } catch (err) {
           sendResponse({ success: false, error: err.message });
         }

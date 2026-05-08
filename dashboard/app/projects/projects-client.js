@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { api } from '../../lib/api';
 import Toast from '../../components/Toast';
 
@@ -324,10 +325,15 @@ export default function ProjectsClient({ initialProjects }) {
                 <div className="space-y-2 mb-3">
                   {form.screenshots.map((src, i) => (
                     <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-xl p-2">
-                      <img src={src} alt={`${form.name || 'Project'} screenshot ${i + 1}`}
-                        loading="lazy" decoding="async"
-                        className="w-12 h-12 object-cover rounded border border-gray-200"
-                        onError={(e) => { e.target.style.display = 'none'; }} />
+                      <div className="relative w-12 h-12 flex-shrink-0">
+                        <Image
+                          src={src}
+                          alt={`${form.name || 'Project'} screenshot ${i + 1}`}
+                          fill
+                          sizes="48px"
+                          className="object-cover rounded border border-gray-200"
+                        />
+                      </div>
                       <input type="text" value={src} readOnly
                         className="flex-1 text-xs text-gray-500 bg-transparent border-none truncate" />
                       <button onClick={() => setForm({...form, screenshots: form.screenshots.filter((_, j) => j !== i)})}
@@ -401,9 +407,16 @@ export default function ProjectsClient({ initialProjects }) {
               {p.screenshots && p.screenshots.length > 0 && (
                 <div className="flex gap-2 mb-2 overflow-x-auto">
                   {p.screenshots.slice(0, 4).map((src, i) => (
-                    <img key={i} src={src} alt={`${p.name} screenshot ${i + 1}`}
-                      loading="lazy" decoding="async"
-                      className="w-16 h-16 object-cover rounded border border-gray-200 flex-shrink-0" />
+                    <div key={i} className="relative w-16 h-16 flex-shrink-0">
+                      <Image
+                        src={src}
+                        alt={`${p.name} screenshot ${i + 1}`}
+                        fill
+                        sizes="64px"
+                        className="object-cover rounded border border-gray-200"
+                        loading="lazy"
+                      />
+                    </div>
                   ))}
                   {p.screenshots.length > 4 && (
                     <div className="w-16 h-16 bg-gray-100 rounded border border-gray-200 flex items-center justify-center text-xs text-gray-500 flex-shrink-0">

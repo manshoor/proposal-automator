@@ -6,8 +6,9 @@ const { Pool } = pg;
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 20,
-  idleTimeoutMillis: 30000,
+  // Sized for ~28 endpoints + 3 LLM workers + 2 background workers; default Postgres max_connections is 100.
+  max: 50,
+  idleTimeoutMillis: 10000,
   connectionTimeoutMillis: 5000,
 });
 
