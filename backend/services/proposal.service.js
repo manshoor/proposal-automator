@@ -4,9 +4,17 @@ import * as projectRepo from '../repositories/project.repository.js';
 import * as insightRepo from '../repositories/insight.repository.js';
 import { getProfileOrDefault } from './profile.service.js';
 import { resolveLLMConfig, callLLM } from './llm.service.js';
-import { buildSystemPrompt, buildUserPrompt, buildAnalysisPrompt, injectProfileData } from '../prompts/proposal.js';
-import { ValidationError, NotFoundError } from '../lib/errors.js';
+import {
+  buildSystemPrompt,
+  buildUserPrompt,
+  buildAnalysisPrompt,
+  injectProfileData,
+  buildRetryGuidance,
+  HOOK_STYLES,
+} from '../prompts/proposal.js';
+import { ValidationError, NotFoundError, AppError } from '../lib/errors.js';
 import { cacheGet, cacheSet, cacheDel, cacheDelPrefix } from '../lib/redis.js';
+import { validateHook } from './hook-validator.service.js';
 
 const ALLOWED_STATUSES = new Set(['sent', 'pending', 'hired', 'rejected', 'withdrawn']);
 
@@ -162,9 +170,10 @@ export async function deleteProposal(id, userId = null) {
  * @param {string} [input.platform]
  * @param {string} [input.provider]
  * @param {string} [input.apiKey]
+ * @param {string} [input.hookStyle]  - One of HOOK_STYLES keys; biases the opening
  * @param {object|null} logger  - Pino-compatible logger (req.log) or null
  * @param {string|null} userId
- * @returns {Promise<{coverLetter, hourlyRate, milestones, budgetWarning, proposalId}>}
+ * @returns {Promise<{coverLetter, hourlyRate, milestones, budgetWarning, proposalId, hookValidation, hookStyle}>}
  */
 export async function generateProposal(input, logger = null, userId = null) {
   const {
@@ -175,6 +184,7 @@ export async function generateProposal(input, logger = null, userId = null) {
     existingProposal,
     selectedProjects,
     platform,
+    hookStyle,
   } = input;
 
   // 1. Resolve LLM config
@@ -202,22 +212,8 @@ export async function generateProposal(input, logger = null, userId = null) {
     );
   }
 
-  // 4. Pre-generation job analysis (silent, non-blocking)
-  let jobAnalysis = null;
-  try {
-    const analysisPrompt = buildAnalysisPrompt(jobData, profile);
-    const analysisRaw = await callLLM({
-      provider, apiKey,
-      systemPrompt: analysisPrompt.system,
-      userPrompt: analysisPrompt.user,
-      maxTokens: 1024,
-    });
-    const cleaned = analysisRaw.trim().replace(/^```json?\s*/i, '').replace(/\s*```$/i, '');
-    jobAnalysis = JSON.parse(cleaned);
-    logger?.info({ jobAnalysis }, 'Job analysis complete');
-  } catch (err) {
-    logger?.warn({ err }, 'Job analysis failed, proceeding without it');
-  }
+  // 4. Pre-generation job analysis (mandatory; retry once on failure)
+  const jobAnalysis = await extractJobAnalysisOrThrow({ provider, apiKey, jobData, profile, logger });
 
   // 5. Build system prompt (3-tier resolution: user override → admin master → hardcoded)
   const [userSystemPrompt, globalSystemPrompt, customPrompt] = await Promise.all([
@@ -229,10 +225,16 @@ export async function generateProposal(input, logger = null, userId = null) {
   let systemPrompt;
   if (userSystemPrompt) {
     systemPrompt = injectProfileData(userSystemPrompt.prompt_text, profile);
+    if (hookStyle && HOOK_STYLES[hookStyle]) {
+      systemPrompt += '\n\n--- HOOK STYLE OVERRIDE ---\n' + HOOK_STYLES[hookStyle];
+    }
   } else if (globalSystemPrompt) {
     systemPrompt = injectProfileData(globalSystemPrompt.prompt_text, profile);
+    if (hookStyle && HOOK_STYLES[hookStyle]) {
+      systemPrompt += '\n\n--- HOOK STYLE OVERRIDE ---\n' + HOOK_STYLES[hookStyle];
+    }
   } else {
-    systemPrompt = buildSystemPrompt(profile);
+    systemPrompt = buildSystemPrompt(profile, hookStyle);
   }
 
   if (customPrompt) {
@@ -253,19 +255,18 @@ export async function generateProposal(input, logger = null, userId = null) {
   // 6. Build user prompt
   let userPrompt = buildUserPrompt(jobData, hiddenInstructions);
 
-  // Inject job analysis if available
-  if (jobAnalysis) {
-    const urgency = Array.isArray(jobAnalysis.urgencySignals) && jobAnalysis.urgencySignals.length > 0
-      ? jobAnalysis.urgencySignals.join(', ')
-      : 'None detected';
-    const critical = Array.isArray(jobAnalysis.criticalRequirements)
-      ? jobAnalysis.criticalRequirements.join('; ')
-      : '';
-    const flags = Array.isArray(jobAnalysis.redFlags) && jobAnalysis.redFlags.length > 0
-      ? jobAnalysis.redFlags.join('; ')
-      : 'None';
+  // Inject job analysis (mandatory now — always present)
+  const urgency = Array.isArray(jobAnalysis.urgencySignals) && jobAnalysis.urgencySignals.length > 0
+    ? jobAnalysis.urgencySignals.join(', ')
+    : 'None detected';
+  const critical = Array.isArray(jobAnalysis.criticalRequirements)
+    ? jobAnalysis.criticalRequirements.join('; ')
+    : '';
+  const flags = Array.isArray(jobAnalysis.redFlags) && jobAnalysis.redFlags.length > 0
+    ? jobAnalysis.redFlags.join('; ')
+    : 'None';
 
-    userPrompt += `
+  userPrompt += `
 
 JOB ANALYSIS (use these insights to write a targeted proposal):
 - Pain point: ${jobAnalysis.painPoint || 'Not identified'}
@@ -274,7 +275,6 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
 - Approach angle: ${jobAnalysis.approachAngle || ''}
 - Suggested opening: ${jobAnalysis.openingHook || ''}
 - Red flags: ${flags}`;
-  }
 
   // 7. Append template, extra instruction, and selected projects
   if (templateContent) {
@@ -324,8 +324,11 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
     userPrompt += projectsText;
   }
 
-  // 7. Call LLM
-  const rawResponse = await callLLM({ provider, apiKey, systemPrompt, userPrompt, maxTokens: 4096 });
+  // 7. Call LLM with hook-validator retry loop
+  const { rawResponse, validation } = await generateWithValidation({
+    provider, apiKey, systemPrompt, userPrompt,
+    jobAnalysis, jobData, userId, logger,
+  });
 
   // 8. Parse structured output
   const parsed = parseLLMResponse(rawResponse, profile, logger);
@@ -354,11 +357,12 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
       vetting_result: jobData.vettingResult ? JSON.stringify(jobData.vettingResult) : null,
       proposal_count: jobData.proposalCount || null,
       connect_cost: jobData.connectCost || null,
+      hook_style: hookStyle || null,
     }, userId);
     proposalId = row?.id || null;
     await cacheDel('analytics:' + (userId || 'global'));
-  await cacheDelPrefix('proposals:' + (userId || 'global'));
-  await cacheDel('bootstrap:' + (userId || 'global'));
+    await cacheDelPrefix('proposals:' + (userId || 'global'));
+    await cacheDel('bootstrap:' + (userId || 'global'));
   } catch (dbErr) {
     logger?.error({ err: dbErr }, 'Failed to save proposal');
     // Non-fatal — still return the generated content
@@ -371,11 +375,13 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
     milestones: parsed.milestones,
     budgetWarning: parsed.budgetWarning,
     proposalId,
+    hookValidation: validation,
+    hookStyle: hookStyle || null,
   };
 }
 
 /**
- * Generates two A/B variant proposals in parallel.
+ * Generates two A/B variant proposals in parallel, each with a distinct hook style.
  *
  * @param {object} input
  * @param {object} input.jobData
@@ -383,11 +389,12 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
  * @param {string} [input.templateContent]
  * @param {string} [input.provider]
  * @param {string} [input.apiKey]
+ * @param {string[]} [input.hookStyles]  - Two HOOK_STYLES keys; defaults to ['problem-mirror','metric-led']
  * @param {string|null} userId
  * @returns {Promise<{variantA, variantB}>}
  */
 export async function generateABVariants(input, userId = null) {
-  const { jobData, hiddenInstructions, templateContent } = input;
+  const { jobData, hiddenInstructions, templateContent, hookStyles } = input;
 
   // 1. Resolve LLM config
   const { provider, apiKey } = await resolveLLMConfig(input, userId);
@@ -397,30 +404,36 @@ export async function generateABVariants(input, userId = null) {
     throw new ValidationError('jobData with title and description is required');
   }
 
-  // 3. Fetch profile (non-fatal)
+  // 3. Pick hook styles (validated against HOOK_STYLES; default to problem-mirror + metric-led)
+  const validStyles = Object.keys(HOOK_STYLES);
+  const styles = Array.isArray(hookStyles)
+    && hookStyles.length === 2
+    && hookStyles.every((s) => validStyles.includes(s))
+    ? hookStyles
+    : DEFAULT_AB_STYLES;
+
+  // 4. Fetch profile (non-fatal)
   const profile = await getProfileOrDefault(userId);
 
-  // 4. Build prompts
-  const systemPrompt = buildSystemPrompt(profile);
+  // 5. Build prompts (one system prompt per style)
   const baseUserPrompt = buildUserPrompt(jobData, hiddenInstructions);
   const templateSuffix = templateContent ? '\n\nUSE THIS TEMPLATE AS A STRUCTURAL GUIDE:\n' + templateContent : '';
+  const userPrompt = baseUserPrompt + templateSuffix;
+  const [systemA, systemB] = styles.map((s) => buildSystemPrompt(profile, s));
 
-  const promptA = baseUserPrompt + '\n\nSTYLE INSTRUCTION: Write in a direct, confident, no-nonsense tone. Lead with your strongest qualification. Be assertive.' + templateSuffix;
-  const promptB = baseUserPrompt + '\n\nSTYLE INSTRUCTION: Write in a consultative, thoughtful tone. Open with an insightful question about their project. Show curiosity and depth.' + templateSuffix;
-
-  // 5. Call LLM x2 in parallel
+  // 6. Call LLM x2 in parallel
   const [rawA, rawB] = await Promise.all([
-    callLLM({ provider, apiKey, systemPrompt, userPrompt: promptA, maxTokens: 2048 }),
-    callLLM({ provider, apiKey, systemPrompt, userPrompt: promptB, maxTokens: 2048 }),
+    callLLM({ provider, apiKey, systemPrompt: systemA, userPrompt, maxTokens: 2048 }),
+    callLLM({ provider, apiKey, systemPrompt: systemB, userPrompt, maxTokens: 2048 }),
   ]);
 
-  // 6. Parse both variants
+  // 7. Parse both variants
   const variantA = parseLLMResponse(rawA, profile, null);
   const variantB = parseLLMResponse(rawB, profile, null);
 
   return {
-    variantA: { ...variantA, style: 'Direct & Confident' },
-    variantB: { ...variantB, style: 'Consultative & Thoughtful' },
+    variantA: { ...variantA, style: styles[0], hookStyle: styles[0] },
+    variantB: { ...variantB, style: styles[1], hookStyle: styles[1] },
   };
 }
 
@@ -449,11 +462,6 @@ function parseLLMResponse(raw, profile, logger) {
     const lines = milestonesSection[1].trim().split('\n').filter(l => l.trim());
     logger?.info({ lines }, '[Milestones] Raw lines');
     for (const line of lines) {
-      // Try multiple formats:
-      // "1. Description | $200"
-      // "1. Description - $200"
-      // "1. Description — $200"
-      // "1. Description $200"
       let m = line.match(/^\d+[\.\)]\s*(.+?)\s*[\|–—-]\s*\$?([\d,.]+)/);
       if (!m) {
         m = line.match(/^\d+[\.\)]\s*(.+?)\s+\$?([\d,.]+)\s*$/);
@@ -473,4 +481,89 @@ function parseLLMResponse(raw, profile, logger) {
   const budgetWarning = budgetWarningMatch ? budgetWarningMatch[1].trim() : null;
 
   return { coverLetter, hourlyRate, milestones, budgetWarning };
+}
+
+// ============================================================================
+// Helpers — Phase 1 Hook Surgeon
+// ============================================================================
+
+const DEFAULT_AB_STYLES = ['problem-mirror', 'metric-led'];
+const MAX_GENERATION_ATTEMPTS = 3;
+
+/**
+ * Extracts job analysis (pain point, requirements, etc) from the LLM.
+ * Mandatory — retries once on failure, then throws AppError(JOB_ANALYSIS_FAILED).
+ */
+async function extractJobAnalysisOrThrow({ provider, apiKey, jobData, profile, logger }) {
+  let lastErr = null;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const analysisPrompt = buildAnalysisPrompt(jobData, profile);
+      const analysisRaw = await callLLM({
+        provider, apiKey,
+        systemPrompt: analysisPrompt.system,
+        userPrompt: analysisPrompt.user,
+        maxTokens: 1024,
+      });
+      const cleaned = analysisRaw.trim().replace(/^```json?\s*/i, '').replace(/\s*```$/i, '');
+      const parsed = JSON.parse(cleaned);
+      logger?.info({ attempt }, 'Job analysis complete');
+      return parsed;
+    } catch (err) {
+      lastErr = err;
+      logger?.warn({ err: err?.message, attempt }, 'Job analysis attempt failed');
+    }
+  }
+  throw new AppError(
+    'Job analysis failed — could not extract client pain point. Try again or simplify the job description.',
+    400,
+    'JOB_ANALYSIS_FAILED',
+    lastErr ? [{ reason: String(lastErr.message || lastErr) }] : null,
+  );
+}
+
+/**
+ * Generates a proposal with a hook-validation retry loop.
+ * Calls the LLM up to MAX_GENERATION_ATTEMPTS times. On each attempt, validates the
+ * first 230 chars; if blockers exist and attempts remain, retries with stricter prompt.
+ * Returns the best-scoring attempt regardless.
+ */
+async function generateWithValidation({
+  provider, apiKey, systemPrompt, userPrompt,
+  jobAnalysis, jobData, userId, logger,
+}) {
+  let bestAttempt = null;
+  let currentUserPrompt = userPrompt;
+
+  for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
+    const rawResponse = await callLLM({
+      provider, apiKey, systemPrompt,
+      userPrompt: currentUserPrompt,
+      maxTokens: 4096,
+    });
+    const parsed = parseLLMResponse(rawResponse, { default_hourly_rate: 50 }, null);
+    const validation = await validateHook(parsed.coverLetter, jobAnalysis, jobData, userId);
+
+    logger?.info({
+      attempt,
+      score: validation.score,
+      blockerCount: validation.blockers.length,
+      issueCount: validation.issues.length,
+    }, 'Hook validation result');
+
+    if (!bestAttempt || validation.score > bestAttempt.validation.score) {
+      bestAttempt = { rawResponse, validation };
+    }
+
+    if (!validation.hasBlocker) {
+      return { rawResponse, validation };
+    }
+
+    if (attempt < MAX_GENERATION_ATTEMPTS && validation.failureSummary) {
+      currentUserPrompt = userPrompt + '\n\n' + buildRetryGuidance(validation.failureSummary);
+    }
+  }
+
+  logger?.warn({ score: bestAttempt.validation.score }, 'Hook validation never passed; returning best attempt');
+  return bestAttempt;
 }
