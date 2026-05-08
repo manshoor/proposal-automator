@@ -10,3 +10,8 @@ backend/uploads/
 .playwright-mcp/
 .claude/settings.local.json
 .worktrees/
+dashboard/test-results/
+dashboard/playwright-report/
+dashboard/blob-report/
+dashboard/playwright/.cache/
+dashboard/e2e/.auth/
