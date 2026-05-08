@@ -47,6 +47,14 @@ const _fuNotifiedCache = new Map();
 const _FU_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
+ * Map<notificationId (string), followupRow (object)>
+ * Populated by checkDueFollowUps when each individual notification is created
+ * so that onButtonClicked can look up the right message text and metadata.
+ * Entries are removed when the notification is cleared.
+ */
+const _fuRowsByNotifId = new Map();
+
+/**
  * Check for scheduled follow-ups that are now due and fire desktop
  * notifications for them.  Called by the 'upa-followup-check' alarm.
  */
@@ -114,13 +122,17 @@ async function checkDueFollowUps() {
     const row = freshDue[0];
     const jobTitle = row.jobTitle || row.job_title || 'Follow-up due';
     const preview = (row.messageText || row.message_text || '').slice(0, 100);
-    chrome.notifications.create('fu-' + row.id, {
+    const notifId = 'fu-' + row.id;
+    chrome.notifications.create(notifId, {
       type: 'basic',
       iconUrl: 'icons/icon48.png',
       title: 'Follow-up due: ' + jobTitle,
       message: preview || 'Open dashboard to send your follow-up.',
+      buttons: [{ title: 'Send on Upwork now' }],
+      requireInteraction: true,
       priority: 1
     });
+    _fuRowsByNotifId.set(notifId, row);
     _fuNotifiedCache.set(String(row.id), nowMs);
   } else {
     chrome.notifications.create('fu-summary', {
@@ -150,6 +162,115 @@ async function checkDueFollowUps() {
     )
   );
 }
+
+// ---- Follow-up injection into active Upwork tab ----
+
+/**
+ * Upwork message URL patterns we search for when looking for an open thread.
+ */
+const UPWORK_MESSAGE_URL_PATTERNS = [
+  'https://www.upwork.com/messages/*',
+  'https://www.upwork.com/ab/messages/*',
+  'https://www.upwork.com/nx/messages/*',
+];
+
+/**
+ * Find an open Upwork message tab and ask the follow-up-injector content
+ * script to pre-fill the composer with the follow-up message text.
+ *
+ * If no message tab is open, navigate to /ab/messages/ as a fallback so the
+ * user can click into the right thread manually (the paste path).
+ *
+ * @param {object} followup - The follow-up row from the backend.
+ */
+async function injectIntoUpworkTab(followup) {
+  const messageText = followup.messageText || followup.message_text || '';
+  if (!messageText.trim()) {
+    console.warn('[follow-ups] injectIntoUpworkTab: no messageText on row', followup.id);
+    return;
+  }
+
+  let tabs = [];
+  try {
+    tabs = await chrome.tabs.query({ url: UPWORK_MESSAGE_URL_PATTERNS });
+  } catch (err) {
+    console.warn('[follow-ups] tabs.query failed:', err);
+  }
+
+  if (tabs.length > 0) {
+    const tab = tabs[0];
+
+    // Bring the tab into focus
+    try {
+      await chrome.tabs.update(tab.id, { active: true });
+      await chrome.windows.update(tab.windowId, { focused: true });
+    } catch (err) {
+      console.warn('[follow-ups] Could not activate tab:', err);
+    }
+
+    // Ask the content script to inject
+    try {
+      chrome.tabs.sendMessage(
+        tab.id,
+        {
+          type: 'INJECT_FOLLOWUP',
+          payload: {
+            messageText,
+            jobUrl: followup.jobUrl || followup.job_url || undefined,
+            jobTitle: followup.jobTitle || followup.job_title || undefined,
+          },
+        },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            // Content script not present (page not yet reloaded, etc.) — fall through
+            console.warn('[follow-ups] sendMessage error — content script may not be loaded:', chrome.runtime.lastError.message);
+            return;
+          }
+          if (response && !response.ok) {
+            console.warn('[follow-ups] Injector could not find composer element:', response.reason);
+          }
+        }
+      );
+    } catch (err) {
+      console.warn('[follow-ups] sendMessage threw:', err);
+    }
+    return;
+  }
+
+  // No open message tab — open /ab/messages/ and let the user navigate to the right thread.
+  // The injector will be injected when the page loads, but without a pre-targeted thread URL
+  // we can't auto-select the conversation, so this is the manual backstop.
+  console.log('[follow-ups] No Upwork message tab open — opening /ab/messages/ as fallback');
+  try {
+    await chrome.tabs.create({ url: 'https://www.upwork.com/ab/messages/' });
+  } catch (err) {
+    console.warn('[follow-ups] Could not open Upwork messages tab:', err);
+  }
+}
+
+// ---- Notification button click ----
+
+chrome.notifications.onButtonClicked.addListener(async (notifId, btnIdx) => {
+  // Only handle our per-follow-up notifications (not the summary)
+  if (!notifId.startsWith('fu-') || notifId === 'fu-summary') return;
+  if (btnIdx !== 0) return; // only the "Send on Upwork now" button (index 0)
+
+  const followup = _fuRowsByNotifId.get(notifId);
+  if (!followup) {
+    console.warn('[follow-ups] onButtonClicked: no row cached for', notifId);
+    return;
+  }
+
+  try {
+    await injectIntoUpworkTab(followup);
+  } catch (err) {
+    console.warn('[follow-ups] injectIntoUpworkTab failed:', err);
+  }
+
+  chrome.notifications.clear(notifId, () => {
+    _fuRowsByNotifId.delete(notifId);
+  });
+});
 
 // ---- Feed Notification System ----
 
@@ -284,7 +405,9 @@ chrome.notifications.onClicked.addListener(async (notificationId) => {
     } catch (err) {
       console.warn('[follow-ups] Could not open dashboard on notification click:', err);
     }
-    chrome.notifications.clear(notificationId);
+    chrome.notifications.clear(notificationId, () => {
+      _fuRowsByNotifId.delete(notificationId);
+    });
     return;
   }
 
