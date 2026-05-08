@@ -22,7 +22,11 @@ export function calc(jobData, profile, alignment, options = {}) {
   const boostCost = options.boostCost ?? 4;
   const client = jobData?.client || {};
   const clientSpend = num(client.totalSpent, 0);
-  const hireRate = num(client.hireRate, 0) / 100;  // % → 0..1
+  // null/undefined hireRate → use 0.3 as neutral default (unknown history).
+  // A real 0% hire rate is a meaningful negative signal and must be preserved as-is.
+  const hireRate = client.hireRate == null
+    ? 0.3                              // unknown → neutral default
+    : Number(client.hireRate) / 100;   // known (including 0%) → use exact value
   const proposalCount = num(jobData?.proposalCount, 0);
   const fit = num(alignment?.overall, 0) / 10;     // 0..1
 
@@ -31,7 +35,7 @@ export function calc(jobData, profile, alignment, options = {}) {
 
   // Spend factor: caps at 2.0 once client has spent $10K+
   const spendFactor = clamp(clientSpend / 5000, 0, 2.0);
-  const numerator = spendFactor * (hireRate || 0.3) * fit * freshness;
+  const numerator = spendFactor * hireRate * fit * freshness;
   const denominator = Math.max(1, proposalCount) * (boostCost / 4);
   const roi = numerator / denominator;
 

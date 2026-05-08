@@ -20,7 +20,8 @@
     enabled: false,
     observer: null,
     lastUrl: window.location.href,
-    seenThreadIds: new Set(),
+    seenThreadIds: new Set(),         // raw message-thread IDs (used in scanMessageThread)
+    seenProposalListKeys: new Set(),  // "${event}:${jobUrl||jobTitle}" dedupe strings (used in scanProposalsList)
     pollTimer: null,
   };
 
@@ -63,6 +64,7 @@
     if (STATE.observer) { STATE.observer.disconnect(); STATE.observer = null; }
     if (STATE.pollTimer) { clearInterval(STATE.pollTimer); STATE.pollTimer = null; }
     STATE.seenThreadIds.clear();
+    STATE.seenProposalListKeys.clear();
   }
 
   // ---- Per-URL dispatch ----
@@ -154,8 +156,8 @@
       for (const { keywords, event } of STATUS_MAP) {
         if (keywords.some((kw) => text.includes(kw))) {
           const dedupeKey = `${event}:${jobUrl || jobTitle}`;
-          if (STATE.seenThreadIds.has(dedupeKey)) break;
-          STATE.seenThreadIds.add(dedupeKey);
+          if (STATE.seenProposalListKeys.has(dedupeKey)) break;
+          STATE.seenProposalListKeys.add(dedupeKey);
           events.push({
             eventType: event,
             source: 'dom',

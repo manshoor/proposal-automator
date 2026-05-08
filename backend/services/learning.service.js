@@ -34,6 +34,10 @@ export async function recomputePatterns(userId, { daysBack = 90, logger = null }
 
     addToBucket(buckets.hook_style, row.hook_style || 'unspecified', hasWin, hasView);
 
+    // NOTE: paymentVerified is passed as undefined because it isn't stored on the proposals
+    // table — it comes from the original scraped jobData and is not persisted. Historical
+    // recompute therefore can't determine it. To fix: add a `payment_verified BOOLEAN` column
+    // to the proposals table in a future migration and persist the value during proposal creation.
     const persona = personaService.classify(
       {
         totalSpent: row.client_total_spent,
@@ -106,6 +110,12 @@ export async function readPatterns(userId) {
 export async function recommendHookStyle(userId, { persona, niche } = {}) {
   // Strategy: check niche-specific top, then persona-specific top, then global hook_style top.
   // (V1 implementation — single-dimension lookup. Multi-dimensional joint recommendation is a future enhancement.)
+  //
+  // TODO: joint multi-dimensional lookup (hook_style × persona × niche).
+  // The user_patterns table is already keyed by (user_id, dimension, key) so it can store
+  // composite-dimension rows once we encode them (e.g. dimension="hook_style:persona:niche",
+  // key="story:whale:saas"). Defer until we have ≥100 outcomes per joint bucket — below that
+  // threshold the confidence intervals are too wide to be actionable.
   const candidates = await Promise.all([
     patternsRepo.findTopKey(userId, 'hook_style', MIN_CONFIDENCE_SAMPLE),
   ]);
