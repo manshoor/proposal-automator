@@ -30,6 +30,8 @@
 
   _startContentNavWatch();
 
+  try { if (typeof installErrorReporter === 'function') installErrorReporter('content-script'); } catch (e) { /* no-op */ }
+
   console.log('[Upwork Proposal Automator] Content script loaded on:', window.location.href);
 
   // ---- Message handler ----

@@ -449,6 +449,8 @@
 
   _startNavWatch();
 
+  try { if (typeof installErrorReporter === 'function') installErrorReporter('content-script'); } catch (e) { /* no-op */ }
+
   // Kick off on initial page load
   waitForComposeThenInit();
 })();

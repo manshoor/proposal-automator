@@ -587,6 +587,8 @@
   // Run immediately (document_idle means DOM is ready)
   _init();
 
+  try { if (typeof installErrorReporter === 'function') installErrorReporter('content-script'); } catch (e) { /* no-op */ }
+
   console.log('[Upwork Proposal Automator] Feed UI script loaded on:', window.location.href);
 
 })();

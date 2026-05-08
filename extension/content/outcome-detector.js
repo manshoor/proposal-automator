@@ -464,4 +464,6 @@
       timer = setTimeout(() => fn(...args), ms);
     };
   }
+
+  try { if (typeof installErrorReporter === 'function') installErrorReporter('content-script'); } catch (e) { /* no-op */ }
 })();

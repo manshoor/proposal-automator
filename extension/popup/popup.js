@@ -856,6 +856,8 @@ async function syncOutcomeTrackingFlag() {
 }
 
 async function init() {
+  try { if (typeof installErrorReporter === 'function') installErrorReporter('popup'); } catch { /* no-op */ }
+
   // Check login status first
   const loggedIn = await isLoggedIn();
   if (!loggedIn) {

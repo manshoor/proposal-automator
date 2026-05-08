@@ -6,7 +6,8 @@
 
 'use strict';
 
-importScripts('../lib/constants.js', '../lib/storage.js', '../lib/api.js');
+importScripts('../lib/constants.js', '../lib/storage.js', '../lib/api.js', '../lib/error-reporter.js');
+try { if (typeof installErrorReporter === 'function') installErrorReporter('service-worker'); } catch { /* no-op */ }
 
 // ---- Helpers ----
 

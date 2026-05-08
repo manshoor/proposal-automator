@@ -28,6 +28,7 @@
         "lib/constants.js",
         "lib/storage.js",
         "lib/api.js",
+        "lib/error-reporter.js",
         "content/hidden-instructions.js",
         "content/vetting.js",
         "content/scraper.js",
@@ -47,6 +48,7 @@
         "lib/constants.js",
         "lib/storage.js",
         "lib/api.js",
+        "lib/error-reporter.js",
         "content/vetting.js",
         "content/feed-scraper.js",
         "content/job-filter.js",
@@ -67,6 +69,7 @@
         "lib/constants.js",
         "lib/storage.js",
         "lib/api.js",
+        "lib/error-reporter.js",
         "content/message-scraper.js",
         "content/message-ui.js",
         "content/outcome-detector.js",
@@ -89,6 +92,7 @@
         "lib/constants.js",
         "lib/storage.js",
         "lib/api.js",
+        "lib/error-reporter.js",
         "content/outcome-detector.js"
       ],
       "run_at": "document_idle"
