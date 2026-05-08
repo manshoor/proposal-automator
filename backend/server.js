@@ -21,6 +21,11 @@ import pool from './db/pool.js';
 import { connectRedis, disconnectRedis } from './lib/redis.js';
 import { initQueues, closeQueues } from './queues/index.js';
 import v1Router from './routes/v1/index.js';
+// In-process background workers (setInterval-based, best-effort).
+// For multi-instance deployments these should be promoted to BullMQ scheduled
+// jobs with per-instance idempotency or a leader-election guard.
+import { startFollowUpExpiryWorker, stopFollowUpExpiryWorker } from './workers/followup-expiry.worker.js';
+import { startLoomCleanupWorker, stopLoomCleanupWorker } from './workers/loom-cleanup.worker.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -112,6 +117,9 @@ async function start() {
   await connectRedis();
   initQueues();
 
+  startFollowUpExpiryWorker();
+  startLoomCleanupWorker();
+
   const server = app.listen(PORT, () => {
     logger.info({ port: PORT, env: process.env.NODE_ENV || 'development' }, 'Server running');
   });
@@ -120,6 +128,8 @@ async function start() {
     logger.info({ signal }, 'Shutting down gracefully');
 
     server.close(() => {
+      stopFollowUpExpiryWorker();
+      stopLoomCleanupWorker();
       Promise.all([
         closeQueues().then(() => logger.info('Job queues closed')),
         pool.end().then(() => logger.info('Database pool closed')),
