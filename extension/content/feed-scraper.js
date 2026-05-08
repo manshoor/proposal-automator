@@ -32,12 +32,18 @@ var _feedParseDollar = function (str) {
 var _feedParseProposals = function (str) {
   if (!str) return 0;
   var s = str.toLowerCase();
+  // "Less than 5" → 4
   var m = s.match(/less\s+than\s+(\d+)/);
   if (m) return parseInt(m[1], 10) - 1;
+  // "20 to 50" → 50 (upper bound, conservative for filtering)
   var rm = s.match(/(\d+)\s*(to|-)\s*(\d+)/);
   if (rm) return parseInt(rm[3], 10);
+  // "50+" → 51. Using lower-bound + 1 so a maxProposals=50 filter actually
+  // excludes the "50+" tier (the actual count is unknown; could be 60, 100,
+  // 200 — semantically "more than 50"). Returning exactly 50 here used to let
+  // 50+ jobs slip through any maxProposals filter set at the tier boundary.
   var pm = s.match(/(\d+)\+/);
-  if (pm) return parseInt(pm[1], 10);
+  if (pm) return parseInt(pm[1], 10) + 1;
   var nm = s.match(/(\d+)/);
   if (nm) return parseInt(nm[1], 10);
   return 0;
