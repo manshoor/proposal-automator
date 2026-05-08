@@ -228,6 +228,69 @@ function showQualityIndicators(coverLetter) {
   }
 }
 
+// ---- Hook Validation (Phase 1: Hook Surgeon) ----
+
+/**
+ * Render the hook score widget for the first 230 chars of a generated proposal.
+ * @param {object} validation - { score, issues, blockers, hasBlocker, failureSummary, hookText }
+ * @param {string|null} hookStyle - One of HOOK_STYLES keys
+ */
+function showHookValidation(validation, hookStyle) {
+  const container = document.getElementById('hook-validation');
+  if (!validation) { container.classList.add('hidden'); return; }
+
+  const scoreEl = document.getElementById('hv-score');
+  const styleEl = document.getElementById('hv-style');
+  const checksEl = document.getElementById('hv-checks');
+  const bannerEl = document.getElementById('hv-blocker-banner');
+
+  container.classList.remove('hidden');
+
+  const score = typeof validation.score === 'number' ? validation.score : 0;
+  scoreEl.textContent = `${score}/100`;
+  scoreEl.className = 'hv-score-badge ' + (score >= 80 ? 'hv-good' : score >= 50 ? 'hv-fair' : 'hv-poor');
+
+  if (hookStyle) {
+    styleEl.classList.remove('hidden');
+    styleEl.textContent = hookStyle.replace(/-/g, ' ');
+  } else {
+    styleEl.classList.add('hidden');
+  }
+
+  // Clear existing children safely (no innerHTML — avoids XSS even if content is static)
+  while (checksEl.firstChild) checksEl.removeChild(checksEl.firstChild);
+
+  const blockers = Array.isArray(validation.blockers) ? validation.blockers : [];
+  const issues = Array.isArray(validation.issues) ? validation.issues : [];
+
+  if (blockers.length === 0 && issues.length === 0) {
+    appendHookCheckRow(checksEl, 'pass', 'All checks passed — opening looks click-worthy.');
+  } else {
+    blockers.forEach(b => appendHookCheckRow(checksEl, 'block', b.message || b.phrase || b.type));
+    issues.forEach(i => appendHookCheckRow(checksEl, 'warn', i.message || i.phrase || i.type));
+  }
+
+  if (validation.hasBlocker) {
+    bannerEl.textContent = 'Submission blocked — fix the issues above before sending. Regenerate or edit the opening.';
+    bannerEl.classList.remove('hidden');
+  } else {
+    bannerEl.classList.add('hidden');
+  }
+}
+
+function appendHookCheckRow(parent, kind, message) {
+  const li = document.createElement('li');
+  const icon = document.createElement('span');
+  icon.className = 'hv-icon hv-' + kind;
+  icon.textContent = kind === 'pass' ? '✓' : (kind === 'block' ? '✕' : '!');
+  const msg = document.createElement('span');
+  msg.className = 'hv-msg ' + (kind === 'block' ? 'hv-msg-block' : kind === 'warn' ? 'hv-msg-warn' : '');
+  msg.textContent = message;
+  li.appendChild(icon);
+  li.appendChild(msg);
+  parent.appendChild(li);
+}
+
 // ---- UI state transitions ----
 
 function showNotUpwork() {
@@ -431,6 +494,7 @@ function showProposalPreview(proposal) {
   }
 
   showQualityIndicators(proposal.coverLetter);
+  showHookValidation(proposal.hookValidation, proposal.hookStyle);
 
   proposalPreview.classList.remove('hidden');
   proposalPreview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -765,6 +829,17 @@ btnRegenerate.addEventListener('click', async () => {
 // Auto-fill Form
 btnAutofill.addEventListener('click', async () => {
   if (!_generatedProposal || !_activeTabId) return;
+
+  // Phase 1 Hook Surgeon — block autofill if validation found blockers in the opening.
+  const validation = _generatedProposal.hookValidation;
+  if (validation && validation.hasBlocker) {
+    const proceed = confirm(
+      'Hook validation found blocking issues in the first 230 chars:\n\n' +
+      (validation.failureSummary || 'Banned phrases or generic opener detected.') +
+      '\n\nSubmit anyway? (Recommended: regenerate or edit the opening first.)'
+    );
+    if (!proceed) return;
+  }
 
   try {
     const response = await sendToContent(_activeTabId, {
