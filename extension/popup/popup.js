@@ -291,6 +291,69 @@ function appendHookCheckRow(parent, kind, message) {
   parent.appendChild(li);
 }
 
+// ---- Phase 4: Follow-up scheduler ----
+
+function showFollowUpSection(proposal) {
+  const container = document.getElementById('follow-up-section');
+  if (!container) return;
+  // Only show when the proposal was actually persisted (we need the proposalId
+  // for the POST). If persistence failed (proposalId null), hide the section.
+  if (!proposal || !proposal.proposalId) {
+    container.classList.add('hidden');
+    return;
+  }
+  container.classList.remove('hidden');
+
+  // Reset state from any prior generation
+  const status = document.getElementById('fu-status');
+  const preview = document.getElementById('fu-preview');
+  status.classList.add('hidden');
+  status.textContent = '';
+  preview.classList.add('hidden');
+  preview.textContent = '';
+
+  // Re-enable buttons in case they were disabled by a prior schedule
+  const buttons = document.querySelectorAll('#fu-actions .fu-btn');
+  buttons.forEach((btn) => { btn.disabled = false; });
+}
+
+async function handleFollowUpClick(btn) {
+  if (!_generatedProposal || !_generatedProposal.proposalId) return;
+  const days = parseInt(btn.dataset.days, 10);
+  if (!Number.isFinite(days) || days <= 0) return;
+
+  const buttons = document.querySelectorAll('#fu-actions .fu-btn');
+  buttons.forEach((b) => { b.disabled = true; });
+
+  try {
+    const result = await apiFetch('/api/v1/follow-ups', {
+      method: 'POST',
+      body: JSON.stringify({
+        proposalId: _generatedProposal.proposalId,
+        intervalDays: days,
+        autoGenerate: true,
+      }),
+    });
+    const status = document.getElementById('fu-status');
+    const preview = document.getElementById('fu-preview');
+
+    const date = new Date(result.scheduledAt);
+    const formatted = date.toLocaleDateString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric',
+    });
+    status.textContent = 'Scheduled for ' + formatted;
+    status.classList.remove('hidden');
+
+    if (result.messageText) {
+      preview.textContent = result.messageText;
+      preview.classList.remove('hidden');
+    }
+  } catch (err) {
+    alert('Could not schedule follow-up: ' + (err && err.message ? err.message : 'unknown error'));
+    buttons.forEach((b) => { b.disabled = false; });
+  }
+}
+
 // ---- Phase 2: Inbox Top render helpers ----
 
 function showPhase2Metrics(alignment, boostDecision) {
@@ -598,6 +661,7 @@ function showProposalPreview(proposal) {
   showPhase2Metrics(proposal.alignment, proposal.boostDecision);
   showPreflight(proposal.preflight);
   showAIGeneric(proposal.aiGeneric);
+  showFollowUpSection(proposal);
 
   proposalPreview.classList.remove('hidden');
   proposalPreview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1276,6 +1340,11 @@ if (btnAgRewrite) {
     document.getElementById('ai-generic').classList.add('hidden');
   });
 }
+
+// ---- Phase 4: Follow-up scheduler button listeners ----
+document.querySelectorAll('#fu-actions .fu-btn').forEach((btn) => {
+  btn.addEventListener('click', () => handleFollowUpClick(btn));
+});
 
 // ---- Boot ----
 document.addEventListener('DOMContentLoaded', init);

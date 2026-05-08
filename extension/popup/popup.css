@@ -1271,3 +1271,75 @@ main {
 .ag-actions {
   margin-top: 6px;
 }
+
+/* ----- Phase 4: Follow-up Scheduler ----- */
+
+.follow-up-section {
+  margin: 8px 0;
+  padding: 8px 10px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.fu-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.fu-title {
+  font-weight: 600;
+  color: #0c4a6e;
+  font-size: 11px;
+}
+
+.fu-status {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.fu-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.fu-btn {
+  padding: 4px 12px;
+  font-size: 11px;
+  border: 1px solid #bae6fd;
+  border-radius: 20px;
+  background: #ffffff;
+  color: #0c4a6e;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.fu-btn:hover:not(:disabled) {
+  background: #e0f2fe;
+}
+
+.fu-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fu-preview {
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 11px;
+  font-style: italic;
+  color: #4b5563;
+  line-height: 1.4;
+}
