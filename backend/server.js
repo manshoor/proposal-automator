@@ -35,12 +35,30 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 app.use(cors({
-  origin: process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
-    : ['http://localhost:3003'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: buildCorsOriginValidator(),
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   credentials: true,
 }));
+
+/**
+ * Build the CORS origin validator.
+ *
+ * - CORS_ORIGIN unset or "*" → reflect any origin. Required with credentials:true
+ *   because the spec forbids literal "*" alongside cookies/Authorization.
+ * - CORS_ORIGIN comma-list   → only allow listed origins, plus the Chrome extension
+ *   namespace (chrome-extension://...) and server-to-server callers (no Origin header).
+ */
+function buildCorsOriginValidator() {
+  const raw = (process.env.CORS_ORIGIN || '').trim();
+  if (!raw || raw === '*') return true;
+  const allowList = raw.split(',').map((s) => s.trim()).filter(Boolean);
+  return (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (origin.startsWith('chrome-extension://')) return callback(null, true);
+    if (allowList.includes(origin)) return callback(null, true);
+    return callback(new Error('CORS: origin not allowed: ' + origin));
+  };
+}
 app.use(express.json({ limit: '50kb' }));
 app.use(globalLimiter);
 app.use(metricsMiddleware);
