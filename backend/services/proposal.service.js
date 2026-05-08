@@ -15,6 +15,10 @@ import {
 import { ValidationError, NotFoundError, AppError } from '../lib/errors.js';
 import { cacheGet, cacheSet, cacheDel, cacheDelPrefix } from '../lib/redis.js';
 import { validateHook } from './hook-validator.service.js';
+import * as alignmentService from './alignment.service.js';
+import * as boostROIService from './boost-roi.service.js';
+import * as aiGenericDetector from './ai-generic-detector.service.js';
+import * as preflightService from './preflight.service.js';
 
 const ALLOWED_STATUSES = new Set(['sent', 'pending', 'hired', 'rejected', 'withdrawn']);
 
@@ -333,6 +337,33 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
   // 8. Parse structured output
   const parsed = parseLLMResponse(rawResponse, profile, logger);
 
+  // 8b. Phase 2: profile-job alignment + Boost ROI (deterministic, no LLM)
+  const alignment = alignmentService.score(profile, jobData);
+  const boostDecision = boostROIService.calc(jobData, profile, alignment);
+
+  // 8c. Phase 2: AI-generic detection (LLM-as-judge + optional rewrite suggestion)
+  let aiGeneric = null;
+  try {
+    aiGeneric = await aiGenericDetector.detect({
+      text: parsed.coverLetter,
+      provider, apiKey,
+      userId, logger,
+    });
+  } catch (err) {
+    logger?.warn({ err: err?.message }, 'AI-generic detection failed (non-fatal)');
+  }
+
+  // 8d. Phase 2: pre-flight checklist (deterministic, runs over all the above)
+  const preflight = preflightService.runPreflight({
+    proposalText: parsed.coverLetter,
+    jobData,
+    profile,
+    hookValidation: validation,
+    alignment,
+    boostDecision,
+    projectsIncluded: projectsToInclude,
+  });
+
   // 9. Persist proposal (non-fatal)
   let proposalId = null;
   try {
@@ -377,6 +408,10 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
     proposalId,
     hookValidation: validation,
     hookStyle: hookStyle || null,
+    alignment,
+    boostDecision,
+    aiGeneric,
+    preflight,
   };
 }
 
