@@ -5,6 +5,21 @@ import { api } from '../../lib/api';
 import StatusBadge from '../../components/StatusBadge';
 import Toast from '../../components/Toast';
 
+function LoomIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="w-4 h-4"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" fill="#625DF5" />
+      <polygon points="9,7.5 9,16.5 17,12" fill="white" />
+    </svg>
+  );
+}
+
 const STATUSES = ['all', 'sent', 'hired', 'rejected', 'pending', 'withdrawn'];
 const PAGE_SIZE = 25;
 
@@ -112,6 +127,7 @@ export default function ProposalsClient({ initialProposals }) {
                 <th className="px-4 py-3">Budget</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Rate</th>
+                <th className="px-4 py-3">Loom</th>
               </tr>
             </thead>
             <tbody>
@@ -182,6 +198,7 @@ function Row({ proposal, expanded, onToggle, onStatusChange, onDelete, onEarning
   const [declineReason, setDeclineReason] = useState(p.decline_reason || '');
   const [clientFeedback, setClientFeedback] = useState(p.client_feedback || '');
   const [savingOutcome, setSavingOutcome] = useState(false);
+  const [savingLoom, setSavingLoom] = useState(false);
 
   const saveOutcome = async (e) => {
     e.stopPropagation();
@@ -198,6 +215,24 @@ function Row({ proposal, expanded, onToggle, onStatusChange, onDelete, onEarning
       if (onToast) onToast({ message: 'Failed to save outcome', type: 'error' });
     } finally {
       setSavingOutcome(false);
+    }
+  };
+
+  const editLoom = async (e) => {
+    e.stopPropagation();
+    const current = p.loom_url || '';
+    // prompt() is intentional for v0 — lightweight, no modal component needed
+    const input = prompt('Paste Loom share URL (leave empty to remove):', current);
+    if (input === null) return; // cancelled
+    const loomUrl = input.trim() || null;
+    setSavingLoom(true);
+    try {
+      const updated = await api.patch(`/proposals/${p.id}`, { loomUrl });
+      onUpdate(updated);
+    } catch {
+      if (onToast) onToast({ message: 'Failed to save Loom URL', type: 'error' });
+    } finally {
+      setSavingLoom(false);
     }
   };
 
@@ -222,10 +257,27 @@ function Row({ proposal, expanded, onToggle, onStatusChange, onDelete, onEarning
           </div>
         </td>
         <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{p.hourly_rate ? `$${p.hourly_rate}` : '—'}</td>
+        <td className="px-4 py-3 text-center">
+          {p.loom_url ? (
+            <a
+              href={p.loom_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Watch Loom video"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center justify-center text-indigo-500 hover:text-indigo-700 transition-colors"
+            >
+              <LoomIcon />
+              <span className="sr-only">Loom video</span>
+            </a>
+          ) : (
+            <span className="text-gray-300">—</span>
+          )}
+        </td>
       </tr>
       {expanded && (
         <tr>
-          <td colSpan={6} className="px-4 py-4 bg-gray-50/60 border-b border-gray-200/60">
+          <td colSpan={7} className="px-4 py-4 bg-gray-50/60 border-b border-gray-200/60">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Proposal</h4>
@@ -349,12 +401,25 @@ function Row({ proposal, expanded, onToggle, onStatusChange, onDelete, onEarning
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-4 mt-3">
+            <div className="flex items-center gap-4 mt-3 flex-wrap">
               {p.job_url && (
                 <a href={p.job_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-blue-600 text-sm font-medium hover:text-blue-700 hover:underline transition-colors">
                   View job on Upwork →
                 </a>
               )}
+              {p.loom_url && (
+                <a href={p.loom_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-indigo-600 text-sm font-medium hover:text-indigo-700 hover:underline transition-colors">
+                  <LoomIcon />
+                  Watch Loom →
+                </a>
+              )}
+              <button
+                onClick={editLoom}
+                disabled={savingLoom}
+                className="btn-secondary text-xs px-3 py-1"
+              >
+                {savingLoom ? 'Saving…' : (p.loom_url ? 'Edit Loom' : 'Add Loom')}
+              </button>
               <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="btn-danger text-xs px-3 py-1">
                 Delete Proposal
               </button>
