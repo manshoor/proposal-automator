@@ -32,6 +32,125 @@ async function loadFilters() {
   });
 }
 
+// ---- Follow-up Notification System ----
+
+/**
+ * In-memory guard: tracks which follow-up IDs we have already notified within
+ * the current service-worker lifetime so a transient failure to mark a row
+ * as 'expired' on the backend doesn't cause duplicate notifications during
+ * the same session.  (The backend status='expired' update is the durable
+ * guard; this is belt-and-suspenders.)
+ *
+ * Map<followupId (string), notifiedAt (number ms epoch)>
+ */
+const _fuNotifiedCache = new Map();
+const _FU_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Check for scheduled follow-ups that are now due and fire desktop
+ * notifications for them.  Called by the 'upa-followup-check' alarm.
+ */
+async function checkDueFollowUps() {
+  const settings = await getSettings();
+  if (!settings.accessToken) {
+    console.log('[follow-ups] No access token — skipping check (user not logged in)');
+    return;
+  }
+
+  const backendUrl = settings.backendUrl; // already has trailing slash stripped
+
+  // Derive the dashboard URL from the backend URL.
+  // MVP heuristic: replace the port number with 3003.
+  // e.g. http://localhost:3002  ->  http://localhost:3003
+  const dashboardUrl = backendUrl.replace(/:\d+$/, ':3003');
+
+  // Fetch scheduled follow-ups
+  let rows;
+  try {
+    const res = await fetch(backendUrl + '/api/v1/follow-ups?status=scheduled', {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + settings.accessToken
+      }
+    });
+    if (!res.ok) {
+      console.warn('[follow-ups] GET /api/v1/follow-ups returned', res.status);
+      return;
+    }
+    const payload = await res.json();
+    // The backend may wrap results in { data: [...] } or return a bare array
+    rows = Array.isArray(payload) ? payload : (payload.data || payload.followUps || []);
+  } catch (err) {
+    console.warn('[follow-ups] Failed to fetch follow-ups:', err);
+    return;
+  }
+
+  const now = new Date();
+
+  // Filter: only rows whose scheduledAt is on or before now
+  const due = rows.filter((r) => {
+    if (!r.scheduledAt) return false;
+    return new Date(r.scheduledAt) <= now;
+  });
+
+  if (due.length === 0) return;
+
+  // Apply in-memory de-dupe cache
+  const nowMs = Date.now();
+  const freshDue = due.filter((r) => {
+    const rowId = String(r.id);
+    const notifiedAt = _fuNotifiedCache.get(rowId);
+    if (notifiedAt && (nowMs - notifiedAt) < _FU_CACHE_TTL_MS) {
+      console.log('[follow-ups] Skipping already-notified row', rowId);
+      return false;
+    }
+    return true;
+  });
+
+  if (freshDue.length === 0) return;
+
+  // Fire notifications
+  if (freshDue.length === 1) {
+    const row = freshDue[0];
+    const jobTitle = row.jobTitle || row.job_title || 'Follow-up due';
+    const preview = (row.messageText || row.message_text || '').slice(0, 100);
+    chrome.notifications.create('fu-' + row.id, {
+      type: 'basic',
+      iconUrl: 'icons/icon48.png',
+      title: 'Follow-up due: ' + jobTitle,
+      message: preview || 'Open dashboard to send your follow-up.',
+      priority: 1
+    });
+    _fuNotifiedCache.set(String(row.id), nowMs);
+  } else {
+    chrome.notifications.create('fu-summary', {
+      type: 'basic',
+      iconUrl: 'icons/icon48.png',
+      title: freshDue.length + ' follow-ups due',
+      message: 'Open dashboard to send them.',
+      priority: 1
+    });
+    freshDue.forEach((r) => _fuNotifiedCache.set(String(r.id), nowMs));
+  }
+
+  // Mark each due row as expired on the backend so it doesn't re-notify.
+  // Failures are non-fatal — log and continue.
+  await Promise.all(
+    due.map((r) =>
+      fetch(backendUrl + '/api/v1/follow-ups/' + r.id, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + settings.accessToken
+        },
+        body: JSON.stringify({ status: 'expired' })
+      }).catch((err) => {
+        console.warn('[follow-ups] Failed to mark follow-up', r.id, 'as expired:', err);
+      })
+    )
+  );
+}
+
 // ---- Feed Notification System ----
 
 async function checkForNewJobs() {
@@ -146,22 +265,61 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'checkFeed') {
     checkForNewJobs();
   }
+  if (alarm.name === 'upa-followup-check') {
+    checkDueFollowUps().catch((err) => console.warn('[follow-up alarm] failed', err));
+  }
 });
 
 // ---- Notification click ----
 
-chrome.notifications.onClicked.addListener((notificationId) => {
-  // notificationId is the job URL
+chrome.notifications.onClicked.addListener(async (notificationId) => {
+  // Follow-up notifications — open the dashboard /follow-ups page
+  if (notificationId.startsWith('fu-')) {
+    try {
+      const settings = await getSettings();
+      const backendUrl = settings.backendUrl || BACKEND_URL_DEFAULT;
+      // MVP heuristic: swap the port to 3003 for the dashboard
+      const dashboardUrl = backendUrl.replace(/:\d+$/, ':3003');
+      chrome.tabs.create({ url: dashboardUrl + '/follow-ups' });
+    } catch (err) {
+      console.warn('[follow-ups] Could not open dashboard on notification click:', err);
+    }
+    chrome.notifications.clear(notificationId);
+    return;
+  }
+
+  // Feed job notifications — notificationId is the job URL
   if (notificationId.startsWith('http')) {
     chrome.tabs.create({ url: notificationId });
   }
   chrome.notifications.clear(notificationId);
 });
 
-// ---- Install handler ----
+// ---- Startup/Install handlers ----
+
+/**
+ * Register the follow-up check alarm.
+ * Uses 'create' with the same name — Chrome deduplicates by name, so calling
+ * this on both onInstalled and onStartup is safe and ensures the alarm
+ * survives browser restarts.
+ */
+function _registerFollowUpAlarm() {
+  chrome.alarms.create('upa-followup-check', {
+    delayInMinutes: 1,     // first fire 1 minute after registration
+    periodInMinutes: 60    // then every 60 minutes
+  });
+}
+
+chrome.runtime.onStartup.addListener(() => {
+  console.log('[Service Worker] Browser started — re-registering alarms');
+  _registerFollowUpAlarm();
+});
 
 chrome.runtime.onInstalled.addListener(async () => {
   console.log('[Service Worker] Extension installed/updated');
+
+  // Register the follow-up check alarm
+  _registerFollowUpAlarm();
 
   // Resume notification alarm and sync filters if previously enabled
   try {
