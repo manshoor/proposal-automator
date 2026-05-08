@@ -148,8 +148,17 @@ var _scrapeOneCard = function (card) {
     var payVerEl = card.querySelector('[data-test="payment-verification-status"]');
     var paymentVerified = payVerEl ? _feedGetText(payVerEl).toLowerCase().includes('verified') && !_feedGetText(payVerEl).toLowerCase().includes('unverified') : false;
 
-    // Connect cost (not shown on feed cards, only on proposal page)
-    var connectCost = 0;
+    // Connect cost — Upwork's feed cards don't expose the exact number, so we
+    // estimate from the `data-ev-*` attributes the tile carries. Heuristic:
+    //   data-ev-bonus_connects="true" → 0 (bonus job, free to apply)
+    //   data-ev-featured="true"       → 16 (premium tier; typical featured cost)
+    //   otherwise                     → 6 (standard cost)
+    // The exact value is still scraped on the job-detail page in scraper.js,
+    // which sets connectCost from "Send a proposal for: X Connects" text.
+    var bonusConnects = card.getAttribute('data-ev-bonus_connects') === 'true';
+    var isFeatured    = card.getAttribute('data-ev-featured') === 'true';
+    var connectCost = bonusConnects ? 0 : (isFeatured ? 16 : 6);
+    var connectCostEstimated = true;
 
     return {
       id: id,
@@ -166,6 +175,9 @@ var _scrapeOneCard = function (card) {
       postedText: postedText,
       paymentVerified: paymentVerified,
       connectCost: connectCost,
+      connectCostEstimated: connectCostEstimated,
+      isFeatured: isFeatured,
+      isBonus: bonusConnects,
       element: card
     };
   } catch (err) {
