@@ -208,6 +208,46 @@
           <div id="hv-blocker-banner" class="hv-blocker-banner hidden"></div>
         </div>
 
+        <!-- Phase 2: Inbox Top metrics (alignment + Boost ROI) -->
+        <div id="phase2-metrics" class="phase2-metrics hidden">
+          <div class="p2-tile">
+            <div class="p2-label">Profile Alignment</div>
+            <div id="p2-align-score" class="p2-score">—</div>
+            <div id="p2-align-detail" class="p2-detail"></div>
+          </div>
+          <div class="p2-tile">
+            <div class="p2-label">Boost-Connects ROI</div>
+            <div id="p2-boost-rec" class="p2-rec">—</div>
+            <div id="p2-boost-reason" class="p2-detail"></div>
+          </div>
+        </div>
+
+        <!-- Phase 2: Pre-flight Checklist (8 gates) -->
+        <div id="preflight" class="preflight hidden">
+          <div class="pf-header">
+            <span class="pf-title">Pre-flight Checklist</span>
+            <span id="pf-summary" class="pf-summary"></span>
+          </div>
+          <ul id="pf-gates" class="pf-gates"></ul>
+          <label id="pf-override-row" class="pf-override hidden">
+            <input type="checkbox" id="pf-override" />
+            <span>Override pre-flight blockers (logged on submit)</span>
+          </label>
+        </div>
+
+        <!-- Phase 2: AI-Generic Warning -->
+        <div id="ai-generic" class="ai-generic hidden">
+          <div class="ag-header">
+            <span class="ag-title">Sounds AI-generated</span>
+            <span id="ag-score" class="ag-score"></span>
+          </div>
+          <div id="ag-reasoning" class="ag-reasoning"></div>
+          <ul id="ag-phrases" class="ag-phrases"></ul>
+          <div id="ag-actions" class="ag-actions hidden">
+            <button id="btn-ag-rewrite" class="qe-btn qe-btn-analyze" type="button">Apply suggested rewrite</button>
+          </div>
+        </div>
+
         <textarea id="cover-letter-text" class="cover-letter-preview" readonly rows="10"></textarea>
 
         <!-- Quick-Edit Toolbar -->

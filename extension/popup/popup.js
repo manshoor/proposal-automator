@@ -291,6 +291,106 @@ function appendHookCheckRow(parent, kind, message) {
   parent.appendChild(li);
 }
 
+// ---- Phase 2: Inbox Top render helpers ----
+
+function showPhase2Metrics(alignment, boostDecision) {
+  const container = document.getElementById('phase2-metrics');
+  if (!alignment && !boostDecision) { container.classList.add('hidden'); return; }
+  container.classList.remove('hidden');
+
+  if (alignment) {
+    const score = Number(alignment.overall) || 0;
+    const scoreEl = document.getElementById('p2-align-score');
+    const detailEl = document.getElementById('p2-align-detail');
+    scoreEl.textContent = `${score.toFixed(1)}/10`;
+    scoreEl.className = 'p2-score ' + (score >= 7 ? 'p2-good' : score >= 5 ? 'p2-fair' : 'p2-poor');
+    const shared = Array.isArray(alignment.breakdown?.sharedSkills) ? alignment.breakdown.sharedSkills.slice(0, 3).join(', ') : '';
+    const rateNote = alignment.rateFit && alignment.rateFit !== 'unknown' ? ` · rate ${alignment.rateFit}` : '';
+    detailEl.textContent = `Skills overlap ${Math.round((alignment.skillOverlap || 0) * 100)}%${shared ? ` (${shared})` : ''}${rateNote}`;
+  }
+
+  if (boostDecision) {
+    const recEl = document.getElementById('p2-boost-rec');
+    const reasonEl = document.getElementById('p2-boost-reason');
+    const rec = boostDecision.recommendation || 'unknown';
+    recEl.textContent = rec;
+    recEl.className = 'p2-rec p2-' + rec;
+    reasonEl.textContent = boostDecision.reason || '';
+  }
+}
+
+function showPreflight(preflight) {
+  const container = document.getElementById('preflight');
+  if (!preflight || !Array.isArray(preflight.gates)) { container.classList.add('hidden'); return; }
+  container.classList.remove('hidden');
+
+  const gatesEl = document.getElementById('pf-gates');
+  const summaryEl = document.getElementById('pf-summary');
+  const overrideRow = document.getElementById('pf-override-row');
+  const overrideCb = document.getElementById('pf-override');
+
+  const total = preflight.gates.length;
+  const passed = preflight.gates.filter(g => g.passed).length;
+  const blockers = preflight.gates.filter(g => !g.passed && g.severity === 'block').length;
+  summaryEl.textContent = `${passed}/${total} passed`;
+  summaryEl.className = 'pf-summary ' + (blockers > 0 ? 'pf-block' : passed < total ? 'pf-warn' : 'pf-pass');
+
+  while (gatesEl.firstChild) gatesEl.removeChild(gatesEl.firstChild);
+  for (const g of preflight.gates) appendPreflightRow(gatesEl, g);
+
+  if (blockers > 0) {
+    overrideRow.classList.remove('hidden');
+    if (overrideCb) overrideCb.checked = false;
+  } else {
+    overrideRow.classList.add('hidden');
+  }
+}
+
+function appendPreflightRow(parent, gate) {
+  const li = document.createElement('li');
+  const kind = gate.passed ? 'pass' : (gate.severity === 'block' ? 'block' : 'warn');
+  const icon = document.createElement('span');
+  icon.className = 'pf-icon pf-' + kind;
+  icon.textContent = kind === 'pass' ? '✓' : (kind === 'block' ? '✕' : '!');
+  const name = document.createElement('span');
+  name.className = 'pf-name';
+  name.textContent = (gate.name || gate.id || '') + ':';
+  const msg = document.createElement('span');
+  msg.className = 'pf-msg ' + (kind === 'block' ? 'pf-msg-block' : kind === 'warn' ? 'pf-msg-warn' : '');
+  msg.textContent = ' ' + (gate.message || '');
+  li.appendChild(icon);
+  li.appendChild(name);
+  li.appendChild(msg);
+  parent.appendChild(li);
+}
+
+function showAIGeneric(aiGeneric) {
+  const container = document.getElementById('ai-generic');
+  if (!aiGeneric || !aiGeneric.flagged) { container.classList.add('hidden'); return; }
+  container.classList.remove('hidden');
+
+  const scoreEl = document.getElementById('ag-score');
+  const reasoningEl = document.getElementById('ag-reasoning');
+  const phrasesEl = document.getElementById('ag-phrases');
+  const actionsEl = document.getElementById('ag-actions');
+
+  scoreEl.textContent = `${aiGeneric.score}/10`;
+  reasoningEl.textContent = aiGeneric.reasoning || 'Generic AI tone detected.';
+
+  while (phrasesEl.firstChild) phrasesEl.removeChild(phrasesEl.firstChild);
+  const judgePhrases = Array.isArray(aiGeneric.genericPhrases) ? aiGeneric.genericPhrases : [];
+  const rulePhrases = Array.isArray(aiGeneric.ruleHits) ? aiGeneric.ruleHits.map(h => h.phrase) : [];
+  const all = [...new Set([...judgePhrases, ...rulePhrases])].slice(0, 5);
+  for (const p of all) {
+    const li = document.createElement('li');
+    li.textContent = p;
+    phrasesEl.appendChild(li);
+  }
+
+  if (aiGeneric.rewriteSuggestion) actionsEl.classList.remove('hidden');
+  else actionsEl.classList.add('hidden');
+}
+
 // ---- UI state transitions ----
 
 function showNotUpwork() {
@@ -495,6 +595,9 @@ function showProposalPreview(proposal) {
 
   showQualityIndicators(proposal.coverLetter);
   showHookValidation(proposal.hookValidation, proposal.hookStyle);
+  showPhase2Metrics(proposal.alignment, proposal.boostDecision);
+  showPreflight(proposal.preflight);
+  showAIGeneric(proposal.aiGeneric);
 
   proposalPreview.classList.remove('hidden');
   proposalPreview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -830,9 +933,23 @@ btnRegenerate.addEventListener('click', async () => {
 btnAutofill.addEventListener('click', async () => {
   if (!_generatedProposal || !_activeTabId) return;
 
-  // Phase 1 Hook Surgeon — block autofill if validation found blockers in the opening.
+  // Phase 2 Pre-flight — block autofill on any block-severity gate unless user explicitly overrides.
+  const preflight = _generatedProposal.preflight;
+  if (preflight && preflight.blockedSubmit) {
+    const overrideCb = document.getElementById('pf-override');
+    if (!overrideCb || !overrideCb.checked) {
+      alert(
+        'Pre-flight checklist has blocking issues. Tick the "Override" box below the checklist to submit anyway, ' +
+        'or regenerate / edit the proposal first.'
+      );
+      return;
+    }
+    console.log('[preflight] override applied; submitting with blockers:', preflight.gates.filter(g => !g.passed && g.severity === 'block'));
+  }
+
+  // Phase 1 Hook Surgeon — secondary check: hook-only blockers (in case preflight missed)
   const validation = _generatedProposal.hookValidation;
-  if (validation && validation.hasBlocker) {
+  if (validation && validation.hasBlocker && (!preflight || !preflight.blockedSubmit)) {
     const proceed = confirm(
       'Hook validation found blocking issues in the first 230 chars:\n\n' +
       (validation.failureSummary || 'Banned phrases or generic opener detected.') +
@@ -1125,6 +1242,21 @@ document.querySelectorAll('.qe-btn').forEach(btn => {
     }
   });
 });
+
+// ---- Phase 2: AI-generic rewrite-apply handler ----
+
+const btnAgRewrite = document.getElementById('btn-ag-rewrite');
+if (btnAgRewrite) {
+  btnAgRewrite.addEventListener('click', () => {
+    if (!_generatedProposal || !_generatedProposal.aiGeneric || !_generatedProposal.aiGeneric.rewriteSuggestion) return;
+    const newText = _generatedProposal.aiGeneric.rewriteSuggestion;
+    coverLetterText.value = newText;
+    _generatedProposal.coverLetter = newText;
+    showQualityIndicators(newText);
+    // Hide the AI-generic panel after applying — assume the rewrite resolved the warning.
+    document.getElementById('ai-generic').classList.add('hidden');
+  });
+}
 
 // ---- Boot ----
 document.addEventListener('DOMContentLoaded', init);
