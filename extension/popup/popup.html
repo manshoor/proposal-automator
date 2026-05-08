@@ -143,6 +143,17 @@
       <div id="project-checkboxes" class="project-checkboxes"></div>
     </div>
 
+    <!-- Loom URL -->
+    <div class="loom-row">
+      <label for="loom-url-input" class="label">Loom video URL <span class="loom-hint">(optional — 3× response rate)</span></label>
+      <input
+        id="loom-url-input"
+        type="url"
+        class="select-field loom-url-field"
+        placeholder="https://www.loom.com/share/..."
+        autocomplete="off" />
+    </div>
+
     <!-- Generate Buttons -->
     <div class="generate-buttons">
       <button id="btn-generate" class="btn btn-primary" disabled>
@@ -248,6 +259,20 @@
           </div>
         </div>
 
+        <!-- Phase 4: Follow-up scheduler -->
+        <div id="follow-up-section" class="follow-up-section hidden">
+          <div class="fu-header">
+            <span class="fu-title">Schedule follow-up</span>
+            <span id="fu-status" class="fu-status hidden"></span>
+          </div>
+          <div id="fu-actions" class="fu-actions">
+            <button class="fu-btn" data-days="3" type="button">+3 days</button>
+            <button class="fu-btn" data-days="7" type="button">+7 days</button>
+            <button class="fu-btn" data-days="14" type="button">+14 days</button>
+          </div>
+          <div id="fu-preview" class="fu-preview hidden"></div>
+        </div>
+
         <textarea id="cover-letter-text" class="cover-letter-preview" readonly rows="10"></textarea>
 
         <!-- Quick-Edit Toolbar -->
@@ -304,6 +329,12 @@
 
         <!-- Milestones Preview -->
         <div id="milestones-preview" class="milestones-preview hidden"></div>
+
+        <!-- Phase 4: Screening Answers -->
+        <div id="screening-answers" class="screening-answers hidden">
+          <div class="sa-header"><span class="sa-title">Screening Question Answers</span></div>
+          <ol id="sa-list" class="sa-list"></ol>
+        </div>
 
         <!-- Budget Warning -->
         <div id="budget-warning" class="alert alert-warning hidden" style="margin-top: 8px;"></div>

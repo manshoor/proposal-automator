@@ -23,7 +23,6 @@ const STOPWORDS = new Set([
  * @param {object} args
  * @param {string} args.proposalText
  * @param {object} args.jobData
- * @param {object} args.profile
  * @param {object} args.hookValidation       - From hook-validator.service.js
  * @param {object} args.alignment            - From alignment.service.js
  * @param {object} args.boostDecision        - From boost-roi.service.js
@@ -42,15 +41,19 @@ export function runPreflight({
   const lower = text.toLowerCase();
   const gates = [];
 
-  // Gate 1 — hook score (block-severity)
+  // Gate 1 — hook score
+  // severity='block' only when hookValidation is present but score is genuinely low.
+  // severity='warn' when hookValidation is absent (data missing — don't hard-block on absence).
+  const hookPassed = hookValidation != null && hookValidation.score >= MIN_HOOK_SCORE;
+  const hookSeverity = hookValidation == null ? 'warn' : 'block';
   gates.push(gate(
     'hook-ok',
     'Hook score',
-    hookValidation && hookValidation.score >= MIN_HOOK_SCORE,
-    hookValidation
+    hookPassed,
+    hookValidation != null
       ? `Score ${hookValidation.score}/100 (need ≥${MIN_HOOK_SCORE})`
       : 'Hook validation missing',
-    'block',
+    hookSeverity,
   ));
 
   // Gate 2 — banned-free (block-severity)

@@ -52,6 +52,8 @@ const btnRegenerate   = document.getElementById('btn-regenerate');
 const templateSelector = document.getElementById('template-selector');
 const templateDropdown = document.getElementById('template-dropdown');
 
+const loomUrlInput = document.getElementById('loom-url-input');
+
 const btnAbTest       = document.getElementById('btn-ab-test');
 const abComparison    = document.getElementById('ab-comparison');
 
@@ -65,6 +67,9 @@ let _currentVetting  = null;
 let _activeTabId     = null;
 let _generatedProposal = null;
 let _profileSkills   = [];
+// A/B variant tracking — set when user picks a variant card; cleared on new generation
+let _chosenVariant   = null;  // 'A' | 'B' | null
+let _chosenProposalId = null; // proposalId of the chosen variant row
 
 // ---- Helpers ----
 
@@ -289,6 +294,94 @@ function appendHookCheckRow(parent, kind, message) {
   li.appendChild(icon);
   li.appendChild(msg);
   parent.appendChild(li);
+}
+
+// ---- Phase 4: Screening Answers ----
+
+/**
+ * Render the screening question answers block.
+ * Hides the container when there are no answers (backwards-compat default).
+ * @param {string[]} answers - Array of answer strings, one per screening question
+ */
+function showScreeningAnswers(answers) {
+  const container = document.getElementById('screening-answers');
+  if (!container) return;
+  if (!Array.isArray(answers) || answers.length === 0) {
+    container.classList.add('hidden');
+    return;
+  }
+  container.classList.remove('hidden');
+  const list = document.getElementById('sa-list');
+  // Clear existing children safely (no innerHTML — there's a security hook)
+  while (list.firstChild) list.removeChild(list.firstChild);
+  for (const ans of answers) {
+    const li = document.createElement('li');
+    li.textContent = ans;
+    list.appendChild(li);
+  }
+}
+
+// ---- Phase 4: Follow-up scheduler ----
+
+function showFollowUpSection(proposal) {
+  const container = document.getElementById('follow-up-section');
+  if (!container) return;
+  // Only show when the proposal was actually persisted (we need the proposalId
+  // for the POST). If persistence failed (proposalId null), hide the section.
+  if (!proposal || !proposal.proposalId) {
+    container.classList.add('hidden');
+    return;
+  }
+  container.classList.remove('hidden');
+
+  // Reset state from any prior generation
+  const status = document.getElementById('fu-status');
+  const preview = document.getElementById('fu-preview');
+  status.classList.add('hidden');
+  status.textContent = '';
+  preview.classList.add('hidden');
+  preview.textContent = '';
+
+  // Re-enable buttons in case they were disabled by a prior schedule
+  const buttons = document.querySelectorAll('#fu-actions .fu-btn');
+  buttons.forEach((btn) => { btn.disabled = false; });
+}
+
+async function handleFollowUpClick(btn) {
+  if (!_generatedProposal || !_generatedProposal.proposalId) return;
+  const days = parseInt(btn.dataset.days, 10);
+  if (!Number.isFinite(days) || days <= 0) return;
+
+  const buttons = document.querySelectorAll('#fu-actions .fu-btn');
+  buttons.forEach((b) => { b.disabled = true; });
+
+  try {
+    const result = await apiFetch('/api/v1/follow-ups', {
+      method: 'POST',
+      body: JSON.stringify({
+        proposalId: _generatedProposal.proposalId,
+        intervalDays: days,
+        autoGenerate: true,
+      }),
+    });
+    const status = document.getElementById('fu-status');
+    const preview = document.getElementById('fu-preview');
+
+    const date = new Date(result.scheduledAt);
+    const formatted = date.toLocaleDateString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric',
+    });
+    status.textContent = 'Scheduled for ' + formatted;
+    status.classList.remove('hidden');
+
+    if (result.messageText) {
+      preview.textContent = result.messageText;
+      preview.classList.remove('hidden');
+    }
+  } catch (err) {
+    alert('Could not schedule follow-up: ' + (err && err.message ? err.message : 'unknown error'));
+    buttons.forEach((b) => { b.disabled = false; });
+  }
 }
 
 // ---- Phase 2: Inbox Top render helpers ----
@@ -593,11 +686,13 @@ function showProposalPreview(proposal) {
     }
   }
 
+  showScreeningAnswers(proposal.screeningAnswers);
   showQualityIndicators(proposal.coverLetter);
   showHookValidation(proposal.hookValidation, proposal.hookStyle);
   showPhase2Metrics(proposal.alignment, proposal.boostDecision);
   showPreflight(proposal.preflight);
   showAIGeneric(proposal.aiGeneric);
+  showFollowUpSection(proposal);
 
   proposalPreview.classList.remove('hidden');
   proposalPreview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -839,6 +934,10 @@ async function init() {
       if (cached && cached.jobUrl === jobData.url) {
         _generatedProposal = cached;
         showProposalPreview(cached);
+        // Restore persisted Loom URL into the input field
+        if (loomUrlInput && cached.loomUrl) {
+          loomUrlInput.value = cached.loomUrl;
+        }
       }
     } catch (e) {
       // ignore — no cached proposal
@@ -866,11 +965,42 @@ async function loadBootstrapData() {
   return null;
 }
 
+// ---- Loom URL helpers ----
+
+/**
+ * Read, trim and validate the Loom URL input.
+ * Returns the trimmed URL string (or null if empty).
+ * Alerts the user when the value looks invalid but lets them continue.
+ * @returns {string|null}
+ */
+function readLoomUrl() {
+  const raw = (loomUrlInput?.value || '').trim();
+  if (!raw) return null;
+  const valid = raw.startsWith('https://www.loom.com/share/') ||
+                raw.startsWith('https://loom.com/share/');
+  if (!valid) {
+    const proceed = confirm(
+      `The Loom URL doesn't look right:\n"${raw}"\n\n` +
+      'Expected format: https://www.loom.com/share/...\n\n' +
+      'Continue anyway?'
+    );
+    if (!proceed) return undefined; // sentinel: user cancelled
+  }
+  return raw;
+}
+
 // ---- Event listeners ----
 
 // Generate Proposal
 btnGenerate.addEventListener('click', async () => {
   if (!_currentJobData) return;
+
+  const loomUrl = readLoomUrl();
+  if (loomUrl === undefined) return; // user cancelled the invalid-URL dialog
+
+  // Regular generation — clear any stale A/B tracking state
+  _chosenVariant = null;
+  _chosenProposalId = null;
 
   btnGenerate.disabled = true;
   loadingSpinner.classList.remove('hidden');
@@ -896,13 +1026,18 @@ btnGenerate.addEventListener('click', async () => {
       type: 'GENERATE_PROPOSAL',
       jobData: _currentJobData,
       templateContent: templateContent,
-      selectedProjects: selectedProjects.length > 0 ? selectedProjects : null
+      selectedProjects: selectedProjects.length > 0 ? selectedProjects : null,
+      loomUrl: loomUrl
     });
 
     if (!response || !response.success) {
       alert(`Error: ${(response && response.error) || 'Unknown error from backend'}`);
     } else {
       showProposalPreview(response.data);
+      // Reflect persisted loomUrl back from response if available
+      if (loomUrlInput && response.data.loomUrl != null) {
+        loomUrlInput.value = response.data.loomUrl;
+      }
       const toCache = Object.assign({}, response.data, { jobUrl: _currentJobData.url });
       chrome.storage.local.set({ lastProposal: toCache });
     }
@@ -918,6 +1053,10 @@ btnGenerate.addEventListener('click', async () => {
 btnRegenerate.addEventListener('click', async () => {
   if (!_currentJobData) return;
 
+  // Preserve current loomUrl value across regeneration — do not clear it
+  const loomUrl = readLoomUrl();
+  if (loomUrl === undefined) return; // user cancelled the invalid-URL dialog
+
   // Clear cached proposal
   chrome.storage.local.remove('lastProposal');
   _generatedProposal = null;
@@ -928,15 +1067,37 @@ btnRegenerate.addEventListener('click', async () => {
   loadingSpinner.classList.remove('hidden');
 
   try {
+    // Get selected template content (if any)
+    const selectedOpt = templateDropdown.options[templateDropdown.selectedIndex];
+    const templateContent = selectedOpt && selectedOpt.dataset.content ? selectedOpt.dataset.content : null;
+
+    // Get selected projects
+    const selectedProjects = [];
+    document.querySelectorAll('#project-checkboxes input:checked').forEach(cb => {
+      selectedProjects.push({
+        name: cb.dataset.projectName,
+        description: cb.dataset.projectDesc,
+        technologies: cb.dataset.projectTech,
+        outcome: cb.dataset.projectOutcome
+      });
+    });
+
     const response = await sendToBackground({
       type: 'GENERATE_PROPOSAL',
-      jobData: _currentJobData
+      jobData: _currentJobData,
+      templateContent: templateContent,
+      selectedProjects: selectedProjects.length > 0 ? selectedProjects : null,
+      loomUrl: loomUrl
     });
 
     if (!response || !response.success) {
       alert(`Error: ${(response && response.error) || 'Unknown error from backend'}`);
     } else {
       showProposalPreview(response.data);
+      // Reflect persisted loomUrl back from response if available
+      if (loomUrlInput && response.data.loomUrl != null) {
+        loomUrlInput.value = response.data.loomUrl;
+      }
       const toCache = Object.assign({}, response.data, { jobUrl: _currentJobData.url });
       chrome.storage.local.set({ lastProposal: toCache });
     }
@@ -993,6 +1154,19 @@ btnAutofill.addEventListener('click', async () => {
       if (results.coverLetter) messages.push(results.coverLetter.message);
       if (results.hourlyRate)   messages.push(results.hourlyRate.message);
       if (messages.length) alert(messages.join('\n'));
+
+      // A/B tracking: mark the chosen variant row so the learning loop knows which won
+      if (_chosenVariant && _chosenProposalId) {
+        try {
+          await apiFetch('/api/v1/proposals/' + _chosenProposalId, {
+            method: 'PATCH',
+            body: JSON.stringify({ variantChosen: _chosenVariant })
+          });
+        } catch (patchErr) {
+          // Non-fatal — tracking failure must not block the user
+          console.warn('[A/B tracking] Failed to mark chosen variant:', patchErr.message);
+        }
+      }
     } else {
       alert(`Auto-fill failed: ${(response && response.error) || 'Unknown error'}`);
     }
@@ -1044,6 +1218,13 @@ linkDashboard.addEventListener('click', async (e) => {
 btnAbTest.addEventListener('click', async () => {
   if (!_currentJobData) return;
 
+  const loomUrl = readLoomUrl();
+  if (loomUrl === undefined) return; // user cancelled the invalid-URL dialog
+
+  // Reset A/B tracking state for this new run
+  _chosenVariant = null;
+  _chosenProposalId = null;
+
   btnAbTest.disabled = true;
   btnGenerate.disabled = true;
   loadingSpinner.classList.remove('hidden');
@@ -1058,7 +1239,8 @@ btnAbTest.addEventListener('click', async () => {
       method: 'POST',
       body: JSON.stringify({
         jobData: _currentJobData,
-        templateContent: templateContent
+        templateContent: templateContent,
+        loomUrl: loomUrl
       })
     });
 
@@ -1086,6 +1268,10 @@ btnAbTest.addEventListener('click', async () => {
       const chosen = variant === 'A' ? data.variantA : data.variantB;
       cardA.classList.toggle('ab-selected', variant === 'A');
       cardB.classList.toggle('ab-selected', variant === 'B');
+
+      // Track which variant the user picked so btnAutofill can PATCH the chosen row
+      _chosenVariant = variant;
+      _chosenProposalId = chosen.proposalId || null;
 
       // Show the selected variant in the proposal preview
       showProposalPreview(chosen);
@@ -1276,6 +1462,11 @@ if (btnAgRewrite) {
     document.getElementById('ai-generic').classList.add('hidden');
   });
 }
+
+// ---- Phase 4: Follow-up scheduler button listeners ----
+document.querySelectorAll('#fu-actions .fu-btn').forEach((btn) => {
+  btn.addEventListener('click', () => handleFollowUpClick(btn));
+});
 
 // ---- Boot ----
 document.addEventListener('DOMContentLoaded', init);

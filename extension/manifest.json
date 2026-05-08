@@ -11,7 +11,8 @@
     "alarms"
   ],
   "host_permissions": [
-    "https://www.upwork.com/*"
+    "https://www.upwork.com/*",
+    "*://localhost/*"
   ],
   "content_scripts": [
     {
@@ -67,7 +68,8 @@
         "lib/api.js",
         "content/message-scraper.js",
         "content/message-ui.js",
-        "content/outcome-detector.js"
+        "content/outcome-detector.js",
+        "content/follow-up-injector.js"
       ],
       "css": ["content/message-ui.css"],
       "run_at": "document_idle"

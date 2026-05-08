@@ -20,6 +20,7 @@ import * as boostROIService from './boost-roi.service.js';
 import * as aiGenericDetector from './ai-generic-detector.service.js';
 import * as preflightService from './preflight.service.js';
 import * as learningService from './learning.service.js';
+import * as personaService from './persona.service.js';
 
 const ALLOWED_STATUSES = new Set(['sent', 'pending', 'hired', 'rejected', 'withdrawn']);
 
@@ -82,6 +83,7 @@ export async function createProposal(data, userId = null) {
     hidden_instructions,
     vetting_result,
     proposal_count,
+    loom_url,
   } = data;
 
   const row = await proposalRepo.create({
@@ -103,6 +105,7 @@ export async function createProposal(data, userId = null) {
     vetting_result: vetting_result ? JSON.stringify(vetting_result) : null,
     proposal_count: proposal_count || null,
     connect_cost: null,
+    loom_url: loom_url || null,
   }, userId);
 
   await cacheDel('analytics:' + (userId || 'global'));
@@ -120,7 +123,7 @@ export async function createProposal(data, userId = null) {
  * @returns {Promise<object>}
  */
 export async function updateProposal(id, data, userId = null) {
-  const { status, earnings, response_type, responded_at, decline_reason, client_feedback } = data;
+  const { status, earnings, response_type, responded_at, decline_reason, client_feedback, loom_url, variantChosen } = data;
 
   if (status !== undefined && status !== null && !ALLOWED_STATUSES.has(status)) {
     throw new ValidationError(`status must be one of: ${[...ALLOWED_STATUSES].join(', ')}`);
@@ -136,13 +139,21 @@ export async function updateProposal(id, data, userId = null) {
 
   const hasUpdate = status !== undefined || earnings !== undefined
     || response_type !== undefined || responded_at !== undefined
-    || decline_reason !== undefined || client_feedback !== undefined;
+    || decline_reason !== undefined || client_feedback !== undefined
+    || loom_url !== undefined || variantChosen !== undefined;
 
   if (!hasUpdate) {
     throw new ValidationError('Nothing to update.');
   }
 
-  const updated = await proposalRepo.update(id, data, userId);
+  // Translate camelCase API field to snake_case column name for the repository layer
+  const repoData = { ...data };
+  if (variantChosen !== undefined) {
+    repoData.variant_chosen = variantChosen;
+    delete repoData.variantChosen;
+  }
+
+  const updated = await proposalRepo.update(id, repoData, userId);
   if (!updated) throw new NotFoundError('Proposal');
   await cacheDel('analytics:' + (userId || 'global'));
   await cacheDelPrefix('proposals:' + (userId || 'global'));
@@ -190,6 +201,7 @@ export async function generateProposal(input, logger = null, userId = null) {
     selectedProjects,
     platform,
     hookStyle: requestedHookStyle,
+    loomUrl,
   } = input;
 
   // 1. Resolve LLM config
@@ -218,11 +230,17 @@ export async function generateProposal(input, logger = null, userId = null) {
   }
 
   // 3c. Phase 3 calibration: when user didn't specify a hookStyle, query learned patterns
-  // for their best-performing style. Falls back to null when no confident bucket exists.
+  // for their best-performing style. Cascades: persona-specific → niche-specific → global.
+  // Falls back to null when no confident bucket exists.
   let calibration = null;
   if (!requestedHookStyle) {
     try {
-      const recommendation = await learningService.recommendHookStyle(userId);
+      const persona = personaService.classify(jobData.client || {}, jobData);
+      const niche = personaService.classifyNiche(jobData);
+      const recommendation = await learningService.recommendHookStyle(userId, {
+        persona: persona.id,
+        niche,
+      });
       if (recommendation && recommendation.confidence === 'confident') {
         calibration = recommendation;
         logger?.info?.({ recommendation }, 'Using calibrated hook style from learned patterns');
@@ -406,6 +424,8 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
       proposal_count: jobData.proposalCount || null,
       connect_cost: jobData.connectCost || null,
       hook_style: hookStyle || null,
+      payment_verified: jobData.client?.paymentVerified ?? null,
+      loom_url: loomUrl || null,
     }, userId);
     proposalId = row?.id || null;
     await cacheDel('analytics:' + (userId || 'global'));
@@ -422,6 +442,7 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
     hourlyRate: parsed.hourlyRate,
     milestones: parsed.milestones,
     budgetWarning: parsed.budgetWarning,
+    screeningAnswers: parsed.screeningAnswers,
     proposalId,
     hookValidation: validation,
     hookStyle: hookStyle || null,
@@ -431,6 +452,7 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
     boostDecision,
     aiGeneric,
     preflight,
+    loomUrl: loomUrl || null,
   };
 }
 
@@ -542,6 +564,8 @@ async function persistABVariant(parsed, jobData, hiddenInstructions, templateCon
       proposal_count: jobData.proposalCount || null,
       connect_cost: jobData.connectCost || null,
       hook_style: hookStyle,
+      payment_verified: jobData.client?.paymentVerified ?? null,
+      loom_url: null,
     }, userId);
     return row?.id || null;
   } catch {
@@ -592,7 +616,18 @@ function parseLLMResponse(raw, profile, logger) {
   const budgetWarningMatch = raw.match(/BUDGET_WARNING:\s*(.+)/i);
   const budgetWarning = budgetWarningMatch ? budgetWarningMatch[1].trim() : null;
 
-  return { coverLetter, hourlyRate, milestones, budgetWarning };
+  // Phase 4: parse screening answers (mirrors MILESTONES parsing)
+  const screeningAnswers = [];
+  const sectionMatch = raw.match(/SCREENING_ANSWERS:\s*([\s\S]*?)(?=COVER_LETTER:|HOURLY_RATE:|MILESTONES:|BUDGET_WARNING:|$)/i);
+  if (sectionMatch) {
+    const lines = sectionMatch[1].trim().split('\n').filter(l => l.trim());
+    for (const line of lines) {
+      const m = line.match(/^\d+[\.\)]\s*(.+)/);
+      if (m) screeningAnswers.push(m[1].trim());
+    }
+  }
+
+  return { coverLetter, hourlyRate, milestones, budgetWarning, screeningAnswers };
 }
 
 // ============================================================================

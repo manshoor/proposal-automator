@@ -40,6 +40,8 @@ export const generateProposalSchema = z.object({
   hookStyle: hookStyleEnum.optional(),
   // Phase 1 — pair of styles for A/B generation (if not provided, defaults to ['problem-mirror','metric-led'])
   hookStyles: z.array(hookStyleEnum).length(2).optional(),
+  // Phase 4 — Loom video intro URL (optional; supplied by extension popup)
+  loomUrl: z.string().url().optional().nullable(),
 });
 
 export const listProposalsSchema = z.object({
@@ -54,6 +56,7 @@ export const createProposalSchema = z.object({
   job_url: z.string().min(1, 'job_url is required'),
   job_title: z.string().min(1, 'job_title is required'),
   proposal_text: z.string().min(1, 'proposal_text is required'),
+  loom_url: z.string().url().optional().nullable(),
 });
 
 export const updateProposalSchema = z.object({
@@ -63,4 +66,6 @@ export const updateProposalSchema = z.object({
   responded_at: z.string().optional(),
   decline_reason: z.string().max(255).optional(),
   client_feedback: z.string().optional(),
+  loom_url: z.string().url().optional().nullable(),
+  variantChosen: z.enum(['A', 'B']).optional().nullable(),
 });
