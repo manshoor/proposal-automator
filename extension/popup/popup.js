@@ -642,6 +642,22 @@ function sendToBackground(message) {
 
 // ---- Initialisation ----
 
+/**
+ * Phase 3 — sync the user's outcome_tracking_enabled flag from the backend
+ * into chrome.storage.local so the outcome-detector content script knows whether
+ * to run on Upwork pages.
+ */
+async function syncOutcomeTrackingFlag() {
+  try {
+    const data = await apiFetch('/api/v1/outcomes/tracking');
+    const enabled = !!(data && data.enabled);
+    await chrome.storage.local.set({ outcome_tracking_enabled: enabled });
+  } catch (err) {
+    // Non-fatal — leave existing flag value as-is on failure
+    console.warn('[popup] outcome tracking sync failed', err?.message || err);
+  }
+}
+
 async function init() {
   // Check login status first
   const loggedIn = await isLoggedIn();
@@ -654,6 +670,9 @@ async function init() {
     });
     return;
   }
+
+  // Sync the outcome-tracking flag (non-blocking — content scripts pick up next page load)
+  syncOutcomeTrackingFlag();
 
   // Find the active tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
