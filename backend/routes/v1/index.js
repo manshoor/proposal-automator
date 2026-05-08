@@ -20,6 +20,7 @@ import analyzeProfileRouter from '../../api/analyze-profile.js';
 import generateHooksRouter from '../../api/generate-hooks.js';
 import jobsRouter from '../../api/jobs.js';
 import bannedPhrasesRouter from '../../api/banned-phrases.js';
+import followUpsRouter from '../../api/follow-ups.js';
 import outcomesRouter from '../../api/outcomes.js';
 import insightsRouter from '../../api/insights.js';
 
@@ -48,6 +49,7 @@ router.use('/analyze-profile', analyzeProfileRouter);
 router.use('/generate-hooks', generateHooksRouter);
 router.use('/jobs', jobsRouter);
 router.use('/banned-phrases', bannedPhrasesRouter);
+router.use('/follow-ups', followUpsRouter);
 router.use('/outcomes', outcomesRouter);
 router.use('/insights', insightsRouter);
 router.use('/bootstrap', bootstrapRouter);
