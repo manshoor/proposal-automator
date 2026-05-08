@@ -697,7 +697,8 @@ function populateVetting(vetting) {
 
   if (flags.length > 0) {
     redFlagsSection.classList.remove('hidden');
-    redFlagsList.innerHTML = '';
+    while (redFlagsList.firstChild) redFlagsList.removeChild(redFlagsList.firstChild);
+    const fragment = document.createDocumentFragment();
     for (const flag of flags) {
       const li = document.createElement('li');
       const severitySpan = document.createElement('span');
@@ -715,8 +716,9 @@ function populateVetting(vetting) {
       textSpan.appendChild(detailSpan);
       li.appendChild(severitySpan);
       li.appendChild(textSpan);
-      redFlagsList.appendChild(li);
+      fragment.appendChild(li);
     }
+    redFlagsList.appendChild(fragment);
   } else {
     redFlagsSection.classList.add('hidden');
   }

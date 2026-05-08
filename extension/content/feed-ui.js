@@ -556,19 +556,24 @@
       // Build + inject toolbar
       _buildAndInjectToolbar();
 
-      // Apply filters to existing cards, then re-apply twice to catch late-loading
-      // cards. Upwork's feed hydrates in phases: the first few cards appear ~1s
-      // after navigation, then lazy-loaded batches roll in. 2s catches the
-      // initial hydration; 5s catches the slower "Best Matches" sorting pass.
-      // If Upwork changes their load timing, these numbers may need tuning.
+      // Apply filters to cards already in the DOM. The MutationObserver
+      // installed below catches anything that loads later, so we no longer
+      // need the previous 2s/5s re-apply timers (which doubled the work
+      // for the first 5s of every page navigation).
       _applyFiltersToAll();
-      setTimeout(_applyFiltersToAll, 2000);
-      setTimeout(_applyFiltersToAll, 5000);
 
-      // Watch for new cards (infinite scroll + late loading)
+      // Watch for new cards (infinite scroll + late hydration).
       _state.cardObserver = observeNewCards(function (newCards) {
         _applyFiltersToCards(newCards);
       });
+
+      // Belt-and-suspenders single re-apply at 2s in case the observer
+      // missed a batch (rare; only Upwork's "Best Matches" sort pass) —
+      // skip if the card count hasn't grown since t=0.
+      var initialCount = scrapeJobCards().length;
+      setTimeout(function () {
+        if (scrapeJobCards().length > initialCount) _applyFiltersToAll();
+      }, 2000);
     }).catch(function (err) {
       console.error('[FeedUI] Init error:', err);
     });
