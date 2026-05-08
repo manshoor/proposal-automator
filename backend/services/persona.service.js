@@ -86,16 +86,18 @@ export function classifyNiche(jobData) {
   const skills = Array.isArray(jobData?.skills) ? jobData.skills.map((s) => String(s).toLowerCase()) : [];
   const title = (jobData?.title || '').toLowerCase();
 
-  // Top-level niche buckets — chosen for typical Upwork freelancer specializations
+  // Top-level niche buckets — chosen for typical Upwork freelancer specializations.
+  // Order matters: more specific buckets come first so that e.g. "React Native"
+  // matches `mobile` before `web-frontend`'s broader `react` substring match fires.
   const buckets = [
+    { id: 'mobile',       match: ['react native', 'ios', 'android', 'flutter', 'mobile app'] },
+    { id: 'shopify',      match: ['shopify', 'liquid'] },
+    { id: 'wordpress',    match: ['wordpress', 'wp', 'woocommerce', 'elementor'] },
+    { id: 'fullstack',    match: ['fullstack', 'full-stack', 'mern', 'mean'] },
+    { id: 'data-ml',      match: ['machine learning', 'data science', 'ml', 'pytorch', 'tensorflow', 'nlp', 'llm'] },
+    { id: 'devops',       match: ['aws', 'docker', 'kubernetes', 'ci/cd', 'devops', 'terraform'] },
     { id: 'web-frontend', match: ['react', 'vue', 'angular', 'next.js', 'svelte', 'tailwind', 'css', 'frontend'] },
     { id: 'web-backend',  match: ['node', 'express', 'django', 'flask', 'rails', 'laravel', 'php', 'backend', 'api'] },
-    { id: 'fullstack',    match: ['fullstack', 'full-stack', 'mern', 'mean'] },
-    { id: 'mobile',       match: ['ios', 'android', 'react native', 'flutter', 'mobile app'] },
-    { id: 'devops',       match: ['aws', 'docker', 'kubernetes', 'ci/cd', 'devops', 'terraform'] },
-    { id: 'data-ml',      match: ['machine learning', 'data science', 'ml', 'pytorch', 'tensorflow', 'nlp', 'llm'] },
-    { id: 'wordpress',    match: ['wordpress', 'wp', 'woocommerce', 'elementor'] },
-    { id: 'shopify',      match: ['shopify', 'liquid'] },
     { id: 'design',       match: ['figma', 'ui design', 'ux design', 'photoshop'] },
     { id: 'writing',      match: ['copywriting', 'content writing', 'blog', 'seo writing'] },
     { id: 'automation',   match: ['zapier', 'make.com', 'integromat', 'automation', 'no-code'] },
