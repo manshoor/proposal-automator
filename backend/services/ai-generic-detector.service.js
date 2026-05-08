@@ -26,10 +26,15 @@ export async function detect({ text, provider, apiKey, userId, logger, skipRewri
   const phrases = await bannedPhrasesRepo.findActiveForUser(userId).catch(() => []);
   const ruleHits = findBannedPhrases(text || '', phrases);
 
-  // LLM-as-judge pass
-  const judge = await judgeWithLLM({ text, provider, apiKey, logger });
+  // Short-circuit: if rule pass already found a block-severity hit, skip the LLM judge.
+  // The proposal is already flagged and the rewrite call (if applicable) gives the LLM
+  // enough context. Saves one LLM call per blocked proposal.
+  const ruleBlockHit = ruleHits.some(h => h.severity === 'block');
+  const judge = ruleBlockHit
+    ? { score: 10, reasoning: 'Rule pass found block-severity banned phrase', genericPhrases: [] }
+    : await judgeWithLLM({ text, provider, apiKey, logger });
 
-  const flagged = judge.score >= JUDGE_FLAG_THRESHOLD || ruleHits.some(h => h.severity === 'block');
+  const flagged = judge.score >= JUDGE_FLAG_THRESHOLD || ruleBlockHit;
 
   let rewriteSuggestion = null;
   if (flagged && !skipRewrite) {

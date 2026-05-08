@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+const HOOK_STYLE_KEYS = ['problem-mirror', 'metric-led', 'question-led', 'story-led'];
+export const hookStyleEnum = z.enum(HOOK_STYLE_KEYS);
+
 export const generateProposalSchema = z.object({
   jobData: z.object({
     title: z.string().min(1, 'Job title is required').max(500),
@@ -33,6 +36,10 @@ export const generateProposalSchema = z.object({
   platform: z.enum(['upwork', 'fiverr']).optional(),
   provider: z.string().max(50).optional(),
   apiKey: z.string().max(500).optional(),
+  // Phase 1 — explicit hook style override (single proposal generation)
+  hookStyle: hookStyleEnum.optional(),
+  // Phase 1 — pair of styles for A/B generation (if not provided, defaults to ['problem-mirror','metric-led'])
+  hookStyles: z.array(hookStyleEnum).length(2).optional(),
 });
 
 export const listProposalsSchema = z.object({

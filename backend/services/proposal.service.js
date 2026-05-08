@@ -482,13 +482,71 @@ export async function generateABVariants(input, userId = null) {
   ]);
 
   // 7. Parse both variants
-  const variantA = parseLLMResponse(rawA, profile, null);
-  const variantB = parseLLMResponse(rawB, profile, null);
+  const parsedA = parseLLMResponse(rawA, profile, null);
+  const parsedB = parseLLMResponse(rawB, profile, null);
+
+  // 8. Validate each variant's hook (no LLM cost — pattern checks only).
+  // jobAnalysis is intentionally null on the A/B path; validator gracefully skips
+  // the job-specifics check but still catches banned phrases and generic openers.
+  const [validationA, validationB] = await Promise.all([
+    validateHook(parsedA.coverLetter, null, jobData, userId),
+    validateHook(parsedB.coverLetter, null, jobData, userId),
+  ]);
+
+  // 9. Persist each variant with its hook_style label so the learning loop (Phase 3)
+  // can attribute outcomes per style. Persist failure is non-fatal.
+  const [proposalIdA, proposalIdB] = await Promise.all([
+    persistABVariant(parsedA, jobData, hiddenInstructions, templateContent, styles[0], userId),
+    persistABVariant(parsedB, jobData, hiddenInstructions, templateContent, styles[1], userId),
+  ]);
 
   return {
-    variantA: { ...variantA, style: styles[0], hookStyle: styles[0] },
-    variantB: { ...variantB, style: styles[1], hookStyle: styles[1] },
+    variantA: {
+      ...parsedA,
+      style: styles[0],
+      hookStyle: styles[0],
+      hookValidation: validationA,
+      proposalId: proposalIdA,
+    },
+    variantB: {
+      ...parsedB,
+      style: styles[1],
+      hookStyle: styles[1],
+      hookValidation: validationB,
+      proposalId: proposalIdB,
+    },
   };
+}
+
+async function persistABVariant(parsed, jobData, hiddenInstructions, templateContent, hookStyle, userId) {
+  try {
+    const row = await proposalRepo.create({
+      job_url: jobData.url || '',
+      job_title: jobData.title,
+      job_description: jobData.description,
+      job_budget_type: jobData.budgetType || null,
+      job_budget_min: jobData.budgetMin || null,
+      job_budget_max: jobData.budgetMax || null,
+      job_budget_amount: jobData.budgetAmount || null,
+      job_skills: jobData.skills || [],
+      client_location: jobData.clientLocation || null,
+      client_total_spent: jobData.clientTotalSpent || null,
+      client_hire_rate: jobData.clientHireRate || null,
+      client_review_count: jobData.clientReviewCount || null,
+      proposal_text: parsed.coverLetter,
+      hourly_rate: parsed.hourlyRate,
+      proposal_length: parsed.coverLetter ? parsed.coverLetter.length : null,
+      template_used: templateContent ? 'custom' : null,
+      hidden_instructions: hiddenInstructions?.text || null,
+      vetting_result: jobData.vettingResult ? JSON.stringify(jobData.vettingResult) : null,
+      proposal_count: jobData.proposalCount || null,
+      connect_cost: jobData.connectCost || null,
+      hook_style: hookStyle,
+    }, userId);
+    return row?.id || null;
+  } catch {
+    return null;
+  }
 }
 
 /**
