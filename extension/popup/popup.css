@@ -1343,3 +1343,17 @@ main {
   color: #4b5563;
   line-height: 1.4;
 }
+
+/* ----- Phase 4: Screening Answers ----- */
+.screening-answers {
+  margin: 8px 0;
+  padding: 8px 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 11px;
+}
+.sa-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.sa-title { font-weight: 600; color: #374151; }
+.sa-list { margin: 0; padding-left: 20px; }
+.sa-list li { padding: 3px 0; line-height: 1.4; color: #4b5563; }

@@ -291,6 +291,31 @@ function appendHookCheckRow(parent, kind, message) {
   parent.appendChild(li);
 }
 
+// ---- Phase 4: Screening Answers ----
+
+/**
+ * Render the screening question answers block.
+ * Hides the container when there are no answers (backwards-compat default).
+ * @param {string[]} answers - Array of answer strings, one per screening question
+ */
+function showScreeningAnswers(answers) {
+  const container = document.getElementById('screening-answers');
+  if (!container) return;
+  if (!Array.isArray(answers) || answers.length === 0) {
+    container.classList.add('hidden');
+    return;
+  }
+  container.classList.remove('hidden');
+  const list = document.getElementById('sa-list');
+  // Clear existing children safely (no innerHTML — there's a security hook)
+  while (list.firstChild) list.removeChild(list.firstChild);
+  for (const ans of answers) {
+    const li = document.createElement('li');
+    li.textContent = ans;
+    list.appendChild(li);
+  }
+}
+
 // ---- Phase 4: Follow-up scheduler ----
 
 function showFollowUpSection(proposal) {
@@ -656,6 +681,7 @@ function showProposalPreview(proposal) {
     }
   }
 
+  showScreeningAnswers(proposal.screeningAnswers);
   showQualityIndicators(proposal.coverLetter);
   showHookValidation(proposal.hookValidation, proposal.hookStyle);
   showPhase2Metrics(proposal.alignment, proposal.boostDecision);

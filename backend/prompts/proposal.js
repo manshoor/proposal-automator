@@ -124,6 +124,7 @@ CLIENT-AWARE POSITIONING (read the CLIENT CONTEXT in the user prompt):
 OUTPUT FORMAT (use these exact labels):
 COVER_LETTER: [the cover letter text]
 HOURLY_RATE: [a number only, no $ sign or text]
+SCREENING_ANSWERS: [if the job has screening questions, answer each one in 1-2 sentences max, numbered]
 
 For FIXED-PRICE jobs, also generate milestones:
 - Budget < $500: exactly 2 milestones (split roughly 50/50)
@@ -139,7 +140,17 @@ MILESTONES:
 3. [description] | $[amount]
 
 If the budget seems wrong for the scope, add:
-BUDGET_WARNING: [brief explanation of the concern]`;
+BUDGET_WARNING: [brief explanation of the concern]
+
+SCREENING QUESTIONS:
+If the user prompt includes a SCREENING_QUESTIONS block, answer each question DIRECTLY and CONCISELY (1-2 sentences each). Output them in a SCREENING_ANSWERS section AFTER the cover letter, numbered to match the questions:
+
+SCREENING_ANSWERS:
+1. <answer to Q1>
+2. <answer to Q2>
+3. <answer to Q3>
+
+Do not repeat the question. Do not pad with filler. The answers are read alongside the cover letter — make them complementary, not redundant.`;
 
   if (hookStyle && HOOK_STYLES[hookStyle]) {
     prompt += '\n\n--- HOOK STYLE OVERRIDE ---\n' + HOOK_STYLES[hookStyle];
@@ -187,6 +198,14 @@ CLIENT CONTEXT (use this to tailor your approach):
 
 PREFERRED QUALIFICATIONS (address these specifically in your proposal):
 ${quals.map((q, i) => `${i + 1}. ${q}`).join('\n')}`;
+  }
+
+  const screeningQs = jobData.screeningQuestions;
+  if (Array.isArray(screeningQs) && screeningQs.length > 0) {
+    prompt += `
+
+SCREENING_QUESTIONS (answer each in the SCREENING_ANSWERS section):
+${screeningQs.map((q, i) => `${i + 1}. ${q}`).join('\n')}`;
   }
 
   if (hiddenInstructions && hiddenInstructions.found && hiddenInstructions.text) {

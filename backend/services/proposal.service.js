@@ -422,6 +422,7 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
     hourlyRate: parsed.hourlyRate,
     milestones: parsed.milestones,
     budgetWarning: parsed.budgetWarning,
+    screeningAnswers: parsed.screeningAnswers,
     proposalId,
     hookValidation: validation,
     hookStyle: hookStyle || null,
@@ -592,7 +593,18 @@ function parseLLMResponse(raw, profile, logger) {
   const budgetWarningMatch = raw.match(/BUDGET_WARNING:\s*(.+)/i);
   const budgetWarning = budgetWarningMatch ? budgetWarningMatch[1].trim() : null;
 
-  return { coverLetter, hourlyRate, milestones, budgetWarning };
+  // Phase 4: parse screening answers (mirrors MILESTONES parsing)
+  const screeningAnswers = [];
+  const sectionMatch = raw.match(/SCREENING_ANSWERS:\s*([\s\S]*?)(?=COVER_LETTER:|HOURLY_RATE:|MILESTONES:|BUDGET_WARNING:|$)/i);
+  if (sectionMatch) {
+    const lines = sectionMatch[1].trim().split('\n').filter(l => l.trim());
+    for (const line of lines) {
+      const m = line.match(/^\d+[\.\)]\s*(.+)/);
+      if (m) screeningAnswers.push(m[1].trim());
+    }
+  }
+
+  return { coverLetter, hourlyRate, milestones, budgetWarning, screeningAnswers };
 }
 
 // ============================================================================
