@@ -8,6 +8,15 @@
 (function () {
   'use strict';
 
+  // URL guard — see comment in content.js. Original entry matched
+  // messages + interviews only.
+  var _MESSAGE_UI_PATTERNS = [
+    /^https:\/\/www\.upwork\.com\/(ab|nx)\/messages\//,
+    /^https:\/\/www\.upwork\.com\/messages\//,
+    /^https:\/\/www\.upwork\.com\/(ab|nx)\/interviews\//,
+  ];
+  if (!_MESSAGE_UI_PATTERNS.some(function (re) { return re.test(window.location.href); })) return;
+
   // ---- Constants ----
 
   var PANEL_ID = 'upa-copilot-panel';

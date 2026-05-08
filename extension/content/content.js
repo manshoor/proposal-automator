@@ -8,6 +8,18 @@
 (function () {
   'use strict';
 
+  // URL guard — manifest now has a single unified content_scripts entry, so
+  // every main bootstrap self-scopes to the URLs it was previously matched on.
+  // This file's original entry covered job-detail + apply pages + feed (the
+  // last because SPA nav from feed → job-detail must keep the script alive).
+  var _CONTENT_PATTERNS = [
+    /^https:\/\/www\.upwork\.com\/jobs\//,
+    /^https:\/\/www\.upwork\.com\/(ab|nx)\/proposals\/job\//,
+    /^https:\/\/www\.upwork\.com\/freelance-jobs\/apply\//,
+    /^https:\/\/www\.upwork\.com\/nx\/find-work\//,
+  ];
+  if (!_CONTENT_PATTERNS.some(function (re) { return re.test(window.location.href); })) return;
+
   // ---- SPA navigation detection ----
   var _lastHref = window.location.href;
   var _navObserver = null;

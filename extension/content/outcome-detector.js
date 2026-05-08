@@ -16,6 +16,22 @@
 (function () {
   'use strict';
 
+  // URL guard — see comment in content.js. Original entries matched
+  // messages + interviews (entry 3) AND proposals listing pages
+  // (entry 4, which excluded job-detail proposals via exclude_matches).
+  const _OUTCOME_MATCH = [
+    /^https:\/\/www\.upwork\.com\/(ab|nx)\/messages\//,
+    /^https:\/\/www\.upwork\.com\/messages\//,
+    /^https:\/\/www\.upwork\.com\/(ab|nx)\/interviews\//,
+    /^https:\/\/www\.upwork\.com\/(ab|nx)\/proposals/,
+    /^https:\/\/www\.upwork\.com\/freelancers\/proposals/,
+  ];
+  const _OUTCOME_EXCLUDE = /^https:\/\/www\.upwork\.com\/(ab|nx)\/proposals\/job\//;
+  {
+    const _url = window.location.href;
+    if (!_OUTCOME_MATCH.some((re) => re.test(_url)) || _OUTCOME_EXCLUDE.test(_url)) return;
+  }
+
   const STATE = {
     enabled: false,
     observer: null,

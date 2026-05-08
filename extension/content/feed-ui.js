@@ -14,6 +14,16 @@
 (function () {
   'use strict';
 
+  // URL guard — see comment in content.js. Original entry matched feed +
+  // search pages only.
+  var _FEED_UI_PATTERNS = [
+    /^https:\/\/www\.upwork\.com\/nx\/find-work\//,
+    /^https:\/\/www\.upwork\.com\/nx\/search\//,
+    /^https:\/\/www\.upwork\.com\/ab\/find-work\//,
+    /^https:\/\/www\.upwork\.com\/search\/jobs\//,
+  ];
+  if (!_FEED_UI_PATTERNS.some(function (re) { return re.test(window.location.href); })) return;
+
   // ---- State ----
   var _state = {
     filters: null,           // current filter config
