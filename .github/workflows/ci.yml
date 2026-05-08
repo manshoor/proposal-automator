@@ -29,6 +29,10 @@ jobs:
         working-directory: backend
         run: npm ci
 
+      - name: Typecheck (TypeScript)
+        working-directory: backend
+        run: npm run typecheck
+
       - name: Run vitest
         working-directory: backend
         run: npm test

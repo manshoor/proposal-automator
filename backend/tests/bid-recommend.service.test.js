@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { recommend } from '../services/bid-recommend.service.js';
+import { recommend } from '../services/bid-recommend.service.ts';
 
 describe('bid-recommend.service.recommend', () => {
   const profile = { default_hourly_rate: 50 };

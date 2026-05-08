@@ -27,7 +27,9 @@ EXPOSE 3000
 COPY docker-entrypoint.dev.sh /docker-entrypoint.dev.sh
 RUN chmod +x /docker-entrypoint.dev.sh
 ENTRYPOINT ["/docker-entrypoint.dev.sh"]
-CMD ["npx", "nodemon", "server.js"]
+# tsx watch handles both .js and .ts; replaces nodemon for dev. Restarts on file
+# changes (including .ts files), zero build step.
+CMD ["npx", "tsx", "watch", "server.js"]
 
 # ============================================
 # Stage 4: Production target
@@ -50,4 +52,6 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=10s \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-CMD ["node", "server.js"]
+# Production also runs via tsx so .ts source files load without a build step.
+# tsx uses esbuild internally — startup is fast and runtime overhead is minimal.
+CMD ["npx", "tsx", "server.js"]
