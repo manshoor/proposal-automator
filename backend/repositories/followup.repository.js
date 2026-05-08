@@ -170,6 +170,26 @@ export async function listDueNow() {
 }
 
 /**
+ * Set the sequence_index on a specific follow-up row.
+ * Used after bulk-creating sequence rows so the index is applied without
+ * going through the full update whitelist.
+ *
+ * @param {number} id
+ * @param {number} sequenceIndex
+ * @returns {Promise<object|null>}
+ */
+export async function setSequenceIndex(id, sequenceIndex) {
+  const { rows } = await pool.query(
+    `UPDATE proposal_followups
+     SET sequence_index = $1, updated_at = NOW()
+     WHERE id = $2
+     RETURNING *`,
+    [sequenceIndex, id]
+  );
+  return rows[0] || null;
+}
+
+/**
  * Fetch the proposal row belonging to userId for proposal ownership checks.
  *
  * @param {number} proposalId

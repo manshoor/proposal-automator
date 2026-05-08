@@ -25,3 +25,12 @@ export const listQuerySchema = z.object({
   limit: z.string().regex(/^\d+$/).optional(),
   offset: z.string().regex(/^\d+$/).optional(),
 });
+
+export const createSequenceSchema = z.object({
+  proposalId: z.number().int().positive(),
+  intervals: z.array(z.number().int().min(1).max(90)).min(1).max(5),
+  autoGenerate: z.boolean().default(true),
+}).refine(
+  (v) => new Set(v.intervals).size === v.intervals.length,
+  { message: 'Intervals must be unique' },
+);

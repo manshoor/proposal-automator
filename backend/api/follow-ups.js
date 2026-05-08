@@ -5,6 +5,7 @@ import {
   createFollowUpSchema,
   updateFollowUpSchema,
   listQuerySchema,
+  createSequenceSchema,
 } from '../schemas/followup.schema.js';
 import * as service from '../services/followup.service.js';
 
@@ -27,6 +28,17 @@ router.get(
   asyncHandler(async (req, res) => {
     const followUps = await service.listForUser(req.user.id, req.query);
     res.json(followUps);
+  })
+);
+
+// POST /sequence — schedule a multi-touch sequence of follow-ups at increasing intervals
+// MUST be defined before /:id routes so "sequence" is not captured as an id parameter.
+router.post(
+  '/sequence',
+  validate(createSequenceSchema),
+  asyncHandler(async (req, res) => {
+    const rows = await service.scheduleSequence(req.body, req.user.id, req.log);
+    res.status(201).json(rows);
   })
 );
 

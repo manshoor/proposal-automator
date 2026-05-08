@@ -156,17 +156,23 @@ function EditModal({ followUp, proposals, onClose, onSave }) {
   );
 }
 
+// Default intervals for the sequence preset (in days)
+const SEQUENCE_INTERVALS = [3, 7, 14];
+
 // ---------------------------------------------------------------------------
 // New Follow-up Modal
 // ---------------------------------------------------------------------------
 function NewFollowUpModal({ proposals, onClose, onCreate }) {
   const [proposalId, setProposalId] = useState(proposals[0]?.id ?? '');
+  const [scheduleMode, setScheduleMode] = useState('single'); // 'single' | 'sequence'
   const [interval, setInterval] = useState('7');
   const [customDate, setCustomDate] = useState('');
   const [autoGenerate, setAutoGenerate] = useState(true);
   const [messageText, setMessageText] = useState('');
   const [creating, setCreating] = useState(false);
   const [err, setErr] = useState(null);
+
+  const isSequence = scheduleMode === 'sequence';
 
   const handleCreate = async () => {
     setErr(null);
@@ -176,6 +182,29 @@ function NewFollowUpModal({ proposals, onClose, onCreate }) {
       return;
     }
 
+    if (isSequence) {
+      // Sequence mode: POST to /follow-ups/sequence; autoGenerate is always true
+      setCreating(true);
+      try {
+        const rows = await api.post('/follow-ups/sequence', {
+          proposalId: Number(proposalId),
+          intervals: SEQUENCE_INTERVALS,
+          autoGenerate: true,
+        });
+        // rows is an array; surface each one, or surface as a group
+        if (Array.isArray(rows)) {
+          rows.forEach((row) => onCreate(row));
+        }
+        onClose();
+      } catch (e) {
+        setErr(e?.message || 'Failed to schedule sequence');
+      } finally {
+        setCreating(false);
+      }
+      return;
+    }
+
+    // Single mode — original behavior
     if (interval === 'custom' && !customDate) {
       setErr('Please select a custom date and time.');
       return;
@@ -186,7 +215,7 @@ function NewFollowUpModal({ proposals, onClose, onCreate }) {
       return;
     }
 
-    const body = { proposalId, autoGenerate };
+    const body = { proposalId: Number(proposalId), autoGenerate };
 
     if (interval === 'custom') {
       body.scheduledAt = new Date(customDate).toISOString();
@@ -253,62 +282,101 @@ function NewFollowUpModal({ proposals, onClose, onCreate }) {
             )}
           </div>
 
-          {/* Interval */}
+          {/* Schedule mode toggle: Single vs Sequence */}
           <div>
-            <label className="label">Schedule in</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {INTERVAL_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setInterval(opt.value)}
-                  className={`px-3 py-2 rounded-xl text-sm font-medium border transition-all ${
-                    interval === opt.value
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                      : 'bg-white text-gray-700 border-gray-200 hover:border-blue-400 hover:text-blue-600'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+            <label className="label">Schedule mode</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setScheduleMode('single')}
+                className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium border transition-all ${
+                  !isSequence
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                    : 'bg-white text-gray-700 border-gray-200 hover:border-blue-400 hover:text-blue-600'
+                }`}
+              >
+                Single follow-up
+              </button>
+              <button
+                type="button"
+                onClick={() => setScheduleMode('sequence')}
+                className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium border transition-all ${
+                  isSequence
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                    : 'bg-white text-gray-700 border-gray-200 hover:border-blue-400 hover:text-blue-600'
+                }`}
+              >
+                Sequence (3 + 7 + 14 days)
+              </button>
             </div>
-            {interval === 'custom' && (
-              <div className="mt-3">
-                <label className="label">Custom date &amp; time</label>
-                <input
-                  type="datetime-local"
-                  value={customDate}
-                  onChange={(e) => setCustomDate(e.target.value)}
-                  className="input"
-                />
-              </div>
+            {isSequence && (
+              <p className="mt-2 text-xs text-gray-500">
+                Schedules 3 AI-generated follow-ups at 3, 7, and 14 days from the proposal date.
+                Manual message entry is not available in sequence mode.
+              </p>
             )}
           </div>
 
-          {/* Auto-generate */}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={autoGenerate}
-              onClick={() => setAutoGenerate((v) => !v)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                autoGenerate ? 'bg-blue-600' : 'bg-gray-200'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                  autoGenerate ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
-            <span className="text-sm font-medium text-gray-700">
-              Auto-generate message with AI
-            </span>
-          </div>
+          {/* Single mode: interval picker */}
+          {!isSequence && (
+            <div>
+              <label className="label">Schedule in</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {INTERVAL_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setInterval(opt.value)}
+                    className={`px-3 py-2 rounded-xl text-sm font-medium border transition-all ${
+                      interval === opt.value
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-blue-400 hover:text-blue-600'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {interval === 'custom' && (
+                <div className="mt-3">
+                  <label className="label">Custom date &amp; time</label>
+                  <input
+                    type="datetime-local"
+                    value={customDate}
+                    onChange={(e) => setCustomDate(e.target.value)}
+                    className="input"
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* Manual message */}
-          {!autoGenerate && (
+          {/* Auto-generate toggle — hidden in sequence mode (always auto) */}
+          {!isSequence && (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoGenerate}
+                onClick={() => setAutoGenerate((v) => !v)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  autoGenerate ? 'bg-blue-600' : 'bg-gray-200'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                    autoGenerate ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+              <span className="text-sm font-medium text-gray-700">
+                Auto-generate message with AI
+              </span>
+            </div>
+          )}
+
+          {/* Manual message — only in single mode with autoGenerate off */}
+          {!isSequence && !autoGenerate && (
             <div>
               <label className="label">Message text</label>
               <textarea
@@ -332,7 +400,11 @@ function NewFollowUpModal({ proposals, onClose, onCreate }) {
             disabled={creating || proposals.length === 0}
             className="btn-primary"
           >
-            {creating ? 'Scheduling…' : 'Schedule follow-up'}
+            {creating
+              ? 'Scheduling…'
+              : isSequence
+                ? 'Schedule sequence'
+                : 'Schedule follow-up'}
           </button>
         </div>
       </div>
@@ -441,10 +513,11 @@ export default function FollowUpsClient({ initialFollowUps, initialProposals }) 
   }, [router, startTransition, setRowBusy]);
 
   // ---- New follow-up created ----
+  // Called once per created row (single mode = 1 call; sequence mode = N calls)
   const handleCreated = useCallback((created) => {
     // Only surface in the list if the active tab would include it
     if (activeTab === 'all' || activeTab === 'scheduled') {
-      setFollowUps((prev) => [created, ...prev]);
+      setFollowUps((prev) => [...prev, created]);
     }
     setToast({ message: 'Follow-up scheduled', type: 'success' });
     startTransition(() => router.refresh());
@@ -453,6 +526,18 @@ export default function FollowUpsClient({ initialFollowUps, initialProposals }) 
   const displayedFollowUps = activeTab === 'all'
     ? followUps
     : followUps.filter((f) => f.status === activeTab);
+
+  // Build a set of proposalIds that appear more than once in the displayed list
+  // (with distinct sequenceIndex values). These rows belong to a sequence.
+  const sequenceProposalIds = (() => {
+    const countByProposal = {};
+    for (const f of displayedFollowUps) {
+      countByProposal[f.proposalId] = (countByProposal[f.proposalId] || 0) + 1;
+    }
+    return new Set(
+      Object.keys(countByProposal).filter((pid) => countByProposal[pid] > 1).map(Number)
+    );
+  })();
 
   return (
     <div className="page-container">
@@ -550,12 +635,29 @@ export default function FollowUpsClient({ initialFollowUps, initialProposals }) 
                   const isSent = f.status === 'sent';
                   const isCancelled = f.status === 'cancelled';
                   const isScheduled = f.status === 'scheduled';
+                  const isPartOfSequence = sequenceProposalIds.has(Number(f.proposalId));
+                  const isSequenceChild = isPartOfSequence && f.sequenceIndex > 0;
 
                   return (
                     <tr key={f.id}>
-                      {/* Job title */}
-                      <td className="font-medium text-gray-900 max-w-[160px] sm:max-w-xs truncate">
-                        {jobTitle}
+                      {/* Job title — indent child rows in a sequence */}
+                      <td className="font-medium text-gray-900 max-w-[160px] sm:max-w-xs">
+                        <div className="flex items-center gap-1.5 truncate">
+                          {isSequenceChild && (
+                            <span className="text-gray-400 shrink-0" aria-hidden="true">&#8627;</span>
+                          )}
+                          <span className={`truncate ${isSequenceChild ? 'pl-0' : ''}`}>
+                            {jobTitle}
+                          </span>
+                          {isPartOfSequence && (
+                            <span
+                              className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium"
+                              style={{ background: '#ede9fe', color: '#5b21b6' }}
+                            >
+                              Sequence
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Scheduled date */}

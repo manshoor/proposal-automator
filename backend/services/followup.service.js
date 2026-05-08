@@ -220,6 +220,83 @@ export async function cancelFollowUp(id, userId) {
 }
 
 /**
+ * Schedule a sequence of follow-ups at increasing intervals for a single proposal.
+ * Intervals are sorted ascending; each row is assigned a sequence_index matching
+ * its position in that sorted order (0 = earliest).
+ *
+ * Errors on individual row creation are logged and skipped — the successfully
+ * created rows are always returned. The only hard failure is a missing proposal.
+ *
+ * @param {object} input
+ * @param {number}   input.proposalId
+ * @param {number[]} input.intervals    - Days from proposal.created_at for each follow-up
+ * @param {boolean}  input.autoGenerate - Always true for sequences; manual text not supported
+ * @param {string} userId
+ * @param {object} [logger]
+ * @returns {Promise<object[]>}  Rows in interval order (sequence_index 0 first)
+ */
+export async function scheduleSequence({ proposalId, intervals, autoGenerate }, userId, logger) {
+  // Ownership check — load proposal once to avoid N+1 inside each createFollowUp
+  const proposal = await repo.findProposalForUser(proposalId, userId);
+  if (!proposal) throw new NotFoundError('Proposal');
+
+  // Sort ascending so sequence_index 0 is the earliest follow-up
+  const sortedIntervals = [...intervals].sort((a, b) => a - b);
+
+  // When autoGenerate=true, generate all messages in parallel (O(1) round-trips)
+  let messages;
+  if (autoGenerate) {
+    messages = await Promise.all(
+      sortedIntervals.map((intervalDays) =>
+        generateMessage({
+          proposal,
+          daysSince: intervalDays,
+          userId,
+          logger,
+        }).catch((err) => {
+          logger?.error?.({ err, proposalId, intervalDays }, 'LLM generation failed for sequence step');
+          return null; // placeholder; row creation will be skipped
+        })
+      )
+    );
+  } else {
+    // autoGenerate=false is not supported for sequences per spec, but handle it
+    // gracefully: each message is left empty (null) and rows will be skipped.
+    messages = sortedIntervals.map(() => null);
+  }
+
+  // Insert each row; persist sequence_index; collect successes
+  const created = [];
+  for (let i = 0; i < sortedIntervals.length; i++) {
+    const messageText = messages[i];
+    if (!messageText) {
+      logger?.warn?.({ proposalId, sequenceIndex: i }, 'Skipping sequence step — no message text');
+      continue;
+    }
+
+    const intervalDays = sortedIntervals[i];
+    const base = new Date(proposal.created_at);
+    base.setDate(base.getDate() + intervalDays);
+    const scheduledAt = base.toISOString();
+
+    try {
+      const row = await repo.create({
+        proposal_id: proposalId,
+        user_id: userId,
+        scheduled_at: scheduledAt,
+        message_text: messageText,
+        sequence_index: i,
+      });
+      created.push(toApi(row));
+    } catch (err) {
+      logger?.error?.({ err, proposalId, sequenceIndex: i }, 'Failed to insert sequence row');
+    }
+  }
+
+  return created;
+}
+
+/**
  * Re-generate the message text for an existing follow-up and persist it.
  *
  * @param {number|string} id
