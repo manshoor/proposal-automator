@@ -1,5 +1,6 @@
 import * as profileRepo from '../repositories/profile.repository.js';
 import { cacheGet, cacheSet, cacheDel } from '../lib/redis.js';
+import { logger } from '../lib/logger.js';
 
 const DEFAULT_PROFILE = {
   id: null,
@@ -12,17 +13,32 @@ const DEFAULT_PROFILE = {
   default_hourly_rate: 50.0,
 };
 
+// Module-local cache so repeated same-process lookups (every proposal generation)
+// don't hit Redis. TTL matches the Redis TTL.
+const LOCAL_CACHE_TTL_MS = 5 * 60 * 1000;
+const localCache = new Map();
+
 /**
  * Returns the first profile, auto-creating a default row if none exists.
- * Result is cached in Redis for 5 minutes.
+ * Result is cached locally (5 min) and in Redis (5 min).
  *
  * @param {string|null} userId
  * @returns {Promise<object>}
  */
 export async function getProfile(userId = null) {
   const cacheKey = `profile:${userId || 'global'}`;
+
+  const localHit = localCache.get(cacheKey);
+  if (localHit && localHit.expiresAt > Date.now()) {
+    return localHit.value;
+  }
+
   const cached = await cacheGet(cacheKey);
-  if (cached) return JSON.parse(cached);
+  if (cached) {
+    const value = JSON.parse(cached);
+    localCache.set(cacheKey, { value, expiresAt: Date.now() + LOCAL_CACHE_TTL_MS });
+    return value;
+  }
 
   let profile = await profileRepo.findFirst(userId);
   if (!profile) {
@@ -38,6 +54,7 @@ export async function getProfile(userId = null) {
   }
 
   await cacheSet(cacheKey, JSON.stringify(profile), 300);
+  localCache.set(cacheKey, { value: profile, expiresAt: Date.now() + LOCAL_CACHE_TTL_MS });
   return profile;
 }
 
@@ -51,7 +68,8 @@ export async function getProfile(userId = null) {
 export async function getProfileOrDefault(userId = null) {
   try {
     return await getProfile(userId);
-  } catch {
+  } catch (err) {
+    logger.warn({ err: err?.message, userId }, 'Profile fetch failed; using default');
     return DEFAULT_PROFILE;
   }
 }
@@ -72,5 +90,6 @@ export async function updateProfile(data, userId = null) {
   }
   await cacheDel(`profile:${userId || 'global'}`);
   await cacheDel(`bootstrap:${userId || 'global'}`);
+  localCache.delete(`profile:${userId || 'global'}`);
   return profile;
 }

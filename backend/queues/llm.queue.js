@@ -17,8 +17,8 @@ export function getLLMQueue() {
     defaultJobOptions: {
       attempts: 3,
       backoff: { type: 'exponential', delay: 2000 },
-      removeOnComplete: { count: 200 },
-      removeOnFail: { count: 100 },
+      removeOnComplete: { count: 50, age: 3600 },
+      removeOnFail: { count: 100, age: 86400 },
     },
   });
 

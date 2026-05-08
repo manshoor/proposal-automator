@@ -56,3 +56,54 @@ export async function getProposalsWithOutcomes(userId) {
   );
   return rows;
 }
+
+/**
+ * Fetch up to N most recent winners + N most recent losers in two targeted
+ * queries instead of pulling every outcome-tagged proposal into memory.
+ *
+ * @param {string} userId
+ * @param {number} perBucket - rows per category (default 15)
+ * @returns {Promise<{ winners: object[], losers: object[], totalWinners: number, totalLosers: number }>}
+ */
+export async function getOutcomeBuckets(userId, perBucket = 15) {
+  const winnerTypes = ['hired', 'interview'];
+  const loserTypes = ['rejected', 'no_response'];
+
+  const cols = `id, job_title, job_skills, proposal_text, proposal_length,
+                hourly_rate, client_total_spent, decline_reason,
+                job_budget_amount, response_type, created_at`;
+
+  const [winnersRes, losersRes, countsRes] = await Promise.all([
+    pool.query(
+      `SELECT ${cols}
+       FROM proposals
+       WHERE user_id = $1 AND response_type = ANY($2::text[])
+       ORDER BY created_at DESC
+       LIMIT $3`,
+      [userId, winnerTypes, perBucket]
+    ),
+    pool.query(
+      `SELECT ${cols}
+       FROM proposals
+       WHERE user_id = $1 AND response_type = ANY($2::text[])
+       ORDER BY created_at DESC
+       LIMIT $3`,
+      [userId, loserTypes, perBucket]
+    ),
+    pool.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE response_type = ANY($2::text[])) AS total_winners,
+         COUNT(*) FILTER (WHERE response_type = ANY($3::text[])) AS total_losers
+       FROM proposals
+       WHERE user_id = $1 AND response_type IS NOT NULL`,
+      [userId, winnerTypes, loserTypes]
+    ),
+  ]);
+
+  return {
+    winners: winnersRes.rows,
+    losers: losersRes.rows,
+    totalWinners: parseInt(countsRes.rows[0]?.total_winners ?? 0, 10),
+    totalLosers: parseInt(countsRes.rows[0]?.total_losers ?? 0, 10),
+  };
+}

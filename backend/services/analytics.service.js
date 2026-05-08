@@ -77,16 +77,14 @@ export async function getAnalytics(userId = null) {
  * Analyze proposal outcomes and generate learned patterns using LLM.
  */
 export async function learnFromOutcomes(llmConfig, userId) {
-  const proposals = await insightRepo.getProposalsWithOutcomes(userId);
+  const { winners, losers, totalWinners, totalLosers } = await insightRepo.getOutcomeBuckets(userId, 15);
+  const totalTracked = totalWinners + totalLosers;
 
-  if (proposals.length < 5) {
-    return { insights: [], message: `Need at least 5 tracked proposals. You have ${proposals.length}.` };
+  if (totalTracked < 5) {
+    return { insights: [], message: `Need at least 5 tracked proposals. You have ${totalTracked}.` };
   }
 
-  const winners = proposals.filter(p => p.response_type === 'hired' || p.response_type === 'interview');
-  const losers = proposals.filter(p => p.response_type === 'rejected' || p.response_type === 'no_response');
-
-  const summarize = (list) => list.slice(0, 15).map(p => ({
+  const summarize = (list) => list.map(p => ({
     title: p.job_title,
     skills: p.job_skills,
     budget: p.job_budget_amount,
@@ -100,17 +98,17 @@ export async function learnFromOutcomes(llmConfig, userId) {
 
   const systemPrompt = `You are a proposal performance analyst. Analyze winning vs losing Upwork proposals and identify actionable patterns. Return ONLY valid JSON.`;
 
-  const userPrompt = `WINNING PROPOSALS (${winners.length} total, showing up to 15):
+  const userPrompt = `WINNING PROPOSALS (${totalWinners} total, showing up to 15):
 ${JSON.stringify(summarize(winners), null, 2)}
 
-LOSING PROPOSALS (${losers.length} total, showing up to 15):
+LOSING PROPOSALS (${totalLosers} total, showing up to 15):
 ${JSON.stringify(summarize(losers), null, 2)}
 
 STATS:
-- Win rate: ${proposals.length > 0 ? Math.round((winners.length / proposals.length) * 100) : 0}%
-- Avg winning proposal length: ${winners.length > 0 ? Math.round(winners.reduce((s, p) => s + (p.proposal_length || 0), 0) / winners.length) : 0} chars
-- Avg losing proposal length: ${losers.length > 0 ? Math.round(losers.reduce((s, p) => s + (p.proposal_length || 0), 0) / losers.length) : 0} chars
-- Total tracked: ${proposals.length}
+- Win rate: ${totalTracked > 0 ? Math.round((totalWinners / totalTracked) * 100) : 0}%
+- Avg winning proposal length (sample): ${winners.length > 0 ? Math.round(winners.reduce((s, p) => s + (p.proposal_length || 0), 0) / winners.length) : 0} chars
+- Avg losing proposal length (sample): ${losers.length > 0 ? Math.round(losers.reduce((s, p) => s + (p.proposal_length || 0), 0) / losers.length) : 0} chars
+- Total tracked: ${totalTracked}
 
 Return a JSON array of 5-7 learned rules:
 [
