@@ -24,3 +24,7 @@ export const trackEventsSchema = z.object({
 export const trackingFlagSchema = z.object({
   enabled: z.boolean(),
 });
+
+export type OutcomeEvent = z.infer<typeof outcomeEventSchema>;
+export type TrackEventsInput = z.infer<typeof trackEventsSchema>;
+export type TrackingFlagInput = z.infer<typeof trackingFlagSchema>;

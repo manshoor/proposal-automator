@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const HOOK_STYLE_KEYS = ['problem-mirror', 'metric-led', 'question-led', 'story-led'];
+const HOOK_STYLE_KEYS = ['problem-mirror', 'metric-led', 'question-led', 'story-led'] as const;
 export const hookStyleEnum = z.enum(HOOK_STYLE_KEYS);
 
 export const generateProposalSchema = z.object({
@@ -69,3 +69,9 @@ export const updateProposalSchema = z.object({
   loom_url: z.string().url().optional().nullable(),
   variantChosen: z.enum(['A', 'B']).optional().nullable(),
 });
+
+export type HookStyle = z.infer<typeof hookStyleEnum>;
+export type GenerateProposalInput = z.infer<typeof generateProposalSchema>;
+export type ListProposalsQuery = z.infer<typeof listProposalsSchema>;
+export type CreateProposalInput = z.infer<typeof createProposalSchema>;
+export type UpdateProposalInput = z.infer<typeof updateProposalSchema>;

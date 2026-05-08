@@ -11,3 +11,5 @@ export const generateMessageSchema = z.object({
   provider: z.string().max(50).optional(),
   apiKey: z.string().max(500).optional(),
 });
+
+export type GenerateMessageInput = z.infer<typeof generateMessageSchema>;

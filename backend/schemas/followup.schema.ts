@@ -34,3 +34,8 @@ export const createSequenceSchema = z.object({
   (v) => new Set(v.intervals).size === v.intervals.length,
   { message: 'Intervals must be unique' },
 );
+
+export type CreateFollowUpInput = z.infer<typeof createFollowUpSchema>;
+export type UpdateFollowUpInput = z.infer<typeof updateFollowUpSchema>;
+export type ListFollowUpsQuery = z.infer<typeof listQuerySchema>;
+export type CreateSequenceInput = z.infer<typeof createSequenceSchema>;

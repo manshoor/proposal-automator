@@ -5,3 +5,5 @@ export const createBannedPhraseSchema = z.object({
   severity: z.enum(['block', 'warn']).default('warn'),
   scope: z.enum(['admin', 'user']).default('user'),
 });
+
+export type CreateBannedPhraseInput = z.infer<typeof createBannedPhraseSchema>;

@@ -15,3 +15,5 @@ export const updateSettingsSchema = z.object({
   llm_provider: z.enum(['anthropic', 'openai']).optional(),
   llm_api_key: z.string().max(500).optional(),
 });
+
+export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;

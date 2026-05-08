@@ -13,3 +13,6 @@ export const updatePromptSchema = z.object({
   prompt_text: z.string().optional(),
   is_active: z.boolean().optional(),
 });
+
+export type CreatePromptInput = z.infer<typeof createPromptSchema>;
+export type UpdatePromptInput = z.infer<typeof updatePromptSchema>;

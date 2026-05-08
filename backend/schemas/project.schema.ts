@@ -26,3 +26,6 @@ export const updateProjectSchema = z.object({
   is_featured: z.boolean().optional(),
   screenshots: z.array(z.string()).optional(),
 });
+
+export type CreateProjectInput = z.infer<typeof createProjectSchema>;
+export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;

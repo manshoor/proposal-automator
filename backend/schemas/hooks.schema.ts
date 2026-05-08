@@ -6,3 +6,5 @@ export const generateHooksSchema = z.object({
   provider: z.string().optional(),
   apiKey: z.string().optional(),
 });
+
+export type GenerateHooksInput = z.infer<typeof generateHooksSchema>;
