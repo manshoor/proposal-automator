@@ -82,6 +82,7 @@ export async function createProposal(data, userId = null) {
     hidden_instructions,
     vetting_result,
     proposal_count,
+    loom_url,
   } = data;
 
   const row = await proposalRepo.create({
@@ -103,6 +104,7 @@ export async function createProposal(data, userId = null) {
     vetting_result: vetting_result ? JSON.stringify(vetting_result) : null,
     proposal_count: proposal_count || null,
     connect_cost: null,
+    loom_url: loom_url || null,
   }, userId);
 
   await cacheDel('analytics:' + (userId || 'global'));
@@ -120,7 +122,7 @@ export async function createProposal(data, userId = null) {
  * @returns {Promise<object>}
  */
 export async function updateProposal(id, data, userId = null) {
-  const { status, earnings, response_type, responded_at, decline_reason, client_feedback } = data;
+  const { status, earnings, response_type, responded_at, decline_reason, client_feedback, loom_url } = data;
 
   if (status !== undefined && status !== null && !ALLOWED_STATUSES.has(status)) {
     throw new ValidationError(`status must be one of: ${[...ALLOWED_STATUSES].join(', ')}`);
@@ -136,7 +138,8 @@ export async function updateProposal(id, data, userId = null) {
 
   const hasUpdate = status !== undefined || earnings !== undefined
     || response_type !== undefined || responded_at !== undefined
-    || decline_reason !== undefined || client_feedback !== undefined;
+    || decline_reason !== undefined || client_feedback !== undefined
+    || loom_url !== undefined;
 
   if (!hasUpdate) {
     throw new ValidationError('Nothing to update.');
@@ -190,6 +193,7 @@ export async function generateProposal(input, logger = null, userId = null) {
     selectedProjects,
     platform,
     hookStyle: requestedHookStyle,
+    loomUrl,
   } = input;
 
   // 1. Resolve LLM config
@@ -406,6 +410,8 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
       proposal_count: jobData.proposalCount || null,
       connect_cost: jobData.connectCost || null,
       hook_style: hookStyle || null,
+      payment_verified: jobData.client?.paymentVerified ?? null,
+      loom_url: loomUrl || null,
     }, userId);
     proposalId = row?.id || null;
     await cacheDel('analytics:' + (userId || 'global'));
@@ -432,6 +438,7 @@ JOB ANALYSIS (use these insights to write a targeted proposal):
     boostDecision,
     aiGeneric,
     preflight,
+    loomUrl: loomUrl || null,
   };
 }
 
@@ -543,6 +550,8 @@ async function persistABVariant(parsed, jobData, hiddenInstructions, templateCon
       proposal_count: jobData.proposalCount || null,
       connect_cost: jobData.connectCost || null,
       hook_style: hookStyle,
+      payment_verified: jobData.client?.paymentVerified ?? null,
+      loom_url: null,
     }, userId);
     return row?.id || null;
   } catch {
