@@ -499,20 +499,24 @@ function showAIGeneric(aiGeneric) {
 
 // ---- Connect Balance Chip ----
 
+function applyConnectsChip(data) {
+  const chip = document.getElementById('connects-chip');
+  const balanceEl = document.getElementById('connects-balance');
+  if (!chip || !balanceEl) return;
+  if (!data || data.balance == null) {
+    chip.classList.add('hidden');
+    return;
+  }
+  balanceEl.textContent = String(data.balance);
+  chip.classList.remove('hidden', 'connects-low', 'connects-critical');
+  if (data.balance < 10) chip.classList.add('connects-critical');
+  else if (data.balance < 30) chip.classList.add('connects-low');
+}
+
 async function loadConnectsChip() {
   try {
     const data = await apiFetch('/api/v1/connects');
-    const chip = document.getElementById('connects-chip');
-    const balanceEl = document.getElementById('connects-balance');
-    if (!chip || !balanceEl) return;
-    if (data.balance == null) {
-      chip.classList.add('hidden');
-      return;
-    }
-    balanceEl.textContent = String(data.balance);
-    chip.classList.remove('hidden', 'connects-low', 'connects-critical');
-    if (data.balance < 10) chip.classList.add('connects-critical');
-    else if (data.balance < 30) chip.classList.add('connects-low');
+    applyConnectsChip(data);
   } catch { /* non-fatal */ }
 }
 
@@ -862,11 +866,10 @@ async function init() {
     return;
   }
 
-  // Sync the outcome-tracking flag (non-blocking — content scripts pick up next page load)
-  syncOutcomeTrackingFlag();
-
-  // Load Connect balance chip (non-blocking — displays account-level balance)
-  loadConnectsChip();
+  // Single batched fetch (outcome-tracking + connects + bootstrap). Saves
+  // ~400-1000ms vs three sequential calls. The standalone fallbacks still
+  // exist for safety but aren't on the hot path.
+  const popupInitPromise = loadPopupInit();
 
   // Find the active tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -889,8 +892,11 @@ async function init() {
 
   showOnUpwork();
 
-  // Load bootstrap data and vetting in PARALLEL
+  // Load bootstrap data and vetting in PARALLEL. popupInitPromise is
+  // typically already resolved by the time we get here; loadBootstrapData
+  // reads from the cache popup-init populated.
   try {
+    await popupInitPromise;
     const [response, bootstrap] = await Promise.all([
       sendToContent(_activeTabId, { type: 'GET_VETTING' }),
       loadBootstrapData(),
@@ -1062,6 +1068,38 @@ async function loadBootstrapData() {
     console.warn('[Popup] Bootstrap fetch failed:', e);
   }
   return null;
+}
+
+/**
+ * Single batched fetch for everything the popup needs on open:
+ * outcome tracking flag, Connect balance, and bootstrap payload.
+ * Replaces 3 sequential round-trips with one. Falls back gracefully
+ * — callers (loadBootstrapData, loadConnectsChip, syncOutcomeTrackingFlag)
+ * still work standalone if the new endpoint isn't available.
+ */
+async function loadPopupInit() {
+  try {
+    const res = await apiFetch('/api/v1/popup-init');
+    if (!res.ok) return null;
+    const data = await res.json();
+
+    if (data.outcomeTracking) {
+      try {
+        await chrome.storage.local.set({ outcome_tracking_enabled: !!data.outcomeTracking.enabled });
+      } catch { /* storage permission edge case */ }
+    }
+
+    applyConnectsChip(data.connects);
+
+    if (data.bootstrap) {
+      try { setBootstrapCache(data.bootstrap); } catch { /* non-fatal */ }
+    }
+
+    return data;
+  } catch (e) {
+    console.warn('[Popup] popup-init fetch failed:', e?.message || e);
+    return null;
+  }
 }
 
 // ---- Loom URL helpers ----

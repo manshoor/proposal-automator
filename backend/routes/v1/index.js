@@ -26,6 +26,7 @@ import outcomesRouter from '../../api/outcomes.js';
 import insightsRouter from '../../api/insights.js';
 import connectsRouter from '../../api/connects.js';
 import profileCoachRouter from '../../api/profile-coach.js';
+import popupInitRouter from '../../api/popup-init.js';
 
 const router = Router();
 
@@ -59,6 +60,7 @@ router.use('/insights', insightsRouter);
 router.use('/connects', connectsRouter);
 router.use('/profile-coach', profileCoachRouter);
 router.use('/bootstrap', bootstrapRouter);
+router.use('/popup-init', popupInitRouter);
 router.use('/admin', requireAdmin, adminRouter);
 
 export default router;
