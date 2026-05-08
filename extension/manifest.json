@@ -66,9 +66,28 @@
         "lib/storage.js",
         "lib/api.js",
         "content/message-scraper.js",
-        "content/message-ui.js"
+        "content/message-ui.js",
+        "content/outcome-detector.js"
       ],
       "css": ["content/message-ui.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.upwork.com/ab/proposals*",
+        "https://www.upwork.com/nx/proposals*",
+        "https://www.upwork.com/freelancers/proposals*"
+      ],
+      "exclude_matches": [
+        "https://www.upwork.com/ab/proposals/job/*",
+        "https://www.upwork.com/nx/proposals/job/*"
+      ],
+      "js": [
+        "lib/constants.js",
+        "lib/storage.js",
+        "lib/api.js",
+        "content/outcome-detector.js"
+      ],
       "run_at": "document_idle"
     }
   ],

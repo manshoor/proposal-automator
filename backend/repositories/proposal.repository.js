@@ -74,6 +74,7 @@ export async function create(data, userId = null) {
     vetting_result,
     proposal_count,
     connect_cost,
+    hook_style,
   } = data;
 
   const columns = [
@@ -82,6 +83,7 @@ export async function create(data, userId = null) {
     'job_skills', 'client_location', 'client_total_spent', 'client_hire_rate',
     'client_review_count', 'proposal_text', 'hourly_rate',
     'hidden_instructions', 'vetting_result', 'proposal_count', 'connect_cost',
+    'hook_style',
   ];
   const values = [
     job_url,
@@ -102,6 +104,7 @@ export async function create(data, userId = null) {
     vetting_result,
     proposal_count,
     connect_cost,
+    hook_style ?? null,
   ];
 
   if (userId) {

@@ -1,4 +1,56 @@
 /**
+ * Hook style skeletons. Each style overrides the system prompt's opening guidance
+ * with a structurally different approach. Used by Phase 1 Hook Surgeon.
+ */
+export const HOOK_STYLES = {
+  'problem-mirror': `HOOK STYLE — PROBLEM MIRROR:
+Open by mirroring the client's specific problem in their own language. The first sentence should make them think "this person understands exactly what I'm dealing with." Reference the actual pain point, then immediately follow with concrete proof you've solved it before. Avoid restating the job description back to them — name the underlying problem they may not have articulated.
+
+Example structure:
+"[Specific pain from their post] usually comes down to [insightful diagnosis] — I helped [past client] fix this by [concrete action] which produced [measurable result]."`,
+
+  'metric-led': `HOOK STYLE — METRIC LED:
+Open with a concrete number from your past work that's directly relevant to this job. The first sentence should be a result, not an introduction. Make the client think "this person has done exactly this and has the receipts."
+
+Example structure:
+"Took a [similar project type] from [bad metric] to [good metric] in [timeframe]. Same pattern fits your [specific aspect of their job]."`,
+
+  'question-led': `HOOK STYLE — QUESTION LED:
+Open with a sharp, specific technical or strategic question that signals you've already thought about their problem more deeply than other freelancers. Not a vague question — one whose specificity reveals deep expertise. The question must be answerable from the job description plus your skills, but it should reveal a trade-off or design decision the client likely hasn't framed yet.
+
+Example structure:
+"Are you on [specific tech choice A] or [B] for [their feature]? Asking because [insightful reason that affects approach]. Either way, here's how I'd tackle it..."`,
+
+  'story-led': `HOOK STYLE — STORY LED:
+Open with a 1-sentence anecdote of a near-identical past project, then immediately tie it to their job. The story creates a pattern-match in the client's mind — "this is the freelancer who did the thing I need."
+
+Example structure:
+"Last [timeframe] I [solved a problem nearly identical to theirs] for [client type] — ended up [concrete result]. Your [their job specifics] reads almost identical."`,
+};
+
+/**
+ * Builds retry guidance to append to the user prompt when hook validation fails.
+ * Includes the specific issues detected so the LLM can correct on retry.
+ *
+ * @param {string} failureSummary - Multi-line description of validation failures
+ * @returns {string}
+ */
+export function buildRetryGuidance(failureSummary) {
+  return `IMPORTANT — PREVIOUS ATTEMPT FAILED HOOK VALIDATION.
+
+${failureSummary}
+
+Rewrite the proposal opening (first 230 characters) to fix every issue above. In particular:
+1. Avoid every banned phrase listed — they trigger automatic rejection.
+2. Reference a specific job-related term (technology, deliverable, or the client's actual problem).
+3. Mirror at least one of the client's keywords from the job description.
+4. Don't open with a generic self-introduction ("Hi, I'm…", "Hello, my name is…").
+5. Don't close the opening with "looking forward to" or similar generic lines.
+
+Output the FULL proposal again with all fixes applied.`;
+}
+
+/**
  * Injects profile data into a prompt template by replacing placeholders.
  * Supported: {profile.full_name}, {profile.title}, {profile.skills}, etc.
  * @param {string} promptText
@@ -20,12 +72,13 @@ export function injectProfileData(promptText, profile) {
 /**
  * Builds the system prompt using the freelancer's profile.
  * @param {object} profile
+ * @param {string|null} [hookStyle] - One of the HOOK_STYLES keys; appends style-specific guidance
  * @returns {string}
  */
-export function buildSystemPrompt(profile) {
+export function buildSystemPrompt(profile, hookStyle = null) {
   const skills = Array.isArray(profile.skills) ? profile.skills.join(', ') : (profile.skills || '');
 
-  return `You write Upwork proposals that win contracts. You write like a busy, confident freelancer who has done this exact work before — not like an AI assistant.
+  let prompt = `You write Upwork proposals that win contracts. You write like a busy, confident freelancer who has done this exact work before — not like an AI assistant.
 
 FREELANCER PROFILE:
 - Name: ${profile.full_name || 'Freelancer'}
@@ -87,6 +140,12 @@ MILESTONES:
 
 If the budget seems wrong for the scope, add:
 BUDGET_WARNING: [brief explanation of the concern]`;
+
+  if (hookStyle && HOOK_STYLES[hookStyle]) {
+    prompt += '\n\n--- HOOK STYLE OVERRIDE ---\n' + HOOK_STYLES[hookStyle];
+  }
+
+  return prompt;
 }
 
 /**
@@ -146,7 +205,6 @@ ${hiddenInstructions.text}`;
  * @returns {string}
  */
 function formatBudget(jobData) {
-  // Handle budget as nested object from scraper: { type, min, max, amount }
   const budget = jobData.budget || {};
   const type = budget.type || jobData.budgetType || 'unknown';
   const amount = budget.amount || jobData.budgetAmount;
