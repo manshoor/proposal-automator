@@ -18,7 +18,7 @@ import { metricsMiddleware } from './middleware/metrics.js';
 import { register } from './lib/metrics.js';
 import { runMigrations } from './db/migrate.js';
 import pool from './db/pool.js';
-import { connectRedis, disconnectRedis } from './lib/redis.js';
+import { connectRedis, disconnectRedis, isConnected as isRedisConnected } from './lib/redis.js';
 import { initQueues, closeQueues } from './queues/index.js';
 import v1Router from './routes/v1/index.js';
 // In-process background workers (setInterval-based, best-effort).
@@ -68,10 +68,49 @@ app.use(express.json({ limit: '50kb' }));
 app.use(globalLimiter);
 app.use(metricsMiddleware);
 
-// Health check (before routes, no auth needed)
+// ---- Health checks (before routes, no auth needed) ----
+//
+// /health is the legacy endpoint and is kept for backward compatibility.
+// /health/live is for liveness probes (process up + event loop responsive).
+// /health/ready is for readiness probes (DB + Redis reachable).
+//
+// Liveness should not include downstream checks — a slow DB shouldn't make
+// the orchestrator restart a healthy app process. Readiness should include
+// them — a backend with no DB can't serve requests, so it should be removed
+// from the load balancer until it can.
+
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+app.get('/health/live', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/health/ready', async (_req, res) => {
+  const checks = { db: false, redis: false };
+  try {
+    await pool.query('SELECT 1');
+    checks.db = true;
+  } catch { /* leave false */ }
+  checks.redis = isRedisConnected();
+
+  const ready = checks.db; // Redis is best-effort caching — don't fail readiness on it.
+  res.status(ready ? 200 : 503).json({
+    status: ready ? 'ok' : 'unavailable',
+    checks,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Build/version info — handy for confirming what's deployed.
+const VERSION = {
+  commit: process.env.GIT_COMMIT || 'unknown',
+  builtAt: process.env.BUILD_TIME || null,
+  startedAt: new Date().toISOString(),
+  node: process.version,
+};
+app.get('/version', (_req, res) => res.json(VERSION));
 
 // Prometheus metrics endpoint
 app.get('/metrics', async (_req, res) => {

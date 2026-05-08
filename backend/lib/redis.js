@@ -4,6 +4,10 @@ import { logger } from './logger.js';
 let client = null;
 let connected = false;
 
+export function isConnected() {
+  return connected;
+}
+
 export function getClient() {
   if (client) return client;
 
