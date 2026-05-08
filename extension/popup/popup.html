@@ -145,13 +145,18 @@
 
     <!-- Loom URL -->
     <div class="loom-row">
-      <label for="loom-url-input" class="label">Loom video URL <span class="loom-hint">(optional — 3× response rate)</span></label>
-      <input
-        id="loom-url-input"
-        type="url"
-        class="select-field loom-url-field"
-        placeholder="https://www.loom.com/share/..."
-        autocomplete="off" />
+      <label for="loom-url-input" class="label">Loom video URL <span class="loom-hint">(optional, 3× response)</span></label>
+      <div class="loom-input-row">
+        <input
+          id="loom-url-input"
+          type="url"
+          class="select-field loom-url-field"
+          placeholder="https://www.loom.com/share/..."
+          autocomplete="off" />
+        <button id="btn-loom-record" class="qe-btn loom-record-btn" type="button" title="Record a new Loom in extension">
+          <span class="loom-record-icon">&#9679;</span> Record
+        </button>
+      </div>
     </div>
 
     <!-- Generate Buttons -->
