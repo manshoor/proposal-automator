@@ -12,7 +12,9 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRY: z.string().optional(),
 });
 
-export function validateEnv() {
+export type Env = z.infer<typeof envSchema>;
+
+export function validateEnv(): Env {
   const result = envSchema.safeParse(process.env);
   if (!result.success) {
     const errors = result.error.errors

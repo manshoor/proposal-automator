@@ -1,20 +1,21 @@
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
+import type { Redis as RedisClient } from 'ioredis';
 import { logger } from './logger.js';
 
-let client = null;
+let client: RedisClient | null = null;
 let connected = false;
 
-export function isConnected() {
+export function isConnected(): boolean {
   return connected;
 }
 
-export function getClient() {
+export function getClient(): RedisClient {
   if (client) return client;
 
   const url = process.env.REDIS_URL || 'redis://localhost:6379';
   client = new Redis(url, {
     maxRetriesPerRequest: 3,
-    retryStrategy(times) {
+    retryStrategy(times: number) {
       if (times > 5) return null; // stop retrying
       return Math.min(times * 200, 2000);
     },
@@ -26,7 +27,7 @@ export function getClient() {
     logger.info('Redis connected');
   });
 
-  client.on('error', (err) => {
+  client.on('error', (err: unknown) => {
     connected = false;
     logger.error({ err }, 'Redis error');
   });
@@ -38,7 +39,7 @@ export function getClient() {
   return client;
 }
 
-export async function connectRedis() {
+export async function connectRedis(): Promise<void> {
   const c = getClient();
   try {
     await c.connect();
@@ -47,7 +48,7 @@ export async function connectRedis() {
   }
 }
 
-export async function disconnectRedis() {
+export async function disconnectRedis(): Promise<void> {
   if (client) {
     await client.quit().catch(() => {});
     client = null;
@@ -55,7 +56,7 @@ export async function disconnectRedis() {
   }
 }
 
-export async function cacheGet(key) {
+export async function cacheGet(key: string): Promise<string | null> {
   if (!connected) return null;
   try {
     return await getClient().get(key);
@@ -64,7 +65,7 @@ export async function cacheGet(key) {
   }
 }
 
-export async function cacheSet(key, value, ttlSeconds = 300) {
+export async function cacheSet(key: string, value: string, ttlSeconds = 300): Promise<void> {
   if (!connected) return;
   try {
     await getClient().set(key, value, 'EX', ttlSeconds);
@@ -73,7 +74,7 @@ export async function cacheSet(key, value, ttlSeconds = 300) {
   }
 }
 
-export async function cacheDel(key) {
+export async function cacheDel(key: string): Promise<void> {
   if (!connected) return;
   try {
     await getClient().del(key);
@@ -82,15 +83,15 @@ export async function cacheDel(key) {
   }
 }
 
-export async function cacheDelPrefix(prefix) {
+export async function cacheDelPrefix(prefix: string): Promise<void> {
   if (!connected) return;
   try {
-    const client = getClient();
+    const c = getClient();
     let cursor = '0';
     do {
-      const [next, keys] = await client.scan(cursor, 'MATCH', prefix + '*', 'COUNT', 100);
+      const [next, keys] = await c.scan(cursor, 'MATCH', prefix + '*', 'COUNT', 100);
       cursor = next;
-      if (keys.length > 0) await client.del(...keys);
+      if (keys.length > 0) await c.del(...keys);
     } while (cursor !== '0');
   } catch {
     // silently fail

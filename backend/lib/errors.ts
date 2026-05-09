@@ -1,5 +1,10 @@
 export class AppError extends Error {
-  constructor(message, statusCode = 500, code = 'INTERNAL_ERROR', details = null) {
+  statusCode: number;
+  code: string;
+  details: unknown;
+  isOperational: boolean;
+
+  constructor(message: string, statusCode = 500, code = 'INTERNAL_ERROR', details: unknown = null) {
     super(message);
     this.statusCode = statusCode;
     this.code = code;
@@ -9,7 +14,7 @@ export class AppError extends Error {
 }
 
 export class ValidationError extends AppError {
-  constructor(message, details = null) {
+  constructor(message: string, details: unknown = null) {
     super(message, 400, 'VALIDATION_ERROR', details);
   }
 }
@@ -33,7 +38,8 @@ export class AuthorizationError extends AppError {
 }
 
 export class ExternalServiceError extends AppError {
-  constructor(service, message = 'External service failed') {
+  service: string;
+  constructor(service: string, message = 'External service failed') {
     super(`${service}: ${message}`, 502, 'EXTERNAL_SERVICE_ERROR');
     this.service = service;
   }

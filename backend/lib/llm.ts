@@ -1,13 +1,25 @@
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 
-/**
- * @param {{ provider: string, apiKey: string, systemPrompt: string, userPrompt: string, maxTokens?: number }} options
- * @returns {Promise<string>}
- */
 const LLM_TIMEOUT_MS = 90_000; // 90 seconds
 
-export async function callLLM({ provider, apiKey, systemPrompt, userPrompt, maxTokens = 2048 }) {
+export type LLMProvider = 'anthropic' | 'openai';
+
+export interface CallLLMOptions {
+  provider: LLMProvider;
+  apiKey: string;
+  systemPrompt: string;
+  userPrompt: string;
+  maxTokens?: number;
+}
+
+export async function callLLM({
+  provider,
+  apiKey,
+  systemPrompt,
+  userPrompt,
+  maxTokens = 2048,
+}: CallLLMOptions): Promise<string> {
   if (!provider || !apiKey) {
     throw new Error('provider and apiKey are required');
   }
@@ -25,7 +37,9 @@ export async function callLLM({ provider, apiKey, systemPrompt, userPrompt, maxT
           system: systemPrompt,
           messages: [{ role: 'user', content: userPrompt }],
         }, { signal: controller.signal });
-        return message.content[0].text;
+        const block = message.content[0];
+        if (block && block.type === 'text') return block.text;
+        return '';
       }
 
       case 'openai': {
@@ -38,7 +52,7 @@ export async function callLLM({ provider, apiKey, systemPrompt, userPrompt, maxT
             { role: 'user', content: userPrompt },
           ],
         }, { signal: controller.signal });
-        return completion.choices[0].message.content;
+        return completion.choices[0]?.message?.content ?? '';
       }
 
       default:
