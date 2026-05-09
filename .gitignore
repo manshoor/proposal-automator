@@ -15,3 +15,5 @@ dashboard/playwright-report/
 dashboard/blob-report/
 dashboard/playwright/.cache/
 dashboard/e2e/.auth/
+dashboard/.next/
+dashboard/tsconfig.tsbuildinfo
