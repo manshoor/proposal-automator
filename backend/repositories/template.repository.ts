@@ -1,6 +1,14 @@
 import pool from '../db/pool.js';
 
-export async function findAll(userId = null) {
+type Row = Record<string, unknown>;
+type TemplateData = {
+  name: string;
+  content: string;
+  variables?: unknown;
+  is_default?: boolean;
+};
+
+export async function findAll(userId: string | null = null): Promise<Row[]> {
   // Explicit column list — callers (bootstrap, listTemplates) use id/name/content/platform/
   // created_at/updated_at only. variables + is_default excluded from list; available via findById.
   const cols = 'id, user_id, name, content, platform, created_at, updated_at';
@@ -13,7 +21,7 @@ export async function findAll(userId = null) {
   }
 }
 
-export async function findById(id, userId = null) {
+export async function findById(id: number | string, userId: string | null = null): Promise<Row | null> {
   // Full column list intentional — detail/edit path needs variables + is_default.
   if (userId) {
     const { rows } = await pool.query('SELECT * FROM templates WHERE id = $1 AND user_id = $2', [id, userId]);
@@ -24,11 +32,11 @@ export async function findById(id, userId = null) {
   }
 }
 
-export async function create(data, userId = null) {
+export async function create(data: TemplateData, userId: string | null = null): Promise<Row> {
   const { name, content, variables, is_default } = data;
 
-  const columns = ['name', 'content', 'variables', 'is_default'];
-  const values = [name, content, variables, is_default ?? false];
+  const columns: string[] = ['name', 'content', 'variables', 'is_default'];
+  const values: unknown[] = [name, content, variables, is_default ?? false];
 
   if (userId) {
     columns.push('user_id');
@@ -44,10 +52,10 @@ export async function create(data, userId = null) {
   return rows[0];
 }
 
-export async function update(id, data, userId = null) {
+export async function update(id: number | string, data: Partial<TemplateData>, userId: string | null = null): Promise<Row | null> {
   const { name, content, variables, is_default } = data;
 
-  const values = [name ?? null, content, variables, is_default ?? null, id];
+  const values: unknown[] = [name ?? null, content, variables, is_default ?? null, id];
   let whereClause = 'WHERE id = $5';
 
   if (userId) {
@@ -69,7 +77,7 @@ export async function update(id, data, userId = null) {
   return rows[0] || null;
 }
 
-export async function remove(id, userId = null) {
+export async function remove(id: number | string, userId: string | null = null): Promise<Row | null> {
   if (userId) {
     const { rows } = await pool.query(
       'DELETE FROM templates WHERE id = $1 AND user_id = $2 RETURNING id',

@@ -1,6 +1,8 @@
 import pool from '../db/pool.js';
 
-export async function findFirst(userId = null) {
+type Row = Record<string, unknown>;
+
+export async function findFirst(userId: string | null = null): Promise<Row | null> {
   if (userId) {
     const { rows } = await pool.query('SELECT * FROM profiles WHERE user_id = $1 LIMIT 1', [userId]);
     return rows[0] || null;
@@ -10,7 +12,7 @@ export async function findFirst(userId = null) {
   }
 }
 
-export async function create(data, userId = null) {
+export async function create(data: Record<string, unknown>, userId: string | null = null): Promise<Row> {
   const {
     full_name = '',
     title = '',
@@ -21,8 +23,8 @@ export async function create(data, userId = null) {
     default_hourly_rate = 50.0,
   } = data;
 
-  const columns = ['full_name', 'title', 'summary', 'skills', 'experience', 'portfolio', 'default_hourly_rate'];
-  const values = [full_name, title, summary, skills, experience, portfolio, default_hourly_rate];
+  const columns: string[] = ['full_name', 'title', 'summary', 'skills', 'experience', 'portfolio', 'default_hourly_rate'];
+  const values: unknown[] = [full_name, title, summary, skills, experience, portfolio, default_hourly_rate];
 
   if (userId) {
     columns.push('user_id');
@@ -38,7 +40,7 @@ export async function create(data, userId = null) {
   return rows[0];
 }
 
-export async function update(id, data, userId = null) {
+export async function update(id: number | string, data: Record<string, unknown>, userId: string | null = null): Promise<Row | null> {
   const {
     full_name,
     title,
@@ -49,7 +51,7 @@ export async function update(id, data, userId = null) {
     default_hourly_rate,
   } = data;
 
-  const values = [
+  const values: unknown[] = [
     full_name ?? null,
     title ?? null,
     summary ?? null,

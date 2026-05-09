@@ -1,16 +1,29 @@
 import pool from '../db/pool.js';
 
+type Row = Record<string, unknown>;
+
 const ALLOWED_SORT_COLUMNS = new Set(['created_at', 'updated_at', 'job_title', 'status', 'hourly_rate']);
 const ALLOWED_STATUSES = new Set(['sent', 'pending', 'hired', 'rejected', 'withdrawn']);
 
-export async function findAll({ status, limit = 20, offset = 0, sort = 'created_at', order = 'desc' } = {}, userId = null) {
-  const safeSort = ALLOWED_SORT_COLUMNS.has(sort) ? sort : 'created_at';
-  const safeOrder = order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
-  const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
-  const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
+export interface ListOptions {
+  status?: string;
+  limit?: number | string;
+  offset?: number | string;
+  sort?: string;
+  order?: string;
+}
 
-  const params = [];
-  const conditions = [];
+export async function findAll(
+  { status, limit = 20, offset = 0, sort = 'created_at', order = 'desc' }: ListOptions = {},
+  userId: string | null = null,
+): Promise<Row[]> {
+  const safeSort = ALLOWED_SORT_COLUMNS.has(sort) ? sort : 'created_at';
+  const safeOrder = String(order).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  const safeLimit = Math.min(Math.max(parseInt(String(limit), 10) || 20, 1), 100);
+  const safeOffset = Math.max(parseInt(String(offset), 10) || 0, 0);
+
+  const params: unknown[] = [];
+  const conditions: string[] = [];
 
   if (status && ALLOWED_STATUSES.has(status)) {
     params.push(status);
@@ -45,7 +58,7 @@ export async function findAll({ status, limit = 20, offset = 0, sort = 'created_
   return rows;
 }
 
-export async function findById(id, userId = null) {
+export async function findById(id: number | string, userId: string | null = null): Promise<Row | null> {
   // Full column list intentional — this is the detail view endpoint; clients read
   // proposal_text, vetting_result, job_skills, hidden_instructions, etc.
   if (userId) {
@@ -57,7 +70,7 @@ export async function findById(id, userId = null) {
   }
 }
 
-export async function create(data, userId = null) {
+export async function create(data: Record<string, unknown>, userId: string | null = null): Promise<{ id: number } | null> {
   const {
     job_url,
     job_title,
@@ -83,7 +96,7 @@ export async function create(data, userId = null) {
     client_identity_hash,
   } = data;
 
-  const columns = [
+  const columns: string[] = [
     'job_url', 'job_title', 'job_description',
     'job_budget_type', 'job_budget_min', 'job_budget_max', 'job_budget_amount',
     'job_skills', 'client_location', 'client_total_spent', 'client_hire_rate',
@@ -91,7 +104,7 @@ export async function create(data, userId = null) {
     'hidden_instructions', 'vetting_result', 'proposal_count', 'connect_cost',
     'hook_style', 'payment_verified', 'loom_url', 'client_identity_hash',
   ];
-  const values = [
+  const values: unknown[] = [
     job_url,
     job_title,
     job_description,
@@ -127,14 +140,14 @@ export async function create(data, userId = null) {
     `INSERT INTO proposals (${columns.join(', ')}) VALUES (${placeholders}) RETURNING id`,
     values
   );
-  return rows[0] || null;
+  return (rows[0] as { id: number }) || null;
 }
 
-export async function update(id, data, userId = null) {
+export async function update(id: number | string, data: Record<string, unknown>, userId: string | null = null): Promise<Row | null> {
   const { status, earnings, response_type, responded_at, decline_reason, client_feedback, loom_url, variant_chosen } = data;
 
-  const sets = [];
-  const values = [];
+  const sets: string[] = [];
+  const values: unknown[] = [];
   let idx = 1;
 
   if (status !== undefined && status !== null) {
@@ -197,19 +210,19 @@ export async function update(id, data, userId = null) {
   return rows[0] || null;
 }
 
-export async function findRecentUrls(userId, limit = 100) {
+export async function findRecentUrls(userId: string, limit: number = 100): Promise<string[]> {
   const { rows } = await pool.query(
     `SELECT job_url FROM proposals WHERE user_id = $1 AND status = 'sent' ORDER BY created_at DESC LIMIT $2`,
     [userId, limit]
   );
-  return rows.map(r => r.job_url).filter(Boolean);
+  return (rows as { job_url: string | null }[]).map((r) => r.job_url).filter((u): u is string => !!u);
 }
 
-export async function remove(id, userId = null) {
+export async function remove(id: number | string, userId: string | null = null): Promise<boolean> {
   if (userId) {
     const { rowCount } = await pool.query('DELETE FROM proposals WHERE id = $1 AND user_id = $2', [id, userId]);
-    return rowCount > 0;
+    return (rowCount ?? 0) > 0;
   }
   const { rowCount } = await pool.query('DELETE FROM proposals WHERE id = $1', [id]);
-  return rowCount > 0;
+  return (rowCount ?? 0) > 0;
 }

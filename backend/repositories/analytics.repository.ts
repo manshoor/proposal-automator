@@ -1,13 +1,22 @@
 import pool from '../db/pool.js';
+import type { QueryResult } from 'pg';
 
-export async function getSummary(userId = null) {
+export interface AnalyticsSummary {
+  summaryResult: QueryResult;
+  weeklyResult: QueryResult;
+  topSkillsResult: QueryResult;
+  statusBreakdownResult: QueryResult;
+  connectsResult: QueryResult;
+  connectWeeklyResult: QueryResult;
+}
+
+export async function getSummary(userId: string | null = null): Promise<AnalyticsSummary> {
   const userFilter = userId ? 'WHERE user_id = $1' : '';
   const andUserFilter = userId ? 'AND user_id = $1' : '';
-  const userParams = userId ? [userId] : [];
+  const userParams: unknown[] = userId ? [userId] : [];
 
   const [summaryResult, weeklyResult, topSkillsResult, statusBreakdownResult, connectsResult, connectWeeklyResult] =
     await Promise.all([
-      // Summary aggregates
       pool.query(`
         SELECT
           COUNT(*) AS total,
@@ -29,7 +38,6 @@ export async function getSummary(userId = null) {
         ${userFilter}
       `, userParams),
 
-      // Weekly proposal counts for the last 12 weeks
       pool.query(`
         SELECT
           TO_CHAR(DATE_TRUNC('week', created_at), 'YYYY-MM-DD') AS week,
@@ -41,7 +49,6 @@ export async function getSummary(userId = null) {
         ORDER BY week ASC
       `, userParams),
 
-      // Top 10 skills across all proposals
       pool.query(`
         SELECT skill, COUNT(*) AS count
         FROM proposals, UNNEST(job_skills) AS skill
@@ -51,7 +58,6 @@ export async function getSummary(userId = null) {
         LIMIT 10
       `, userParams),
 
-      // Status breakdown
       pool.query(`
         SELECT status, COUNT(*) AS count
         FROM proposals
@@ -60,7 +66,6 @@ export async function getSummary(userId = null) {
         ORDER BY count DESC
       `, userParams),
 
-      // Connect tracking
       pool.query(`
         SELECT
           COALESCE(SUM(connect_cost), 0) AS total_connects,
@@ -76,7 +81,6 @@ export async function getSummary(userId = null) {
         ${userFilter}
       `, userParams),
 
-      // Weekly connect spending
       pool.query(`
         SELECT
           TO_CHAR(DATE_TRUNC('week', created_at), 'YYYY-MM-DD') AS week,

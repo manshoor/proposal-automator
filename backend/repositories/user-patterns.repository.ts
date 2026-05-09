@@ -1,9 +1,17 @@
 import pool from '../db/pool.js';
 
-/**
- * Upsert one pattern bucket.
- */
-export async function upsert({ userId, dimension, key, sampleSize, winCount, viewCount }) {
+type Row = Record<string, unknown>;
+
+export interface PatternBucket {
+  userId: string;
+  dimension: string;
+  key: string;
+  sampleSize: number;
+  winCount: number;
+  viewCount: number;
+}
+
+export async function upsert({ userId, dimension, key, sampleSize, winCount, viewCount }: PatternBucket): Promise<Row | null> {
   const responseRate = sampleSize > 0 ? winCount / sampleSize : 0;
   const viewRate = sampleSize > 0 ? viewCount / sampleSize : 0;
   const { rows } = await pool.query(
@@ -22,10 +30,14 @@ export async function upsert({ userId, dimension, key, sampleSize, winCount, vie
   return rows[0] || null;
 }
 
-/**
- * Replace ALL patterns for a (user_id, dimension) atomically. Used when re-aggregating.
- */
-export async function replaceForDimension(userId, dimension, buckets) {
+export interface BucketWithoutUser {
+  key: string;
+  sampleSize: number;
+  winCount: number;
+  viewCount: number;
+}
+
+export async function replaceForDimension(userId: string, dimension: string, buckets: BucketWithoutUser[]): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -51,7 +63,7 @@ export async function replaceForDimension(userId, dimension, buckets) {
   }
 }
 
-export async function findForUser(userId, dimension = null) {
+export async function findForUser(userId: string, dimension: string | null = null): Promise<Row[]> {
   if (dimension) {
     const { rows } = await pool.query(
       `SELECT id, dimension, key, sample_size, win_count, view_count, response_rate, view_rate, last_updated
@@ -72,11 +84,7 @@ export async function findForUser(userId, dimension = null) {
   return rows;
 }
 
-/**
- * Find the best-performing key for a given user+dimension with confident sample size.
- * Returns null if no bucket meets the minimum sample size.
- */
-export async function findTopKey(userId, dimension, minSampleSize = 5) {
+export async function findTopKey(userId: string, dimension: string, minSampleSize: number = 5): Promise<Row | null> {
   const { rows } = await pool.query(
     `SELECT key, sample_size, response_rate, view_rate
      FROM user_patterns
@@ -88,50 +96,17 @@ export async function findTopKey(userId, dimension, minSampleSize = 5) {
   return rows[0] || null;
 }
 
-/**
- * Check whether a given context key has at least minSampleSize outcomes in the
- * user's pre-aggregated patterns for that dimension. Used by the service layer
- * to gate context-specific lookups before doing the more expensive raw-row pass.
- *
- * @param {string} userId
- * @param {string} contextDim   - 'persona' | 'niche'
- * @param {string} contextKey   - e.g. 'enterprise-us-high-spend'
- * @param {number} minSampleSize
- * @returns {Promise<boolean>}
- */
-export async function hasContextCoverage(userId, contextDim, contextKey, minSampleSize = 5) {
+export async function hasContextCoverage(userId: string, contextDim: string, contextKey: string, minSampleSize: number = 5): Promise<boolean> {
   const { rows } = await pool.query(
     `SELECT sample_size
      FROM user_patterns
      WHERE user_id = $1 AND dimension = $2 AND key = $3`,
     [userId, contextDim, contextKey]
   );
-  return rows[0] ? rows[0].sample_size >= minSampleSize : false;
+  return rows[0] ? Number(rows[0].sample_size) >= minSampleSize : false;
 }
 
-/**
- * Fetch raw proposal + outcome signal rows for a user, suitable for per-row
- * classification by the service layer (persona / niche cannot be pre-filtered in SQL
- * because they are computed from client signals, not stored columns).
- *
- * Returns every proposal in the last `daysBack` days that has a non-null hook_style,
- * along with the client signals needed for persona/niche classification and the
- * aggregate win/view event flags per proposal.
- *
- * Scalability note: performs a full scan of proposals + proposal_outcomes for the user.
- * Acceptable up to ~500–1000 proposal rows per user. Once volume exceeds that, replace
- * with a pre-aggregated joint table (user_id, hook_style, context_dim, context_key).
- *
- * @param {string} userId
- * @param {number} daysBack
- * @returns {Promise<Array<{
- *   proposal_id, hook_style,
- *   client_total_spent, client_hire_rate, client_review_count, client_location,
- *   job_skills,
- *   has_win: boolean, has_view: boolean
- * }>>}
- */
-export async function fetchRawProposalSignals(userId, daysBack = 90) {
+export async function fetchRawProposalSignals(userId: string, daysBack: number = 90): Promise<Row[]> {
   const { rows } = await pool.query(
     `SELECT
        p.id AS proposal_id,
@@ -141,7 +116,6 @@ export async function fetchRawProposalSignals(userId, daysBack = 90) {
        p.client_review_count,
        p.client_location,
        p.job_skills,
-       -- pre-aggregate win/view flags so the service doesn't need to join further
        BOOL_OR(po.event_type IN ('replied','interview','hired')) AS has_win,
        BOOL_OR(po.event_type IN ('viewed','message_thread_opened','replied','interview','hired')) AS has_view
      FROM proposals p

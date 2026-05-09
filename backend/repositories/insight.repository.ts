@@ -1,6 +1,8 @@
 import pool from '../db/pool.js';
 
-export async function findActive(userId) {
+type Row = Record<string, unknown>;
+
+export async function findActive(userId: string): Promise<Row[]> {
   const { rows } = await pool.query(
     `SELECT * FROM proposal_insights WHERE user_id = $1 AND is_active = true ORDER BY confidence DESC`,
     [userId]
@@ -8,7 +10,7 @@ export async function findActive(userId) {
   return rows;
 }
 
-export async function findAll(userId) {
+export async function findAll(userId: string): Promise<Row[]> {
   const { rows } = await pool.query(
     `SELECT * FROM proposal_insights WHERE user_id = $1 ORDER BY created_at DESC`,
     [userId]
@@ -16,7 +18,14 @@ export async function findAll(userId) {
   return rows;
 }
 
-export async function create({ insight_text, confidence, category, sample_size }, userId) {
+export interface InsightCreateInput {
+  insight_text: string;
+  confidence?: number;
+  category?: string;
+  sample_size?: number;
+}
+
+export async function create({ insight_text, confidence, category, sample_size }: InsightCreateInput, userId: string): Promise<Row> {
   const { rows } = await pool.query(
     `INSERT INTO proposal_insights (user_id, insight_text, confidence, category, sample_size)
      VALUES ($1, $2, $3, $4, $5) RETURNING *`,
@@ -25,7 +34,7 @@ export async function create({ insight_text, confidence, category, sample_size }
   return rows[0];
 }
 
-export async function update(id, data, userId) {
+export async function update(id: number | string, data: { is_active?: boolean }, userId: string): Promise<Row | null> {
   const { rows } = await pool.query(
     `UPDATE proposal_insights SET
       is_active = COALESCE($1, is_active),
@@ -36,14 +45,14 @@ export async function update(id, data, userId) {
   return rows[0] || null;
 }
 
-export async function deactivateAll(userId) {
+export async function deactivateAll(userId: string): Promise<void> {
   await pool.query(
     `UPDATE proposal_insights SET is_active = false, updated_at = NOW() WHERE user_id = $1`,
     [userId]
   );
 }
 
-export async function getProposalsWithOutcomes(userId) {
+export async function getProposalsWithOutcomes(userId: string): Promise<Row[]> {
   const { rows } = await pool.query(
     `SELECT id, job_title, job_description, job_skills, proposal_text, proposal_length,
             status, response_type, decline_reason, client_feedback, template_used,
@@ -57,15 +66,14 @@ export async function getProposalsWithOutcomes(userId) {
   return rows;
 }
 
-/**
- * Fetch up to N most recent winners + N most recent losers in two targeted
- * queries instead of pulling every outcome-tagged proposal into memory.
- *
- * @param {string} userId
- * @param {number} perBucket - rows per category (default 15)
- * @returns {Promise<{ winners: object[], losers: object[], totalWinners: number, totalLosers: number }>}
- */
-export async function getOutcomeBuckets(userId, perBucket = 15) {
+export interface OutcomeBuckets {
+  winners: Row[];
+  losers: Row[];
+  totalWinners: number;
+  totalLosers: number;
+}
+
+export async function getOutcomeBuckets(userId: string, perBucket: number = 15): Promise<OutcomeBuckets> {
   const winnerTypes = ['hired', 'interview'];
   const loserTypes = ['rejected', 'no_response'];
 

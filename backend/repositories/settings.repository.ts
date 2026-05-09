@@ -1,6 +1,8 @@
 import pool from '../db/pool.js';
 
-export async function findFirst(userId = null) {
+type Row = Record<string, unknown>;
+
+export async function findFirst(userId: string | null = null): Promise<Row | null> {
   if (userId) {
     const { rows } = await pool.query('SELECT * FROM settings WHERE user_id = $1 LIMIT 1', [userId]);
     return rows[0] || null;
@@ -10,7 +12,7 @@ export async function findFirst(userId = null) {
   }
 }
 
-export async function ensureExists(userId = null) {
+export async function ensureExists(userId: string | null = null): Promise<void> {
   if (userId) {
     const { rows: existing } = await pool.query('SELECT id FROM settings WHERE user_id = $1 LIMIT 1', [userId]);
     if (existing.length === 0) {
@@ -24,7 +26,7 @@ export async function ensureExists(userId = null) {
   }
 }
 
-export async function update(data, userId = null) {
+export async function update(data: Record<string, unknown>, userId: string | null = null): Promise<Row | null> {
   const {
     locations,
     min_spent,
@@ -40,9 +42,9 @@ export async function update(data, userId = null) {
     llm_provider,
     llm_api_key_encrypted,
     encryption_iv,
-  } = data;
+  } = data as Record<string, unknown>;
 
-  const values = [
+  const values: unknown[] = [
     locations || null,
     min_spent !== undefined ? min_spent : null,
     min_hire_rate !== undefined ? min_hire_rate : null,
@@ -59,7 +61,7 @@ export async function update(data, userId = null) {
     encryption_iv || null,
   ];
 
-  let whereClause;
+  let whereClause: string;
   if (userId) {
     values.push(userId);
     whereClause = `WHERE user_id = $${values.length}`;
@@ -91,7 +93,11 @@ export async function update(data, userId = null) {
   return rows[0] || null;
 }
 
-export async function getLLMConfig(userId = null) {
+export async function getLLMConfig(userId: string | null = null): Promise<{
+  llm_provider: string | null;
+  llm_api_key_encrypted: string | null;
+  encryption_iv: string | null;
+} | null> {
   if (userId) {
     const { rows } = await pool.query(
       'SELECT llm_provider, llm_api_key_encrypted, encryption_iv FROM settings WHERE user_id = $1 LIMIT 1',

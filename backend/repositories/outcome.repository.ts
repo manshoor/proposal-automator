@@ -1,22 +1,22 @@
 import pool from '../db/pool.js';
 
+type Row = Record<string, unknown>;
+
 const VALID_EVENT_TYPES = new Set([
   'viewed', 'message_thread_opened', 'archived', 'hired', 'replied', 'interview',
 ]);
 const VALID_SOURCES = new Set(['dom', 'scrape', 'manual']);
 
-/**
- * Insert one outcome event row.
- *
- * @param {object} args
- * @param {number} args.proposalId
- * @param {string} args.userId
- * @param {string} args.eventType
- * @param {string} args.source
- * @param {Date|string} args.occurredAt
- * @param {object} [args.metadata]
- */
-export async function create({ proposalId, userId, eventType, source, occurredAt, metadata }) {
+export interface OutcomeEventInput {
+  proposalId: number;
+  userId: string;
+  eventType: string;
+  source: string;
+  occurredAt: Date | string;
+  metadata?: Record<string, unknown>;
+}
+
+export async function create({ proposalId, userId, eventType, source, occurredAt, metadata }: OutcomeEventInput): Promise<Row | null> {
   if (!VALID_EVENT_TYPES.has(eventType)) throw new Error(`Invalid event_type: ${eventType}`);
   if (!VALID_SOURCES.has(source)) throw new Error(`Invalid source: ${source}`);
   const { rows } = await pool.query(
@@ -35,13 +35,12 @@ export async function create({ proposalId, userId, eventType, source, occurredAt
   return rows[0] || null;
 }
 
-/**
- * Find a proposal owned by user that matches a job URL or job title (best-effort match).
- * Used by the ingest service when the extension sends events without a proposal_id.
- *
- * @returns {Promise<{id, hook_style, job_url, job_title, created_at}|null>}
- */
-export async function findProposalByJobIdentity(userId, { jobUrl, jobTitle }) {
+export interface JobIdentity {
+  jobUrl?: string;
+  jobTitle?: string;
+}
+
+export async function findProposalByJobIdentity(userId: string, { jobUrl, jobTitle }: JobIdentity): Promise<Row | null> {
   if (jobUrl) {
     const { rows } = await pool.query(
       `SELECT id, hook_style, job_url, job_title, created_at
@@ -66,10 +65,7 @@ export async function findProposalByJobIdentity(userId, { jobUrl, jobTitle }) {
   return null;
 }
 
-/**
- * List events for a single proposal (oldest first).
- */
-export async function findByProposal(proposalId, userId) {
+export async function findByProposal(proposalId: number, userId: string): Promise<Row[]> {
   const { rows } = await pool.query(
     `SELECT id, event_type, source, occurred_at, metadata, created_at
      FROM proposal_outcomes
@@ -80,11 +76,7 @@ export async function findByProposal(proposalId, userId) {
   return rows;
 }
 
-/**
- * For aggregation: list every proposal in the last N days plus its event types and the
- * client signals needed for persona classification.
- */
-export async function listOutcomeRowsForUser(userId, daysBack = 90) {
+export async function listOutcomeRowsForUser(userId: string, daysBack: number = 90): Promise<Row[]> {
   const { rows } = await pool.query(
     `SELECT
        p.id AS proposal_id,

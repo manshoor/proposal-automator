@@ -1,9 +1,16 @@
 import pool from '../db/pool.js';
 
-export async function findAll({ platform, active } = {}, userId = null) {
+type Row = Record<string, unknown>;
+
+export interface PromptListOptions {
+  platform?: string;
+  active?: boolean | string;
+}
+
+export async function findAll({ platform, active }: PromptListOptions = {}, userId: string | null = null): Promise<Row[]> {
   let query = 'SELECT * FROM prompts';
-  const conditions = [];
-  const values = [];
+  const conditions: string[] = [];
+  const values: unknown[] = [];
 
   if (userId) {
     values.push(userId);
@@ -24,8 +31,7 @@ export async function findAll({ platform, active } = {}, userId = null) {
   return rows;
 }
 
-export async function findActiveForPlatform(platform, userId = null) {
-  // Single query: prefer platform-specific, fall back to 'all'
+export async function findActiveForPlatform(platform: string, userId: string | null = null): Promise<Row | null> {
   if (userId) {
     const { rows } = await pool.query(
       `SELECT * FROM prompts
@@ -47,7 +53,7 @@ export async function findActiveForPlatform(platform, userId = null) {
   }
 }
 
-export async function findById(id, userId = null) {
+export async function findById(id: number | string, userId: string | null = null): Promise<Row | null> {
   if (userId) {
     const { rows } = await pool.query('SELECT * FROM prompts WHERE id = $1 AND user_id = $2', [id, userId]);
     return rows[0] || null;
@@ -57,11 +63,11 @@ export async function findById(id, userId = null) {
   }
 }
 
-export async function create(data, userId = null) {
+export async function create(data: Record<string, unknown>, userId: string | null = null): Promise<Row> {
   const { name, platform, prompt_text, is_active, type, is_global } = data;
 
-  const columns = ['name', 'platform', 'prompt_text', 'is_active', 'type', 'is_global'];
-  const values = [name, platform || 'all', prompt_text, is_active !== false, type || 'custom', is_global || false];
+  const columns: string[] = ['name', 'platform', 'prompt_text', 'is_active', 'type', 'is_global'];
+  const values: unknown[] = [name, platform || 'all', prompt_text, is_active !== false, type || 'custom', is_global || false];
 
   if (userId) {
     columns.push('user_id');
@@ -77,10 +83,10 @@ export async function create(data, userId = null) {
   return rows[0];
 }
 
-export async function update(id, data, userId = null) {
+export async function update(id: number | string, data: Record<string, unknown>, userId: string | null = null): Promise<Row | null> {
   const { name, platform, prompt_text, is_active } = data;
 
-  const values = [name, platform, prompt_text, is_active, id];
+  const values: unknown[] = [name, platform, prompt_text, is_active, id];
   let whereClause = 'WHERE id = $5';
 
   if (userId) {
@@ -101,20 +107,17 @@ export async function update(id, data, userId = null) {
   return rows[0] || null;
 }
 
-export async function remove(id, userId = null) {
+export async function remove(id: number | string, userId: string | null = null): Promise<boolean> {
   if (userId) {
     const { rowCount } = await pool.query('DELETE FROM prompts WHERE id = $1 AND user_id = $2', [id, userId]);
-    return rowCount > 0;
+    return (rowCount ?? 0) > 0;
   } else {
     const { rowCount } = await pool.query('DELETE FROM prompts WHERE id = $1', [id]);
-    return rowCount > 0;
+    return (rowCount ?? 0) > 0;
   }
 }
 
-/**
- * Find user's active prompt by type (system or custom) for a platform.
- */
-export async function findActiveByType(type, platform, userId) {
+export async function findActiveByType(type: string, platform: string, userId: string): Promise<Row | null> {
   const { rows } = await pool.query(
     `SELECT * FROM prompts
      WHERE user_id = $1 AND type = $2 AND is_active = true
@@ -126,10 +129,7 @@ export async function findActiveByType(type, platform, userId) {
   return rows[0] || null;
 }
 
-/**
- * Find global (admin's) active prompt by type for a platform.
- */
-export async function findGlobalByType(type, platform) {
+export async function findGlobalByType(type: string, platform: string): Promise<Row | null> {
   const { rows } = await pool.query(
     `SELECT * FROM prompts
      WHERE is_global = true AND type = $1 AND is_active = true
@@ -141,10 +141,7 @@ export async function findGlobalByType(type, platform) {
   return rows[0] || null;
 }
 
-/**
- * List all global prompts (admin view).
- */
-export async function findAllGlobal() {
+export async function findAllGlobal(): Promise<Row[]> {
   const { rows } = await pool.query(
     `SELECT * FROM prompts WHERE is_global = true ORDER BY type, platform, created_at DESC`
   );

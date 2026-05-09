@@ -1,13 +1,8 @@
 import pool from '../db/pool.js';
 
-/**
- * Returns all active banned phrases applicable to the given user.
- * Includes system phrases, admin global phrases, and the user's own phrases.
- *
- * @param {string|null} userId
- * @returns {Promise<Array<{id, scope, user_id, phrase, severity, active}>>}
- */
-export async function findActiveForUser(userId) {
+type Row = Record<string, unknown>;
+
+export async function findActiveForUser(userId: string | null): Promise<Row[]> {
   const { rows } = await pool.query(
     `SELECT id, scope, user_id, phrase, severity, active
      FROM banned_phrases
@@ -21,10 +16,7 @@ export async function findActiveForUser(userId) {
   return rows;
 }
 
-/**
- * Lists phrases visible to the user (their own + admin/system view-only).
- */
-export async function findVisible(userId) {
+export async function findVisible(userId: string | null): Promise<Row[]> {
   const { rows } = await pool.query(
     `SELECT id, scope, user_id, phrase, severity, active, created_at
      FROM banned_phrases
@@ -35,7 +27,14 @@ export async function findVisible(userId) {
   return rows;
 }
 
-export async function create({ scope, userId, phrase, severity }) {
+export interface BannedPhraseCreateInput {
+  scope: string;
+  userId: string | null;
+  phrase: string;
+  severity: string;
+}
+
+export async function create({ scope, userId, phrase, severity }: BannedPhraseCreateInput): Promise<Row | null> {
   const { rows } = await pool.query(
     `INSERT INTO banned_phrases (scope, user_id, phrase, severity)
      VALUES ($1, $2, $3, $4)
@@ -45,11 +44,7 @@ export async function create({ scope, userId, phrase, severity }) {
   return rows[0] || null;
 }
 
-/**
- * Removes a phrase. Admins can delete admin- or user-scoped rows; users only their own.
- * System phrases are never deletable through the API.
- */
-export async function remove(id, userId, isAdmin = false) {
+export async function remove(id: number | string, userId: string | null, isAdmin = false): Promise<boolean> {
   let result;
   if (isAdmin) {
     result = await pool.query(
@@ -66,5 +61,5 @@ export async function remove(id, userId, isAdmin = false) {
       [id, userId]
     );
   }
-  return result.rowCount > 0;
+  return (result.rowCount ?? 0) > 0;
 }
