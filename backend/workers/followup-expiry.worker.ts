@@ -12,16 +12,16 @@ async function expireStaleFollowUps() {
        WHERE status = 'scheduled'
          AND scheduled_at < NOW() - INTERVAL '${STALE_THRESHOLD_DAYS} days'`
     );
-    if (rowCount > 0) {
+    if ((rowCount ?? 0) > 0) {
       logger.info({ rowCount, thresholdDays: STALE_THRESHOLD_DAYS },
         '[followup-expiry] marked stale follow-ups expired');
     }
   } catch (err) {
-    logger.warn({ err: err.message }, '[followup-expiry] sweep failed (non-fatal)');
+    logger.warn({ err: (err as Error).message }, '[followup-expiry] sweep failed (non-fatal)');
   }
 }
 
-let _intervalId = null;
+let _intervalId: NodeJS.Timeout | null = null;
 
 export function startFollowUpExpiryWorker() {
   if (_intervalId) return;

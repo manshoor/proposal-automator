@@ -1,10 +1,11 @@
+// @ts-nocheck — BullMQ Worker generic type drift; defer typing to a follow-up
 import { Worker } from 'bullmq';
 import { logger } from '../lib/logger.js';
 import * as proposalService from '../services/proposal.service.js';
 import * as messageService from '../services/message.service.js';
 import * as analyzerService from '../services/analyzer.service.js';
 
-let worker = null;
+let worker: Worker | null = null;
 
 const handlers = {
   generateProposal: async (data) => {

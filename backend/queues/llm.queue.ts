@@ -1,9 +1,9 @@
 import { Queue } from 'bullmq';
 import { logger } from '../lib/logger.js';
 
-let queue = null;
+let queue: Queue | null = null;
 
-export function getLLMQueue() {
+export function getLLMQueue(): Queue {
   if (queue) return queue;
 
   const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';

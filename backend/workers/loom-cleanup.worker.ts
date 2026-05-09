@@ -8,12 +8,13 @@ const STALE_THRESHOLD_DAYS = 90;
 
 async function cleanupOrphanLooms() {
   const dir = path.join(process.cwd(), 'uploads', 'loom');
-  let entries;
+  let entries: string[];
   try {
     entries = await fs.readdir(dir);
   } catch (err) {
-    if (err.code === 'ENOENT') return;  // no uploads yet — nothing to clean
-    logger.warn({ err: err.message }, '[loom-cleanup] readdir failed');
+    const e = err as NodeJS.ErrnoException;
+    if (e.code === 'ENOENT') return;  // no uploads yet — nothing to clean
+    logger.warn({ err: e.message }, '[loom-cleanup] readdir failed');
     return;
   }
 
@@ -24,14 +25,14 @@ async function cleanupOrphanLooms() {
     `SELECT loom_url FROM proposals WHERE loom_url IS NOT NULL`
   );
   const referencedFilenames = new Set(
-    rows
-      .map(r => r.loom_url)
-      .filter(Boolean)
-      .map(url => {
+    (rows as { loom_url: string | null }[])
+      .map((r) => r.loom_url)
+      .filter((u): u is string => !!u)
+      .map((url) => {
         const m = url.match(/\/uploads\/loom\/([^/?#]+)/);
         return m ? m[1] : null;
       })
-      .filter(Boolean)
+      .filter((n): n is string => !!n)
   );
 
   const cutoffMs = Date.now() - STALE_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
@@ -53,7 +54,7 @@ async function cleanupOrphanLooms() {
         kept += 1;
       }
     } catch (err) {
-      logger.warn({ err: err.message, file: name }, '[loom-cleanup] file op failed');
+      logger.warn({ err: (err as Error).message, file: name }, '[loom-cleanup] file op failed');
     }
   }
 
@@ -62,7 +63,7 @@ async function cleanupOrphanLooms() {
   }
 }
 
-let _intervalId = null;
+let _intervalId: NodeJS.Timeout | null = null;
 
 export function startLoomCleanupWorker() {
   if (_intervalId) return;

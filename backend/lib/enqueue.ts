@@ -2,6 +2,10 @@ import type { Request, Response } from 'express';
 import type { Job } from 'bullmq';
 import { getLLMQueue } from '../queues/index.js';
 
+// getLLMQueue returns Queue (always non-null after init), but lib/enqueue
+// runs before the queue may have been initialized. Re-fetching it returns
+// the singleton.
+
 /**
  * If req.query.async === 'true', enqueue the job and return 202.
  * Otherwise return null (caller should run synchronously).
