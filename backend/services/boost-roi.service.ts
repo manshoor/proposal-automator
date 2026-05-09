@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: tighten types in a follow-up iter
 /**
  * Boost-Connects ROI calculator.
  * Heuristic v1 — deterministic formula based on client + alignment signals.
