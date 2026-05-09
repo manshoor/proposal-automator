@@ -1,14 +1,18 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { type Options as RateLimitOptions } from 'express-rate-limit';
 import RedisStore from 'rate-limit-redis';
+import type { Request } from 'express';
 import { getClient } from '../lib/redis.js';
 
-function createStore(prefix) {
+function createStore(prefix: string): RateLimitOptions['store'] | undefined {
   try {
     const client = getClient();
+    // RedisStore options have shifted union types across versions; cast the
+    // options object as a whole rather than fighting individual fields.
     return new RedisStore({
-      sendCommand: (...args) => client.call(...args),
+      sendCommand: (...args: string[]) =>
+        (client as unknown as { call: (...a: string[]) => Promise<unknown> }).call(...args),
       prefix: `rl:${prefix}:`,
-    });
+    } as unknown as ConstructorParameters<typeof RedisStore>[0]);
   } catch {
     return undefined; // falls back to in-memory store
   }
@@ -20,8 +24,8 @@ export const globalLimiter = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.user?.id || req.ip,
-  store: createStore('global'), // createStore falls back to in-memory if Redis is unreachable
+  keyGenerator: (req: Request) => req.user?.id || req.ip || 'unknown',
+  store: createStore('global'),
   message: { error: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many requests. Please try again later.' } },
 });
 
@@ -31,7 +35,7 @@ export const authLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.ip,
+  keyGenerator: (req: Request) => req.ip || 'unknown',
   store: createStore('auth'),
   message: { error: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many authentication attempts. Please wait 15 minutes.' } },
 });
@@ -42,7 +46,7 @@ export const llmLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.user?.id || req.ip,
+  keyGenerator: (req: Request) => req.user?.id || req.ip || 'unknown',
   store: createStore('llm'),
   message: { error: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many AI requests. Please try again shortly.' } },
 });

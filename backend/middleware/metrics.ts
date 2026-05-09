@@ -1,6 +1,7 @@
+import type { Request, Response, NextFunction } from 'express';
 import { httpRequestDuration, httpRequestTotal, httpErrorTotal } from '../lib/metrics.js';
 
-export function metricsMiddleware(req, res, next) {
+export function metricsMiddleware(req: Request, res: Response, next: NextFunction): void {
   const start = process.hrtime.bigint();
 
   res.on('finish', () => {
@@ -14,7 +15,7 @@ export function metricsMiddleware(req, res, next) {
     const labels = {
       method: req.method,
       route,
-      status_code: res.statusCode,
+      status_code: String(res.statusCode),
     };
 
     httpRequestDuration.observe(labels, durationSec);
